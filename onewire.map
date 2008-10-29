@@ -1,0 +1,325 @@
+Archive member included because of file (symbol)
+
+/usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_copy_data.o)
+                              onewire.o (__do_copy_data)
+/usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_clear_bss.o)
+                              onewire.o (__do_clear_bss)
+
+Allocating common symbols
+Common symbol       size              file
+
+shift_reg           0x1               onewire.o
+bytecount           0x1               onewire.o
+transbyte           0x1               onewire.o
+bitcount            0x1               onewire.o
+transdata           0x9               onewire.o
+status_global       0x1               onewire.o
+fb_bit              0x1               onewire.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+text             0x00000000         0x00002000         xr
+data             0x00800060         0x0000ffa0         rw !x
+eeprom           0x00810000         0x00010000         rw !x
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /usr/local/avr/lib/crttn13.o
+LOAD onewire.o
+LOAD /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a
+LOAD /usr/local/avr/lib/libc.a
+LOAD /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a
+
+.hash
+ *(.hash)
+
+.dynsym
+ *(.dynsym)
+
+.dynstr
+ *(.dynstr)
+
+.gnu.version
+ *(.gnu.version)
+
+.gnu.version_d
+ *(.gnu.version_d)
+
+.gnu.version_r
+ *(.gnu.version_r)
+
+.rel.init
+ *(.rel.init)
+
+.rela.init
+ *(.rela.init)
+
+.rel.text
+ *(.rel.text)
+ *(.rel.text.*)
+ *(.rel.gnu.linkonce.t*)
+
+.rela.text
+ *(.rela.text)
+ *(.rela.text.*)
+ *(.rela.gnu.linkonce.t*)
+
+.rel.fini
+ *(.rel.fini)
+
+.rela.fini
+ *(.rela.fini)
+
+.rel.rodata
+ *(.rel.rodata)
+ *(.rel.rodata.*)
+ *(.rel.gnu.linkonce.r*)
+
+.rela.rodata
+ *(.rela.rodata)
+ *(.rela.rodata.*)
+ *(.rela.gnu.linkonce.r*)
+
+.rel.data
+ *(.rel.data)
+ *(.rel.data.*)
+ *(.rel.gnu.linkonce.d*)
+
+.rela.data
+ *(.rela.data)
+ *(.rela.data.*)
+ *(.rela.gnu.linkonce.d*)
+
+.rel.ctors
+ *(.rel.ctors)
+
+.rela.ctors
+ *(.rela.ctors)
+
+.rel.dtors
+ *(.rel.dtors)
+
+.rela.dtors
+ *(.rela.dtors)
+
+.rel.got
+ *(.rel.got)
+
+.rela.got
+ *(.rela.got)
+
+.rel.bss
+ *(.rel.bss)
+
+.rela.bss
+ *(.rela.bss)
+
+.rel.plt
+ *(.rel.plt)
+
+.rela.plt
+ *(.rela.plt)
+
+.text           0x00000000      0x3a6
+ *(.vectors)
+ .vectors       0x00000000       0x14 /usr/local/avr/lib/crttn13.o
+                0x00000000                __vectors
+                0x00000000                __vector_default
+                0x00000014                __ctors_start = .
+ *(.ctors)
+                0x00000014                __ctors_end = .
+                0x00000014                __dtors_start = .
+ *(.dtors)
+                0x00000014                __dtors_end = .
+ *(.progmem.gcc*)
+ *(.progmem*)
+                0x00000014                . = ALIGN (0x2)
+ *(.init0)
+ *(.init1)
+ *(.init2)
+ .init2         0x00000014        0x8 /usr/local/avr/lib/crttn13.o
+ *(.init3)
+ *(.init4)
+ .init4         0x0000001c       0x18 /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_copy_data.o)
+                0x0000001c                __do_copy_data
+ .init4         0x00000034       0x10 /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_clear_bss.o)
+                0x00000034                __do_clear_bss
+ *(.init5)
+ *(.init6)
+ *(.init7)
+ *(.init8)
+ *(.init9)
+ .init9         0x00000044        0x2 /usr/local/avr/lib/crttn13.o
+ *(.text)
+ .text          0x00000046        0x2 /usr/local/avr/lib/crttn13.o
+                0x00000046                __bad_interrupt
+                0x00000046                __vector_6
+                0x00000046                __vector_7
+                0x00000046                __vector_5
+                0x00000046                __vector_4
+                0x00000046                __vector_9
+                0x00000046                __vector_2
+                0x00000046                __vector_8
+ .text          0x00000048      0x35e onewire.o
+                0x00000270                __vector_1
+                0x000000f6                __vector_3
+                0x00000048                ioinit
+                0x0000008a                main
+                0x000003a6                . = ALIGN (0x2)
+ *(.text.*)
+                0x000003a6                . = ALIGN (0x2)
+ *(.fini9)
+ *(.fini8)
+ *(.fini7)
+ *(.fini6)
+ *(.fini5)
+ *(.fini4)
+ *(.fini3)
+ *(.fini2)
+ *(.fini1)
+ *(.fini0)
+                0x000003a6                _etext = .
+
+.data           0x00800060        0x0 load address 0x000003a6
+                0x00800060                PROVIDE (__data_start, .)
+ *(.data)
+ *(.gnu.linkonce.d*)
+                0x00800060                . = ALIGN (0x2)
+                0x00800060                _edata = .
+                0x00800060                PROVIDE (__data_end, .)
+
+.bss            0x00800060        0xf
+                0x00800060                PROVIDE (__bss_start, .)
+ *(.bss)
+ *(COMMON)
+ COMMON         0x00800060        0xf onewire.o
+                0x00800060                shift_reg
+                0x00800061                bytecount
+                0x00800062                transbyte
+                0x00800063                bitcount
+                0x00800064                transdata
+                0x0080006d                status_global
+                0x0080006e                fb_bit
+                0x0080006f                PROVIDE (__bss_end, .)
+                0x000003a6                __data_load_start = LOADADDR (.data)
+                0x000003a6                __data_load_end = (__data_load_start + SIZEOF (.data))
+
+.noinit         0x0080006f        0x0
+                0x0080006f                PROVIDE (__noinit_start, .)
+ *(.noinit*)
+                0x0080006f                PROVIDE (__noinit_end, .)
+                0x0080006f                _end = .
+                0x0080006f                PROVIDE (__heap_start, .)
+
+.eeprom         0x00810000        0x0
+ *(.eeprom*)
+                0x00810000                __eeprom_end = .
+
+.stab           0x00000000      0xd98
+ *(.stab)
+ .stab          0x00000000      0x354 /usr/local/avr/lib/crttn13.o
+ .stab          0x00000354      0xa44 onewire.o
+                                0xa50 (size before relaxing)
+
+.stabstr        0x00000000      0x7b4
+ *(.stabstr)
+ .stabstr       0x00000000      0x7b4 /usr/local/avr/lib/crttn13.o
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment
+ *(.comment)
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges
+ *(.debug_aranges)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info
+ *(.debug_info)
+ *(.gnu.linkonce.wi.*)
+
+.debug_abbrev
+ *(.debug_abbrev)
+
+.debug_line
+ *(.debug_line)
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str
+ *(.debug_str)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+OUTPUT(onewire.out elf32-avr)
+
+Cross Reference Table
+
+Symbol                                            File
+__bad_interrupt                                   /usr/local/avr/lib/crttn13.o
+__bss_end                                         /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_clear_bss.o)
+__bss_start                                       /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_clear_bss.o)
+__data_end                                        /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_copy_data.o)
+__data_load_start                                 /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_copy_data.o)
+__data_start                                      /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_copy_data.o)
+__do_clear_bss                                    /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_clear_bss.o)
+                                                  onewire.o
+__do_copy_data                                    /usr/local/avr/lib/gcc/avr/4.0.2/libgcc.a(_copy_data.o)
+                                                  onewire.o
+__heap_end                                        /usr/local/avr/lib/crttn13.o
+__init                                            /usr/local/avr/lib/crttn13.o
+__stack                                           /usr/local/avr/lib/crttn13.o
+                                                  onewire.o
+__vector_1                                        onewire.o
+                                                  /usr/local/avr/lib/crttn13.o
+__vector_2                                        /usr/local/avr/lib/crttn13.o
+__vector_3                                        onewire.o
+                                                  /usr/local/avr/lib/crttn13.o
+__vector_4                                        /usr/local/avr/lib/crttn13.o
+__vector_5                                        /usr/local/avr/lib/crttn13.o
+__vector_6                                        /usr/local/avr/lib/crttn13.o
+__vector_7                                        /usr/local/avr/lib/crttn13.o
+__vector_8                                        /usr/local/avr/lib/crttn13.o
+__vector_9                                        /usr/local/avr/lib/crttn13.o
+__vector_default                                  /usr/local/avr/lib/crttn13.o
+__vectors                                         /usr/local/avr/lib/crttn13.o
+bitcount                                          onewire.o
+bytecount                                         onewire.o
+fb_bit                                            onewire.o
+ioinit                                            onewire.o
+main                                              onewire.o
+                                                  /usr/local/avr/lib/crttn13.o
+shift_reg                                         onewire.o
+status_global                                     onewire.o
+transbyte                                         onewire.o
+transdata                                         onewire.o
