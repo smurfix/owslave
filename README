@@ -1,0 +1,40 @@
+This is 1wire slave code for AVR microcontrollers.
+Copyright (C) 2010 Matthias Urlichs <matthias@urlichs.de>.
+
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+The core code implements the basic 1wire discovery methods.
+Code size is about 1.4k, 1.2k if you remove discovery (SEARCH ROM).
+Overdrive speed is not yet implemented.
+
+The 64-bit ID (actually an 48-bit ID because family code and CRC
+are fixed) is currently hardcoded, but will be read from EEPROM
+Real Soon Now.
+
+
+NOTE: It appears that Dallas Semiconductor doesn't like people who
+implement 1wire slaves in software.
+
+On the other hand, they do discontinue ICs like the DS2423 counter
+for which no substitute exists.
+
+Therefore, while I cannot prevent people from doing whatever they want,
+simulations of existing ICs will only be entered into this project's
+repository if the ICs are no longer available or (at the very least)
+"not recommended for new design". Sorry.
+
+
+-- Matthias Urlichs

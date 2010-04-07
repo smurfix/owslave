@@ -4,6 +4,7 @@
 
 #ifdef __AVR_ATtiny13__
 #define F_CPU				 9600000
+#define SKIP_SEARCH
 #endif
 #ifdef __AVR_ATmega168__
 #define F_CPU				 16000000
@@ -43,9 +44,11 @@ unsigned char transdata[9];   // store sent/received bytes, 18b20 compatible
 //  selection opcode states
 #define S_MATCHROM        (S_RECV|0x10) // select a known slave
 #define S_READROM         (S_XMIT|0x10) // single slave only!
+#ifndef SKIP_SEARCH
 #define S_SEARCHROM       (S_XMIT|0x14) // search, step 1: send ID bit
 #define S_SEARCHROM_I     (S_XMIT|0x18) // search, step 2: send inverted ID bit
 #define S_SEARCHROM_R     (S_RECV|0x14) // search, step 3: check what the master wants
+#endif
 //  real opcode states
 #define S_CMD_RECV        (S_RECV|0x20) // receive a byte
 #define S_CMD_XMIT        (S_XMIT|0x20) // send a byte
@@ -77,6 +80,7 @@ unsigned char transdata[9];   // store sent/received bytes, 18b20 compatible
 #define ONEWIREPIN 1		 // INT0
 
 #define IMSK GIMSK
+#define IFR GIFR
 
 #elif defined (__AVR_ATmega8__)
 #define OWPIN PIND
@@ -89,6 +93,7 @@ unsigned char transdata[9];   // store sent/received bytes, 18b20 compatible
 #define TIFR0 TIFR
 #define EEPE EEWE
 #define EEMPE EEMWE
+#define IFR EIFR
 
 #define HAVE_UART
 
@@ -100,6 +105,7 @@ unsigned char transdata[9];   // store sent/received bytes, 18b20 compatible
 #define DBGPIN 3		// debug output
 
 #define IMSK EIMSK
+#define IFR EIFR
 
 #undef HAVE_UART
 #undef HAVE_TIMESTAMP
@@ -158,13 +164,13 @@ void ioinit(void)
 {
 	unsigned char i;
 #ifdef __AVR_ATtiny13__
-	CLKPR = 0x80;	 // Per software auf 9,6 MHz stellen Aenderung des Vorteilers freigeben
-	CLKPR = 0x00;	 // Vorteiler auf 1 (000) setzen
+	CLKPR = 0x80;	 // Prepare to ...
+	CLKPR = 0x00;	 // ... set to 9.6 MHz
 
 	TCCR0A = 0;
 	TCCR0B = 0x03;	// Prescaler 1/64
 
-	MCUCR |= (1 << ISC00);		  // Interrupt auf beide Flanken
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
 #elif defined (__AVR_ATmega8__)
 	// Clock is set via fuse
@@ -172,7 +178,7 @@ void ioinit(void)
 
 	TCCR0 = 0x03;	// Prescaler 1/64
 
-	MCUCR |= (1 << ISC00);		  // Interrupt auf beide Flanken
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
 #elif defined (__AVR_ATmega168__)
 	// Clock is set via fuse
@@ -204,7 +210,7 @@ void ioinit(void)
 	TCNT1 = 0;
 #endif
 
-	EIFR |= (1 << INTF0);
+	IFR |= (1 << INTF0);
 	IMSK |= (1 << INT0);
 
 	// Get data from EEPROM
@@ -239,7 +245,7 @@ static inline void clear_timer(void)
 	TIMSK0 &= ~(1 << TOIE0);	   // turn off the timer IRQ
 }
 
-// Das Hauptprogramm (Einsprungpunkt)
+// Main program
 int main(void)
 {
 #if 0
@@ -286,7 +292,7 @@ int main(void)
 #if 0
 		// first input
 		ADMUX = ADIN0;
-		//	ADMUX |= (1<<ADLAR);	// Externe Referenz, Obere 8 Bit alignen (untere zwei Bit wegschmeissen)
+		//	ADMUX |= (1<<ADLAR);
 
 		// dummy read
 		ADCSRA |= (1<<ADSC);
@@ -340,7 +346,7 @@ void set_idle(void)
 	bytecount = 0;
 
 	clear_timer();
-	EIFR |= (1 << INTF0);		// ack+enable level-change interrupt, just to be safe
+	IFR |= (1 << INTF0);		// ack+enable level-change interrupt, just to be safe
 	IMSK |= (1 << INT0);
 }
 
@@ -362,7 +368,7 @@ ISR (TIMER0_OVF_vect)
 	//DBG_C(pin ? '!' : ':');
 	if (status & S_XMIT2) {
 		status &= ~S_XMIT2;
-		EIFR |= (1 << INTF0);
+		IFR |= (1 << INTF0);
 		IMSK |= (1 << INT0);
 		OWDDR &= ~(1 << ONEWIREPIN);	// set to input
 		//DBG_C('x');
@@ -379,6 +385,7 @@ ISR (TIMER0_OVF_vect)
 		DBG_C('O');
 	}
 	else if (st & S_RECV) {
+#ifndef SKIP_SEARCH
 		if (st == S_SEARCHROM_R) {
 			DBG_ON();
 			//DBG_C((pin != 0) + '0');
@@ -396,7 +403,9 @@ ISR (TIMER0_OVF_vect)
 				bitcount++;
 			}
 		}
-		else {
+		else
+#endif
+		 {
 			DBG_ON();
 			if (!bitcount)
 				transbyte = 0;
@@ -425,13 +434,17 @@ ISR (TIMER0_OVF_vect)
 					status = S_READROM;
 					transbyte = addr[0];
 				}
-				else if (transbyte == 0xF0) {
+				else
+#ifndef SKIP_SEARCH
+				if (transbyte == 0xF0) {
 					status = S_SEARCHROM;
 					transbyte = addr[0];
 					DBG_C('?');
 					DBG_X(transbyte);
 				}
-				else {
+				else
+#endif
+				{
 					DBG_P("::Unknown ");
 					DBG_X(transbyte);
 					set_idle();
@@ -473,7 +486,9 @@ ISR (TIMER0_OVF_vect)
 					set_idle();
 				}
 			}
-			else if (st == S_SEARCHROM) {
+			else
+#ifndef SKIP_SEARCH
+			if (st == S_SEARCHROM) {
 				if (bytecount < 7) {
 					bytecount++;
 					transbyte = addr[bytecount];
@@ -485,7 +500,9 @@ ISR (TIMER0_OVF_vect)
 					DBG_C('C');
 				}
 			}
-			else if (st == S_MATCHROM) {
+			else
+#endif
+			if (st == S_MATCHROM) {
 				if (transbyte != addr[bytecount])
 					set_idle();
 				else if (bytecount < 7)
@@ -550,6 +567,7 @@ ISR (INT0_vect)
 				status |= S_XMIT2;
 			} else
 				clear_timer();
+#ifndef SKIP_SEARCH
 			if (st == S_SEARCHROM) {
 				//DBG_C((transbyte & 0x01) + '0');
 				transbyte ^= 0x01;
@@ -558,7 +576,9 @@ ISR (INT0_vect)
 				status = (status & S_XMIT2) | S_SEARCHROM_R;
 				//DBG_C((transbyte & 0x01) + '0');
 				transbyte ^= 0x01;
-			} else {
+			} else
+#endif
+			{
 				//DBG_C((transbyte & 0x01) ? 'H' : 'L');
 #if 0
 				if (st == S_READMEM) { // calculate CRC8
