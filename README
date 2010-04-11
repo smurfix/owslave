@@ -17,12 +17,13 @@ Copyright (C) 2010 Matthias Urlichs <matthias@urlichs.de>.
 
 
 The core code implements the basic 1wire discovery methods.
-Code size is about 1.4k, 1.2k if you remove discovery (SEARCH ROM).
+Code size is about 3k; some of that size is due to GCCs inability
+to deal with 8-bit integers sanely.
 Overdrive speed is not yet implemented.
 
 The 64-bit ID (actually an 48-bit ID because family code and CRC
-are fixed) is currently hardcoded, but will be read from EEPROM
-Real Soon Now.
+are fixed) is read from EEPROM. A small tool to generate the EPROM
+CRC is included.
 
 
 NOTE: It appears that Dallas Semiconductor doesn't like people who
@@ -34,7 +35,8 @@ for which no substitute exists.
 Therefore, while I cannot prevent people from doing whatever they want,
 simulations of existing ICs will only be entered into this project's
 repository if the ICs are no longer available or (at the very least)
-"not recommended for new design". Sorry.
+"not recommended for new design". Sorry if you want more, but IMHO
+this is the best compromise between practical and legal considerations.
 
 
 -- Matthias Urlichs
