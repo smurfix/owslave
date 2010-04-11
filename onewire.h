@@ -36,6 +36,7 @@
 #define DBG_X(x) uart_puthex_byte(x)
 #define DBG_Y(x) uart_puthex_word(x)
 #define DBG_NL() uart_putc('\n')
+
 #ifdef HAVE_TIMESTAMP
 volatile unsigned char tbpos;
 volatile uint16_t tsbuf[100];
@@ -46,8 +47,9 @@ volatile uint16_t tsbuf[100];
 
 #define DBG_C(x) do { } while(0)
 #define DBG_P(x) do { } while(0)
-#define DBG_X(x) do { } while(0)
 #define DBG_N(x) do { } while(0)
+#define DBG_X(x) do { } while(0)
+#define DBG_Y(x) do { } while(0)
 #define DBG_NL() do { } while(0)
 #endif
 
