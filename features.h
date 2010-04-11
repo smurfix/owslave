@@ -32,7 +32,7 @@
 
 #ifdef __AVR_ATmega168__
 #define F_CPU_                16000000
-#define HAVE_UART
+// #define HAVE_UART
 #endif
 
 #ifndef F_CPU_

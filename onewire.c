@@ -30,7 +30,7 @@
 #define EMU_2423  // counter
 
 // 1wire interface
-static volatile uint8_t bitcount, transbyte;
+static uint8_t bitcount, transbyte;
 static uint8_t xmitlen;
 static unsigned char addr[8];
 
@@ -59,14 +59,12 @@ static jmp_buf end_out;
 #define EEMPE EEMWE
 #define IFR EIFR
 
-#define HAVE_UART
-
 #elif defined (__AVR_ATmega168__)
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
-#define DBGPIN 3		// debug output
+//#define DBGPIN 3		// debug output
 
 #define IMSK EIMSK
 #define IFR EIFR
@@ -434,6 +432,9 @@ static void set_reset(void) {
 }
 
 
+/* ISRs cannot be interrupted, so this saves 80 bytes */
+#define state *(uint8_t *)&state
+
 // Timer interrupt routine
 ISR (TIMER0_OVF_vect)
 {
@@ -470,7 +471,7 @@ ISR (TIMER0_OVF_vect)
 #ifndef SKIP_SEARCH
 	if (st == S_SEARCHROM_R) {
 		//DBG_C((pin != 0) + '0');
-		if (((transbyte & 0x01) == 0) == (pin == 0)) { // non-match => exit
+		if (transbyte & !!pin) { // non-match => exit
 			// remember that S_SEARCHMEM_I left the bit inverted
 			DBG_C('-');
 			//DBG_X(transbyte);
