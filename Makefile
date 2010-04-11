@@ -8,34 +8,50 @@ PROG=usbtiny
 CC=avr-gcc
 OBJCOPY=avr-objcopy
 OBJDUMP=avr-objdump
-FILENAME=onewire
-# optimize for size:
-CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -I/usr/local/avr/include -B/usr/local/avr/lib
-#-------------------
-all: $(FILENAME).hex $(FILENAME).lss $(FILENAME).bin
+
 #-------------------
 help: 
-	@echo "Usage: make all|load|load_pre|rdfuses|wrfuse1mhz|wrfuse4mhz|wrfusecrystal"
-	@echo "Warning: you will not be able to undo wrfusecrystal unless you connect an"
-	@echo "         external crystal! uC is dead after wrfusecrystal if you do not"
-	@echo "         have an external crystal."
-#-------------------
-$(FILENAME).o : $(FILENAME).c Makefile
-	$(CC) $(CFLAGS) -Os -c $(FILENAME).c
-$(FILENAME).out : $(FILENAME).o # uart.o
-	$(CC) $(CFLAGS) -o $(FILENAME).out -Wl,-Map,$(FILENAME).map,--cref $^
-$(FILENAME).hex : $(FILENAME).out 
-	$(OBJCOPY) -R .eeprom -O ihex $(FILENAME).out $(FILENAME).hex 
-$(FILENAME).lss : $(FILENAME).out 
-	$(OBJDUMP) -h -S $(FILENAME).out  > $(FILENAME).lss
-$(FILENAME).bin : $(FILENAME).out 
-	$(OBJCOPY) -O binary $(FILENAME).out $(FILENAME).bin 
+	@echo "Usage: make TYPE | TYPE_burn"
+	@echo "Known Types: ds2408 ds2423"
 
-uart.o: uart.c
-	$(CC) $(CFLAGS) -Os -c uart.c
+#-------------------
+
+# device codes
+ds2408_CODE=29
+ds2423_CODE=1D
+
+DEVNAME=ds2408
+all: $(DEVNAME).hex $(DEVNAME).lss $(DEVNAME).bin
+
+ds2408 ds2423:
+	 @make $@_dev
+
+%_burn: %_dev
+	@make DEVNAME=$(subst _burn,,$@) DEVCODE=$($(subst _burn,,$@)_CODE) burn
+
+%_dev:
+	@make DEVNAME=$(subst _dev,,$@) all
+
+# optimize for size:
+CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+#  -I/usr/local/avr/include -B/usr/local/avr/lib
+#-------------------
+%.o : %.c Makefile
+	$(CC) $(CFLAGS) -Os -c $<
+$(DEVNAME).out : onewire.o uart.o $(DEVNAME).o
+	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
+$(DEVNAME).hex : $(DEVNAME).out 
+	$(OBJCOPY) -R .eeprom -O ihex $< $@
+$(DEVNAME).lss : $(DEVNAME).out 
+	$(OBJDUMP) -h -S $< > $@
+$(DEVNAME).bin : $(DEVNAME).out 
+	$(OBJCOPY) -O binary $< $@
+
+$(DEVNAME).eeprom:
+	python gen_eeprom.py $(DEVCODE) > $@
 #------------------
-burn: $(FILENAME).hex
-	avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(FILENAME).hex -E noreset -v 
+burn: $(DEVNAME).hex $(DEVNAME).eeprom
+	avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i -U eeprom:w:$(DEVNAME).eeprom:i 
 	#avrdude -V -c $(PROG) -p $(MCU_PROG) -U $(PRG).bin
 #-------------------
 clean:
