@@ -141,8 +141,8 @@ void do_command(uint8_t cmd);
    Do not return.
  */
 
-/* Ditto, but called from idle context. You implement this! */
-/* return value says how long to wait before calling again. (0=never) */
-uint8_t update_idle(void);
+/* Ditto, but called from idle / bit-wait context. You implement this! */
+/* 'bits' says how many 1wire bit times are left. */
+void update_idle(uint8_t bits);
 
 #endif

@@ -31,6 +31,7 @@
 
 // 1wire interface
 static uint8_t bitcount, transbyte;
+#define vbitcount *(volatile uint8_t *)&bitcount
 static uint8_t xmitlen;
 static unsigned char addr[8];
 
@@ -231,7 +232,8 @@ static void
 xmit_any(uint8_t val, uint8_t len)
 {
 	DBG_IN();
-	while(state & (S_RECV|S_XMIT)) ;
+	while(state & (S_RECV|S_XMIT))
+		update_idle(vbitcount);
 	cli();
 	if(!(state & 0x20)) {
 		sei();
@@ -286,7 +288,8 @@ uint8_t rx_ready(void)
 static void
 recv_any(uint8_t len)
 {
-	while(state & (S_RECV|S_XMIT)) ;
+	while(state & (S_RECV|S_XMIT))
+		update_idle(vbitcount);
 	cli();
 	if(!(state & 0x20)) {
 		sei();
@@ -319,7 +322,8 @@ recv_any(uint8_t len)
 }
 static uint8_t recv_any_in(void)
 {
-	while(state & S_RECV) ;
+	while(state & S_RECV)
+		update_idle(vbitcount);
 	if ((state & S_MASK) != S_CMD_IDLE)
 		longjmp(end_out,1);
 	return transbyte;
@@ -384,14 +388,16 @@ int main(void)
 	setjmp(end_out);
 	while (1) {
 #ifdef HAVE_UART
-		volatile unsigned long long int x;
+		volatile unsigned long long int x; // for 'worse' timing
 		DBG_C('/');
 		for(x=0;x<100000ULL;x++)
 #endif
 		 {
 			if((state & S_MASK) == S_HAS_OPCODE)
 				do_command(transbyte);
-			update_idle();
+
+			// RESET processing takes > 12 bit times, plus one byte.
+			update_idle((state == S_IDLE) ? 20 : (state < 0x10) ? 8 : vbitcount);
 #ifdef HAVE_TIMESTAMP
 			unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
 			while(tbpos < n && n > 0) {

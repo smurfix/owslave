@@ -96,10 +96,9 @@ void do_command(uint8_t cmd)
 	}
 }
 
-uint8_t update_idle(void)
+void update_idle(uint8_t bits)
 {
 	//DBG_C('\\');
-	return 1;
 }
 
 void init_state(void)
