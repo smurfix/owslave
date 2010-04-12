@@ -46,6 +46,15 @@ static jmp_buf end_out;
 #define IMSK GIMSK
 #define IFR GIFR
 
+#elif defined(__AVR_ATtiny84__)
+#define OWPIN PINB
+#define OWPORT PORTB
+#define OWDDR DDRB
+#define ONEWIREPIN 2		 // INT0
+
+#define IMSK GIMSK
+#define IFR GIFR
+
 #elif defined (__AVR_ATmega8__)
 #define OWPIN PIND
 #define OWPORT PORTD
@@ -118,6 +127,12 @@ void setup(void)
 
 	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
+#elif defined (__AVR_ATtiny84__)
+	CLKPR = 0x80;	 // Prepare to ...
+	CLKPR = 0x00;	 // ... set to 8.0 MHz
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+	
 #elif defined (__AVR_ATmega8__)
 	// Clock is set via fuse
 	// CKSEL = 0100;   Fuse Low Byte Bits 3:0

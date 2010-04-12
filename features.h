@@ -30,6 +30,10 @@
 #define F_CPU_                8000000
 #endif
 
+#ifdef __AVR_ATtiny84__
+#define F_CPU_                8000000
+#endif
+
 #ifdef __AVR_ATmega168__
 #define F_CPU_                16000000
 // #define HAVE_UART

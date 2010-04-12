@@ -1,3 +1,6 @@
+#include "features.h"
+#ifdef HAVE_UART
+
 /*
  *  Copyright © 2008, Matthias Urlichs <matthias@urlichs.de>
  *
@@ -474,3 +477,5 @@ void uart_puthex_word(const uint16_t b)
         uart_puthex_byte(b);
     }
 } /* uart_puthex_word */
+
+#endif // HAVE_UART

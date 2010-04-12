@@ -1,8 +1,10 @@
 # makefile, written by guido socher
 #MCU=atmega8
 #MCU=attiny13
+#MCU=attiny84
 MCU=atmega168
 MCU_PROG=m168
+#MCU_PROG=t84
 PROG=usbtiny
 
 CC=avr-gcc
