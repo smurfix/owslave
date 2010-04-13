@@ -476,7 +476,7 @@ ISR (TIMER0_OVF_vect)
 #ifndef SKIP_SEARCH
 	if (st == S_SEARCHROM_R) {
 		//DBG_C((pin != 0) + '0');
-		if (transbyte & !!pin) { // non-match => exit
+		if (((transbyte & 0x01) == 0) == (pin == 0)) { // non-match => exit
 			// remember that S_SEARCHMEM_I left the bit inverted
 			DBG_C('-');
 			//DBG_X(transbyte);
