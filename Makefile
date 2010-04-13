@@ -38,7 +38,7 @@ ds2408 ds2423:
 CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
-%.o : %.c Makefile
+%.o : %.c Makefile $(wildcard *.h)
 	$(CC) $(CFLAGS) -Os -c $<
 $(DEVNAME).out : onewire.o uart.o $(DEVNAME).o
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
