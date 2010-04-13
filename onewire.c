@@ -44,17 +44,11 @@ static jmp_buf end_out;
 #define OWDDR DDRB
 #define ONEWIREPIN 1		 // INT0
 
-#define IMSK GIMSK
-#define IFR GIFR
-
 #elif defined(__AVR_ATtiny84__)
 #define OWPIN PINB
 #define OWPORT PORTB
 #define OWDDR DDRB
 #define ONEWIREPIN 2		 // INT0
-
-#define IMSK GIMSK
-#define IFR GIFR
 
 #elif defined (__AVR_ATmega8__)
 #define OWPIN PIND
@@ -62,22 +56,12 @@ static jmp_buf end_out;
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
 
-#define IMSK GIMSK
-#define TIMSK0 TIMSK
-#define TIFR0 TIFR
-#define EEPE EEWE
-#define EEMPE EEMWE
-#define IFR EIFR
-
 #elif defined (__AVR_ATmega168__)
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
 //#define DBGPIN 3		// debug output
-
-#define IMSK EIMSK
-#define IFR EIFR
 
 #else
 #error Pinout for your CPU undefined

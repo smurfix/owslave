@@ -23,19 +23,41 @@
  */
 #ifdef __AVR_ATtiny13__
 #define F_CPU_                9600000
-#define SKIP_SEARCH
+
+#define IMSK GIMSK
+#define IFR GIFR
 #endif
 
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
+
+#define IMSK GIMSK
+#define TIMSK0 TIMSK
+#define TIFR0 TIFR
+#define EEPE EEWE
+#define EEMPE EEMWE
+#define IFR EIFR
 #endif
 
 #ifdef __AVR_ATtiny84__
 #define F_CPU_                8000000
+
+#define IMSK GIMSK
+#define IFR GIFR
+#define ADPIN PINA
+#define ADPIN_vect PCINT0_vect
+#define ADMSK PCMSK0
 #endif
 
 #ifdef __AVR_ATmega168__
 #define F_CPU_                16000000
+
+#define IMSK EIMSK
+#define IFR EIFR
+#define ADPIN PINC
+#define ADPIN_vect PCINT1_vect
+#define ADMSK PCMSK1
+#define ADIRQ
 // #define HAVE_UART
 #endif
 
