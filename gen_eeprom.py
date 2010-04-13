@@ -17,9 +17,10 @@ if len(sys.argv) == 3:
 		s = s[2:]
 else:
 	rand = open("/dev/urandom","r")
-	s = rand.read(6)
+	s = rand.read(4)
 	rand.close()
 	id.extend((ord(c) for c in s))
+	id.extend((0xBE,0x42));
 
 table=( 0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
 	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
