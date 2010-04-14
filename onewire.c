@@ -70,7 +70,7 @@ static jmp_buf end_out;
 #define T_(c) ((F_CPU/64)/(1000000/c))
 #define T_PRESENCE T_(120)-5
 #define T_PRESENCEWAIT T_(20)
-#define T_SAMPLE T_(15)
+#define T_SAMPLE T_(15)-2	// overhead
 #define T_XMIT T_(60)-5		// overhead (measured w/ scope on ATmega168)
 #define T_RESET_ T_(400)        // timestamp for sampling
 #define T_RESET (T_RESET_-T_SAMPLE)
