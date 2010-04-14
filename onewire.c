@@ -215,7 +215,6 @@ void next_command(void)
 static void
 xmit_any(uint8_t val, uint8_t len)
 {
-	DBG_IN();
 	while(state & (S_RECV|S_XMIT))
 		update_idle(vbitcount);
 	cli();
@@ -494,23 +493,19 @@ ISR (TIMER0_OVF_vect)
 			bitcount = 8;
 			if(xmitlen) {
 				transbyte = addr[--xmitlen];
-				DBG_C('?');
-				DBG_X(transbyte);
+				//DBG_C('?');
+				//DBG_X(transbyte);
 			} else {
-				DBG_ON();
 				state = S_RECEIVE_OPCODE;
 				DBG_C('C');
-				DBG_OFF();
 			}
 		}
 		goto end;
 	}
 #endif
-	DBG_ON();
 	transbyte >>= 1;
 	if (pin)
 		transbyte |= 0x80;
-	DBG_OFF();
 	if(--bitcount)
 		goto end;
 	bitcount = 8;
@@ -524,9 +519,7 @@ ISR (TIMER0_OVF_vect)
 		}
 		else if (transbyte == 0xCC) {
 			 // skip ROM; nothing to do, just wait for next command
-			DBG_ON();
 			state = S_RECEIVE_OPCODE;
-			DBG_OFF();
 			DBG_C('C');
 		}
 		else if (transbyte == 0x33) {
@@ -555,7 +548,6 @@ ISR (TIMER0_OVF_vect)
 	}
 	if (st == S_RECEIVE_OPCODE) {
 		DBG_IN();
-		DBG_ON();
 		DBG_X(transbyte);
 		bitcount = 0;
 		state = S_HAS_OPCODE | (state & S_XMIT2);
@@ -565,14 +557,12 @@ ISR (TIMER0_OVF_vect)
 	if (st == S_SEARCHROM) {
 		if (xmitlen) {
 			transbyte = addr[--xmitlen];
-			DBG_C('?');
-			DBG_X(transbyte);
+			//DBG_C('?');
+			//DBG_X(transbyte);
 		}
 		else {
-			DBG_ON();
 			state = S_RECEIVE_OPCODE;
 			DBG_C('C');
-			DBG_OFF();
 		}
 		goto end;
 	}
@@ -585,10 +575,8 @@ ISR (TIMER0_OVF_vect)
 		}
 		if (xmitlen)
 			goto end;
-		DBG_ON();
 		state = S_RECEIVE_OPCODE;
 		DBG_C('C');
-		DBG_OFF();
 		goto end;
 	}
 	if (st == S_CMD_RECV) {
@@ -664,10 +652,8 @@ ISR (INT0_vect)
 				DBG_C('<');
 				DBG_X(transbyte);
 			} else {
-				DBG_ON();
 				state = S_RECEIVE_OPCODE | (state & S_XMIT2);
 				DBG_C('C');
-				DBG_OFF();
 			}
 		}
 		else if (st == S_CMD_XMIT) {
