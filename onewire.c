@@ -222,6 +222,8 @@ xmit_any(uint8_t val, uint8_t len)
 	if(!(state & 0x20)) {
 		sei();
 		if(state != S_IDLE) {
+			if (state < 0x10)
+				longjmp(end_out,1);
 			DBG_P("\nState error xmit! ");
 			DBG_X(state);
 			DBG_C('\n');
@@ -278,6 +280,8 @@ recv_any(uint8_t len)
 	if(!(state & 0x20)) {
 		sei();
 		if (state != S_IDLE) {
+			if (state < 0x10)
+				longjmp(end_out,1);
 			DBG_P("\nState error recv! ");
 			DBG_X(state);
 			DBG_C('\n');
