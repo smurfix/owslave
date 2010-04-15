@@ -45,11 +45,27 @@
 #define C_READ_MEM         0xF0 // TODO
 #define C_READ_MEM_COUNTER 0xA5 // TODO
 
+#ifdef DEBUG
+uint8_t debug_state;
+#endif
+
+// The ADLAR bit is either in ADMUX or in ADCSRB.
+// If unknown, use a left shift in software.
+#if defined(__AVR_ATtiny84__)
+#define ADLARREG ADCSRB
+#define ADLARMUX 0
+#elif defined (__AVR_ATmega168__)
+#define ADLARMUX (1<<ADLAR)
+#else
+#warning Where is the ADLAR bit?
+#define NO_ADLAR
+#endif
+
 #ifdef ANALOG
 // Minimal hysteresis between hi and lo states
 #define HYST 100 // initial hysteresis; approx. 500 mV
 // At 8 KHz sampling rate (approx), 1/10th second should be enough 
-#define SLOW 4 // decay filter for lowpass-filtering
+//#define SLOW 4 // decay filter for lowpass-filtering
 
 static uint16_t last[NCOUNTERS];
 static uint16_t hyst[NCOUNTERS];
@@ -69,10 +85,26 @@ static uint8_t obits,cbits;
 static uint32_t counter[NCOUNTERS];
 static uint8_t unchecked;
 
+static uint8_t byte_at(uint16_t adr)
+{
+#ifdef DEBUG
+	if((adr & 0x1F) == 0x1F) {
+		uint8_t res = debug_state;
+		if(debug_state == 0)
+			debug_state = 1;
+
+		return res;
+	} else
+#endif
+	{
+		return 0xFF;
+	}
+}
+
 void do_mem_counter(void)
 {
 	uint16_t crc = 0;
-	uint8_t b;
+	uint8_t b,c;
 	uint8_t len;
 	uint16_t adr;
 
@@ -97,22 +129,26 @@ void do_mem_counter(void)
 	b = recv_byte_in();
 	adr |= b<<8;
 	if(1) {
-		xmit_byte(0xFF);
+		c = byte_at(adr);
+		xmit_byte(c);
 		crc = crc16(crc,b);
 	} else {
 xmore:
-		xmit_byte(0xFF);
+		c = byte_at(adr);
+		xmit_byte(c);
 	}
+	crc = crc16(crc,c);
+
 	len = 0x1F - (adr & 0x1F);
 	adr++;
-	crc = crc16(crc,0xFF);
 
 	while(len) {
-		xmit_byte(0xFF);
-		crc = crc16(crc,0xFF);
-		adr++;
 		len--;
+		c = byte_at(adr++);
+		xmit_byte(c);
+		crc = crc16(crc,c);
 	}
+
 #define SEND(_x) do {                                        \
 		uint32_t x;                                  \
 		cli();                                       \
@@ -165,8 +201,17 @@ void do_command(uint8_t cmd)
 #ifdef ANALOG
 void start_adc(void)
 {
-	ADMUX = cur_adc;
+#ifdef DEBUG
+	if(debug_state == 1)
+		debug_state = 2;
+	else
+		return;
+#endif
+	ADMUX = cur_adc | (1<<REFS0) | ADLARMUX;
 	ADCSRA |= (1<<ADSC);
+#ifdef DEBUG
+	DBG_P("ADC"); DBG_X(cur_adc); DBG_C(';');
+#endif
 }
 #endif
 
@@ -175,9 +220,24 @@ void check_adc(void)
 #ifdef ANALOG
 	uint16_t res;
 	uint8_t cur;
+#ifdef DEBUG
+	if(debug_state == 1)
+		start_adc();
+	if(debug_state != 2)
+		return;
+#endif
 	if(!(ADCSRA & (1<<ADIF)))
 		return;
-	res = ADC >> 1;
+	res = ADC;
+#ifdef NO_ADLAR
+	res <<= 5;
+#else
+	res >>= 1;
+#endif
+#ifdef DEBUG
+	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_Y(res); DBG_NL();
+#endif
+
 	cur = cur_adc;
 	if(cur_adc)
 		cur_adc--;
@@ -202,10 +262,13 @@ void check_adc(void)
 #endif
 	}
 #endif
+#ifdef DEBUG
+	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_NL();
+#endif
 	if(!(bstate&(1<<cur))) {
-		if (res < last[cur])
+		if (res < last[cur]) {
 			last[cur] = res;
-		else if (res > hyst[cur]+last[cur]) {
+		} else if (res > hyst[cur]+last[cur]) {
 			bstate |= (1<<cur);
 			if(samples)
 				counter[cur]++;
@@ -215,7 +278,7 @@ void check_adc(void)
 		if (res > last[cur])
 			last[cur] = res;
 		else if(res+hyst[cur] < last[cur]) {
-			bstate &= (1<<cur);
+			bstate &= ~(1<<cur);
 			last[cur] = res;
 		}
 	}
@@ -243,6 +306,9 @@ void check_adc(void)
 	obits = now_bits;
 #endif
 	unchecked = 0;
+#ifdef DEBUG
+	debug_state = 0;
+#endif
 }
 
 #ifndef ANALOG
@@ -296,7 +362,7 @@ void init_state(void)
 		hyst[i] = HYST<<5;
 	}
 
-	ADMUX = 0;
+	ADMUX = 0b1110 | (1<<REFS0) | ADLARMUX; // 5V ref
 	DIDR0 = (1<<NCOUNTERS)-1;
 
 #if F_CPU >= 12800000 // prescale AD clock to <= 200 KHz
@@ -307,7 +373,10 @@ void init_state(void)
 #define CLK_A 5
 #endif
 	ADCSRA = (1<<ADEN)|(1<<ADIF)|CLK_A;
-	ADCSRB |= (1<<ADLAR);
+
+#ifdef ADLARREG
+	ADLARREG |= (1<<ADLAR);
+#endif
 
 	cur_adc = 0;
 	bstate = 0;
