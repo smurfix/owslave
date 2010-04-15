@@ -533,8 +533,8 @@ ISR (TIMER0_OVF_vect)
 			state = S_SEARCHROM;
 			xmitlen = 7;
 			transbyte = addr[7];
-			DBG_C('?');
-			DBG_X(transbyte);
+			//DBG_C('?');
+			//DBG_X(transbyte);
 			//DBG_C(' ');
 		}
 		else
