@@ -15,16 +15,8 @@
  *  GNU General Public License (included; see the file LICENSE)
  *  for more details.
  */
-
-#ifdef MAIN
-#define EXTERN
-#else
-#define EXTERN extern
-#endif
-
 #include <stdint.h>
 #include "features.h"
-
 
 /* Debugging */
 #ifdef HAVE_UART
@@ -58,18 +50,18 @@ volatile uint16_t tsbuf[100];
 #endif
 
 
-/* State machine. */
-EXTERN volatile uint8_t state;
+/* State variable (defined in onewire.c) */
+extern volatile uint8_t state;
 
 /* return to idle state, i.e. wait for the next RESET pulse. */
 void set_idle(void);
 
 // Basic bus state machine
 //  Bitmasks
-#define S_RECV 0x01
-#define S_XMIT 0x02
+#define S_RECV 0x01		// all receiving states have this bit set
+#define S_XMIT 0x02		// all transmitting states have this bit set
 #define S_MASK 0x7F
-#define S_XMIT2 0x80 // flag to de-assert zero bit on xmit timeout
+#define S_XMIT2 0x80	// flag to de-assert zero bit on xmit timeout
 
 //  initial states: >3 byte times
 #define S_IDLE            (       0x00) // wait for Reset

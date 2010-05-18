@@ -150,7 +150,7 @@ LICENSE:
  #define UART0_DATA     UDR0
  #define UART0_UDRIE    UDRIE0
 #else
- #error "Your CPU is not yet supported by this libaray!"
+ #error "Your CPU is not yet supported by this library!"
 #endif
 
 
@@ -321,23 +321,6 @@ void uart_init(unsigned int baudrate)
 #endif
 
 }/* uart_init */
-
-
-inline void _uart_putc_now(unsigned char data)
-{
-	while(!(UCSR0A & _BV(UDRE0))) ;
-	UDR0 = data;
-	return;
-}
-inline void uart_putc_now(unsigned char data)
-{
-	unsigned char sreg = SREG;
-	cli();
-	if(data == '\n')
-		_uart_putc_now('\r');
-	_uart_putc_now(data);
-	SREG = sreg;
-}
 
 /*************************************************************************
 Function: uart_putc()

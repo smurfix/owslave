@@ -1,11 +1,15 @@
 # makefile, written by guido socher
-#MCU=atmega8
-#MCU=attiny13
+#MCU=atmega8		# ds2423.c won't compile
+#MCU=attiny13		# ds2423.c won't compile
 #MCU=attiny84
-MCU=atmega168
-MCU_PROG=m168
+#MCU=atmega168
+MCU=atmega32		# ds2423.c won't compile
+
+#MCU_PROG=m168
+MCU_PROG=m32
 #MCU_PROG=t84
-PROG=usbtiny
+#PROG=usbtiny
+PROG=ponyser -P /dev/ttyS1
 
 CC=avr-gcc
 OBJCOPY=avr-objcopy
@@ -34,8 +38,8 @@ ds2408 ds2423:
 %_dev:
 	@make DEVNAME=$(subst _dev,,$@) all
 
-# optimize for size:
-CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+# optimize for size: -Os leads to same size as -O3:
+CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -O3 -mcall-prologues
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)

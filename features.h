@@ -28,7 +28,7 @@
 #define IFR GIFR
 #endif
 
-#ifdef __AVR_ATmega8__
+#if defined(__AVR_ATmega8__) || defined(__AVR_ATmega32__)
 #define F_CPU_                8000000
 
 #define IMSK GIMSK
@@ -36,7 +36,11 @@
 #define TIFR0 TIFR
 #define EEPE EEWE
 #define EEMPE EEMWE
-#define IFR EIFR
+#define IFR GIFR
+// #define HAVE_UART
+/* ds2423.c won't compile, there are no pin change interrupts
+ *  for these uPs
+ */
 #endif
 
 #ifdef __AVR_ATtiny84__

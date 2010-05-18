@@ -57,7 +57,7 @@ uint8_t debug_state;
 #elif defined (__AVR_ATmega168__)
 #define ADLARMUX (1<<ADLAR)
 #else
-#warning Where is the ADLAR bit?
+#warning "Where is the ADLAR bit?"
 #define NO_ADLAR
 #endif
 
