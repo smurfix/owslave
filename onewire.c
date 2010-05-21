@@ -15,12 +15,10 @@
 
 /* Based on work published at http://www.mikrocontroller.net/topic/44100 */
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
 #include <setjmp.h>
 
-#include "onewire.h"
 #include "features.h"
+#include "onewire.h"
 
 // 1wire interface
 static uint8_t bitcount, transbyte;
@@ -33,34 +31,6 @@ static jmp_buf end_out;
 // global
 volatile uint8_t state;
 
-#ifdef __AVR_ATtiny13__
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 1		 // INT0
-
-#elif defined(__AVR_ATtiny84__)
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 2		 // INT0
-
-#elif defined (__AVR_ATmega8__)
-#define OWPIN PIND
-#define OWPORT PORTD
-#define OWDDR DDRD
-#define ONEWIREPIN 2		// INT0
-
-#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega32__)
-#define OWPIN PIND
-#define OWPORT PORTD
-#define OWDDR DDRD
-#define ONEWIREPIN 2		// INT0
-//#define DBGPIN 3		// debug output
-#else
-#error "Pinout for your CPU undefined"
-#endif
-
 #ifdef DBGPIN
 static char interest = 0;
 #define DBG_IN() interest=1
@@ -68,15 +38,10 @@ static char interest = 0;
 #define DBG_ON() if(interest) OWPORT |= (1<<DBGPIN)
 #define DBG_OFF() if(interest) OWPORT &= ~(1<<DBGPIN)
 #else
-#define DBG_IN() do { } while(0)
-#define DBG_OUT() do { } while(0)
-#define DBG_ON() do { } while(0)
-#define DBG_OFF() do { } while(0)
-#endif
-
-// stupidity
-#ifndef TIMER0_OVF_vect
-#  define TIMER0_OVF_vect TIM0_OVF_vect
+#define DBG_IN()
+#define DBG_OUT()
+#define DBG_ON()
+#define DBG_OFF()
 #endif
 
 /*!
@@ -93,48 +58,8 @@ static char interest = 0;
  */
 void setup(void)
 {
-	unsigned char i;
-#ifdef __AVR_ATtiny13__
-	CLKPR = 0x80;	 // Prepare to ...
-	CLKPR = 0x00;	 // ... set to 9.6 MHz
-
-	TCCR0A = 0;
-	TCCR0B = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined (__AVR_ATtiny84__)
-	CLKPR = 0x80;	 // Prepare to ...
-	CLKPR = 0x00;	 // ... set to 8.0 MHz
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-	
-#elif defined (__AVR_ATmega8__)
-	// Clock is set via fuse
-	// CKSEL = 0100;   Fuse Low Byte Bits 3:0
-	TCCR0 = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-#elif  defined (__AVR_ATmega32__)
-#define BAUDRATE 38400
-	// Clock is set via fuse to 8MHz
-	TCCR0 = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined (__AVR_ATmega168__)
-	// Clock is set via fuse
-
-	TCCR0A = 0;
-	TCCR0B = 0x03;	// Prescaler 1/64
-
-	EICRA = (1<<ISC00); // interrupt of INT0 (pin D2) on both level changes
-#else
-#error "Not yet implemented"
-#endif
-
-	OWPORT &= ~(1 << ONEWIREPIN);
-	OWDDR &= ~(1 << ONEWIREPIN);
+	cpu_setup();
+	owpin_setup();
 
 #ifdef DBGPIN
 	OWPORT &= ~(1 << DBGPIN);
@@ -147,23 +72,9 @@ void setup(void)
 	TCNT1 = 0;
 #endif
 
-	// Get 64bit address from EEPROM
-	while(EECR & (1<<EEPE));	 // Wait for EPROM circuitry to be ready
-	for (i=8; i;) {
-		i--;
-		/* Set up address register */
-		EEARL = 7-i;			   // set EPROM Address
-		/* Start eeprom read by writing EERE */
-		EECR |= (1<<EERE);
-		/* Return data from data register */
-		addr[i] =  EEDR;
-	}
-
-	// init application-specific code
-	init_state();
-
-	IFR |= (1 << INTF0);
-	IMSK |= (1 << INT0);
+	get_ow_address(addr);
+	init_state();		// init application-specific code
+	unmask_owpin();
 
 #ifdef HAVE_UART
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
@@ -220,25 +131,6 @@ void setup(void)
 #define BAUDRATE 57600
 #endif
 
-/*! set timer 0 to a value that will overflow in timeout ticks */
-static inline void set_timer(int timeout)
-{
-	//DBG_C('T');
-	//DBG_X(timeout);
-	//DBG_C(',');
-	TCNT0 = ~timeout;				// overrun at 0xFF
-	TIFR0 |= (1 << TOV0);
-	TIMSK0 |= (1 << TOIE0);
-}
-
-/* set timer to 0, will overflow in FF ticks */
-static inline void clear_timer(void)
-{
-	//DBG_C('t');
-	TCNT0 = 0;
-	TIMSK0 &= ~(1 << TOIE0);	   // turn off the timer IRQ
-}
-
 /*
  * functions below are called by the command level
  * (application specific code) and not directly from the
@@ -282,26 +174,18 @@ static void xmit_any(uint8_t val, uint8_t len)
 		if(state != S_IDLE) {
 			if (state < 0x10)
 				longjmp(end_out,1);
-			DBG_P("\nState error xmit! ");
-			DBG_X(state);
-			DBG_C('\n');
+			DBG_ONE("\nState error xmit! ", state);
 		}
 		next_idle();
 	}
 	if(xmitlen) {
 		sei();
-		DBG_P("\nXbuflen error xmit! ");
-		DBG_X(xmitlen);
-		DBG_C('\n');
+		DBG_ONE("\nXbuflen error xmit! ", xmitlen);
 		next_idle();
 	}
 	if(bitcount) {
 		sei();
-		DBG_P("\nBitcount error xmit! ");
-		DBG_X(state);
-		DBG_C(',');
-		DBG_X(bitcount);
-		DBG_C('\n');
+		DBG_TWO("\nBitcount error xmit! ", state, bitcount);
 		next_idle();
 	}
 	transbyte = val;
@@ -315,8 +199,7 @@ static void xmit_any(uint8_t val, uint8_t len)
 /*! transmit a single bit (true or false) */
 void xmit_bit(uint8_t val)
 {
-	DBG_C('<');
-	DBG_C('_');
+	DBG_C('<');	DBG_C('_');
 	xmit_any(!!val,1);
 }
 
@@ -350,24 +233,18 @@ static void recv_any(uint8_t len)
 		if (state != S_IDLE) {
 			if (state < 0x10)
 				longjmp(end_out,1);
-			DBG_P("\nState error recv! ");
-			DBG_X(state);
-			DBG_C('\n');
+			DBG_ONE("\nState error recv! ", state);
 		}
 		next_idle();
 	}
 	if(xmitlen) {
 		sei();
-		DBG_P("\nXbuflen error recv! ");
-		DBG_X(xmitlen);
-		DBG_C('\n');
+		DBG_ONE("\nXbuflen error recv! ", xmitlen);
 		next_idle();
 	}
 	if(bitcount) {
 		sei();
-		DBG_P("\nBitcount error recv! ");
-		DBG_X(bitcount);
-		DBG_C('\n');
+		DBG_ONE("\nBitcount error recv! ", bitcount);
 		next_idle();
 	}
 	bitcount = len;
@@ -427,12 +304,8 @@ uint8_t recv_byte_in(void)
 void set_idle(void)
 {
 	if(state != S_IDLE) {
-		DBG_P(">idle:");
-		DBG_X(state);
-		DBG_P(" b");
-		DBG_N(xmitlen);
-		DBG_N(bitcount);
-		DBG_NL();
+		DBG_P(">idle:"); DBG_X(state); DBG_P(" b");
+		DBG_N(xmitlen);	DBG_N(bitcount); DBG_C('\n');
 		state = S_IDLE;
 	}
 	DBG_OFF();
@@ -441,10 +314,9 @@ void set_idle(void)
 	bitcount = 0;
 	xmitlen = 0;
 
-	clear_timer();
-	IFR |= (1 << INTF0);		// ack+enable level-change interrupt, just to be safe
-	IMSK |= (1 << INT0);
-	OWDDR &= ~(1 << ONEWIREPIN);	// set to input
+	clear_owtimer();
+	unmask_owpin();
+	owpin_hiz();
 }
 
 /*!
@@ -532,30 +404,29 @@ static void set_reset(void) {
 #define state *(uint8_t *)&state
 
 // Timer interrupt routine
-ISR (TIMER0_OVF_vect)
+OW_TIMER_ISR()
 {
 	uint8_t pin, st = state & S_MASK;
-	pin = OWPIN & (1 << ONEWIREPIN);
-	clear_timer();
+	pin = owpin_value();		// sample immediately
+	clear_owtimer();
 	//DBG_C(pin ? '!' : ':');
 	if (state & S_XMIT2) {
 		// de-assert a '0' on the pin set in pin interrupt
 		state &= ~S_XMIT2;
-		IFR |= (1 << INTF0);
-		IMSK |= (1 << INT0);
-		OWDDR &= ~(1 << ONEWIREPIN);	// set to input
+		unmask_owpin();
+		owpin_hiz();
 		//DBG_C('x');
 		goto end;
 	}
 	if (st == S_RESET) {       // send a presence pulse
-		OWDDR |= (1 << ONEWIREPIN);
+		owpin_low();
 		state = S_PRESENCEPULSE;
-		set_timer(T_PRESENCE);
+		set_owtimer(T_PRESENCE);
 		DBG_C('P');
 		goto end;
 	}
 	if (st == S_PRESENCEPULSE) {
-		OWDDR &= ~(1 << ONEWIREPIN);	// Presence pulse done
+		owpin_hiz();					// Presence pulse done
 		state = S_RECEIVE_ROMCODE;		// wait for command
 		DBG_C('O');
 		goto end;
@@ -601,8 +472,7 @@ ISR (TIMER0_OVF_vect)
 	bitcount = 8;
 
 	if (st == S_RECEIVE_ROMCODE) {
-		DBG_X(transbyte);
-		DBG_C(':');
+		DBG_X(transbyte); DBG_C(':');
 		if (transbyte == 0x55) {
 			state = S_MATCHROM;
 			xmitlen = 8;
@@ -623,15 +493,12 @@ ISR (TIMER0_OVF_vect)
 			state = S_SEARCHROM;
 			xmitlen = 7;
 			transbyte = addr[7];
-			//DBG_C('?');
-			//DBG_X(transbyte);
-			//DBG_C(' ');
+			//DBG_C('?'); DBG_X(transbyte); DBG_C(' ');
 		}
 		else
 #endif
 		{
-			DBG_P("::Unknown ");
-			DBG_X(transbyte);
+			DBG_P("::Unknown "); DBG_X(transbyte);
 			set_idle();
 		}
 		goto end;
@@ -647,8 +514,7 @@ ISR (TIMER0_OVF_vect)
 	if (st == S_SEARCHROM) {
 		if (xmitlen) {
 			transbyte = addr[--xmitlen];
-			//DBG_C('?');
-			//DBG_X(transbyte);
+			//DBG_C('?'); DBG_X(transbyte);
 		}
 		else {
 			state = S_RECEIVE_OPCODE;
@@ -677,8 +543,7 @@ ISR (TIMER0_OVF_vect)
 	}
 	// no idea what to do here, probably the main program was too slow
 	{
-		DBG_P("? rcv s");
-		DBG_X(state);
+		DBG_P("? rcv s"); DBG_X(state);
 		set_idle();
 	}
 end:;
@@ -687,12 +552,12 @@ end:;
 
 
 /*! Any 1wire level change */
-ISR (INT0_vect)
+OW_PINCHANGE_ISR()
 {
 	/* all but XMIT2 bit */
 	uint8_t st = state & S_MASK;
 
-	if (OWPIN & (1 << ONEWIREPIN)) {
+	if (owpin_value()) {
 		/* low to high transition */
 		DBG_TS();
 		//DBG_C('^');
@@ -704,12 +569,11 @@ ISR (INT0_vect)
 		 * a reset pulse.
 		 */
 		if (((TCNT0 < 0xF0) || (st == S_IDLE)) && (TCNT0 > T_RESET)) {
-			set_timer(T_PRESENCEWAIT);
+			set_owtimer(T_PRESENCEWAIT);
 			set_reset();
 		} // else do nothing special; the timer will read the state
 		return;
 	}
-	//TIFR0 |= (1 << TOV0);                 // clear timer IRQ
 	DBG_TS();
 	//DBG_C('_');
 #ifdef HAVE_TIMESTAMP
@@ -720,12 +584,12 @@ ISR (INT0_vect)
 	 */
 	if (st & S_XMIT) {
 		if ((transbyte & 0x01) == 0) {
-			IMSK &= ~(1 << INT0);
-			OWDDR |= (1 << ONEWIREPIN);	// send zero
-			set_timer(T_XMIT);
+			mask_owpin();
+			owpin_low();		// send zero
+			set_owtimer(T_XMIT);
 			state |= S_XMIT2;
 		} else
-			clear_timer();
+			clear_owtimer();
 
 #ifndef SKIP_SEARCH
 		if (st == S_SEARCHROM) {
@@ -771,16 +635,16 @@ ISR (INT0_vect)
 		set_idle();
 	}
 	else if (st == S_IDLE) {		   // first 1-0 transition
-		clear_timer();
+		clear_owtimer();
 	}
 	/* any receiving state, synchronize sampling with h2l transition */
 	else if (state & S_RECV) {
-		set_timer(T_SAMPLE);
+		set_owtimer(T_SAMPLE);
 	}
 	/* some other device sending a presence pulse */
 	else if (st == S_RESET) {
 		state = S_RECEIVE_ROMCODE;
-		clear_timer();
+		clear_owtimer();
 	}
 	else if (st == S_PRESENCEPULSE)
 		/* do nothing, this is our own presence pulse

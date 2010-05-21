@@ -15,7 +15,6 @@
  *  GNU General Public License (included; see the file LICENSE)
  *  for more details.
  */
-#include <stdint.h>
 #include "features.h"
 
 /* Debugging */
@@ -27,7 +26,12 @@
 #define DBG_N(x) uart_puthex_nibble(x)
 #define DBG_X(x) uart_puthex_byte(x)
 #define DBG_Y(x) uart_puthex_word(x)
-#define DBG_NL() uart_putc('\n')
+
+#define DBG_ONE(str, val) \
+	do { DBG_P(str); DBG_X(val); DBG_C('\n'); } while(0)
+#define DBG_TWO(str, v1, v2) \
+	do { DBG_P(str); DBG_X(v1); DBG_C(','); DBG_X(v2); DBG_C('\n'); } while(0)
+
 
 #ifdef HAVE_TIMESTAMP
 volatile unsigned char tbpos;
@@ -37,16 +41,17 @@ volatile uint16_t tsbuf[100];
 
 #else /* no UART */
 
-#define DBG_C(x) do { } while(0)
-#define DBG_P(x) do { } while(0)
-#define DBG_N(x) do { } while(0)
-#define DBG_X(x) do { } while(0)
-#define DBG_Y(x) do { } while(0)
-#define DBG_NL() do { } while(0)
+#define DBG_C(x)
+#define DBG_P(x)
+#define DBG_N(x)
+#define DBG_X(x)
+#define DBG_Y(x)
+#define DBG_ONE(str, val)
+#define DBG_TWO(str, v1, v2)
 #endif
 
 #ifndef DBG_TS /* signal timestamps. Code does NOT work -- formatting the numbers takes too long */
-#define DBG_TS() do { } while(0)
+#define DBG_TS()
 #endif
 
 

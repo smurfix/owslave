@@ -52,13 +52,25 @@ uint8_t debug_state;
 // The ADLAR bit is either in ADMUX or in ADCSRB.
 // If unknown, use a left shift in software.
 #if defined(__AVR_ATtiny84__)
+#define IFR	GIFR
+#define IMSK GIMSK
+#define ADPIN PINA
+#define ADPIN_vect PCINT0_vect
+#define ADMSK PCMSK0
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
 #elif defined (__AVR_ATmega168__)
+#define IFR	EIFR
+#define IMSK EIMSK
+#define ADPIN PINC
+#define ADPIN_vect PCINT1_vect
+#define ADMSK PCMSK1
+#define ADIRQ
 #define ADLARMUX (1<<ADLAR)
 #else
 #warning "Where is the ADLAR bit?"
 #define NO_ADLAR
+#error "actually this won't compile for any other than ATtiny84 or ATmega168"
 #endif
 
 #ifdef ANALOG
@@ -235,7 +247,7 @@ void check_adc(void)
 	res >>= 1;
 #endif
 #ifdef DEBUG
-	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_Y(res); DBG_NL();
+	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_Y(res); DBG_C('\n');
 #endif
 
 	cur = cur_adc;
@@ -263,7 +275,7 @@ void check_adc(void)
 	}
 #endif
 #ifdef DEBUG
-	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_NL();
+	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_C('\n');
 #endif
 	if(!(bstate&(1<<cur))) {
 		if (res < last[cur]) {
