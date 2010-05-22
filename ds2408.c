@@ -24,7 +24,7 @@
 #define C_WRITE_CONDSEARCH 0xCC // TODO
 #define C_RESET_LATCHES    0xC3 // TODO
 
-static uint8_t
+static u_char
 	pio_logic          = 0xFF,
 	pio_output_latch   = 0xFF,
 	pio_activity_latch = 0x00,
@@ -34,10 +34,10 @@ static uint8_t
 
 void do_read_pio(void)
 {
-	uint16_t crc = 0;
-	uint16_t adr;
-	uint8_t bcrc = 1;
-	uint8_t b;
+	u_short crc = 0;
+	u_short adr;
+	u_char bcrc = 1;
+	u_char b;
 
 	/*
 	 The following code does:
@@ -84,7 +84,7 @@ void do_read_pio(void)
 	}
 }
 
-void do_command(uint8_t cmd)
+void do_command(u_char cmd)
 {
 	if(cmd == C_READ_PIO) {
 		DBG_P(":I");
@@ -96,7 +96,7 @@ void do_command(uint8_t cmd)
 	}
 }
 
-void update_idle(uint8_t bits)
+void update_idle(u_char bits)
 {
 	//DBG_C('\\');
 }

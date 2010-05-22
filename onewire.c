@@ -20,16 +20,47 @@
 #include "features.h"
 #include "onewire.h"
 
+/* Basic bus state machine, coding should not be visible in applications
+ *   as it may change (optimization etc.). If any of this is necessary
+ *   in application code create an interface function!
+ */
+//  Bitmasks
+#define S_RECV 0x01		// all receiving states have this bit set
+#define S_XMIT 0x02		// all transmitting states have this bit set
+#define S_MASK 0x7F
+#define S_XMIT2 0x80	// flag to de-assert zero bit on xmit timeout
+
+//  initial states: >3 byte times
+#define S_IDLE            (       0x00) // wait for Reset
+#define S_RESET           (       0x04) // Reset seen
+#define S_PRESENCEPULSE   (       0x08) // sending Presence pulse
+//  selection opcode states: 1 byte times
+#define S_RECEIVE_ROMCODE (S_RECV|0x10) // reading selection opcode
+#define S_MATCHROM        (S_RECV|0x14) // select a known slave
+#define S_READROM         (S_XMIT|0x14) // single slave only!
+
+#ifndef SKIP_SEARCH
+#define S_SEARCHROM       (S_XMIT|0x18) // search, step 1: send ID bit
+#define S_SEARCHROM_I     (S_XMIT|0x1C) // search, step 2: send inverted ID bit
+#define S_SEARCHROM_R     (S_RECV|0x18) // search, step 3: check what the master wants
+#endif
+//  opcode states: 1 bit time
+#define S_RECEIVE_OPCODE  (S_RECV|0x20) // reading real opcode
+#define S_HAS_OPCODE      (       0x24) // has real opcode, mainloop
+#define S_CMD_RECV        (S_RECV|0x28) // receive bytes
+#define S_CMD_XMIT        (S_XMIT|0x28) // send bytes
+#define S_CMD_IDLE        (       0x28) // do nothing
+
 // 1wire interface
-static uint8_t bitcount, transbyte;
-// this actually increases the codesize by 6 bytes!
-#define vbitcount *(volatile uint8_t *)&bitcount
-static uint8_t xmitlen;
+register u_char bitcount asm("r12");
+register u_char transbyte asm("r13");
+register u_char xmitlen asm("r14");
+// global
+register volatile u_char state asm("r15");
+
 static unsigned char addr[8];
 static jmp_buf end_out;
 
-// global
-volatile uint8_t state;
 
 #ifdef DBGPIN
 static char interest = 0;
@@ -44,42 +75,6 @@ static char interest = 0;
 #define DBG_OFF()
 #endif
 
-/*!
- * initialize the hardware, mainly the processors
- *  - the prescaler for timer 0
- *  - the int 0 pin interrupt to be sensitive to any level change
- *  - the 1-wire port pin to input
- *  - the port register to 0 (so only DDR has to be changed to output)
- *  - reads the 1-wire address (8 bytes) from eeprom address 0 in reversed order
- *  - calls init_state() to setup application specific code
- *  - and if HAVE_UART initializes the uart.
- *  - possibly defines the PRESCALER and BAUDRATE uP specific
- *     ... defaults are 64 and 57600
- */
-void setup(void)
-{
-	cpu_setup();
-	owpin_setup();
-
-#ifdef DBGPIN
-	OWPORT &= ~(1 << DBGPIN);
-	OWDDR |= (1 << DBGPIN);
-#endif
-#ifdef HAVE_TIMESTAMP
-	TCCR1A = 0;
-	TCCR1B = (1<<ICES1) | (1<<CS10);
-	TIMSK1 &= ~(1<<ICIE1);
-	TCNT1 = 0;
-#endif
-
-	get_ow_address(addr);
-	init_state();		// init application-specific code
-	unmask_owpin();
-
-#ifdef HAVE_UART
-	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
-#endif
-}
 
 #ifndef PRESCALE
 #define PRESCALE 64
@@ -113,7 +108,7 @@ void setup(void)
 #if F_CPU > 9600000
 	#define T_SAMPLE T_(15)-2	// overhead
 #else
-	#define T_SAMPLE T_(25)-1	// only tested for atmega32
+	#define T_SAMPLE T_(25)-1	// only tested for atmega32, works but out of specification!
 #endif
 #define T_XMIT T_(60)-5			// overhead (measured w/ scope on ATmega168)
 #endif
@@ -164,10 +159,10 @@ void next_command(void)
  *   for receive or transmit states to complete.
  *   error handling is done here as well -> next_idle()
  */
-static void xmit_any(uint8_t val, uint8_t len)
+static void xmit_any(u_char val, u_char len)
 {
 	while(state & (S_RECV|S_XMIT))
-		update_idle(vbitcount);
+		update_idle(bitcount);
 	cli();
 	if(!(state & 0x20)) {
 		sei();
@@ -197,14 +192,14 @@ static void xmit_any(uint8_t val, uint8_t len)
 }
 
 /*! transmit a single bit (true or false) */
-void xmit_bit(uint8_t val)
+void xmit_bit(u_char val)
 {
 	DBG_C('<');	DBG_C('_');
 	xmit_any(!!val,1);
 }
 
 /*! transmit a byte */
-void xmit_byte(uint8_t val)
+void xmit_byte(u_char val)
 {
 	DBG_C('<');
 	xmit_any(val,8);
@@ -213,7 +208,7 @@ void xmit_byte(uint8_t val)
 /*! returns true if not a receiving or transmitting
  * state active
  */
-uint8_t rx_ready(void)
+u_char rx_ready(void)
 {
 	return !(state & (S_RECV|S_XMIT));
 }
@@ -223,10 +218,10 @@ uint8_t rx_ready(void)
  *   for receive or transmit states to complete.
  *   error handling is done here as well -> next_idle()
  */
-static void recv_any(uint8_t len)
+static void recv_any(u_char len)
 {
 	while(state & (S_RECV|S_XMIT))
-		update_idle(vbitcount);
+		update_idle(bitcount);
 	cli();
 	if(!(state & 0x20)) {
 		sei();
@@ -272,26 +267,26 @@ void recv_byte(void)
  * skips out on all but ???? TODO
  * 		called by recv_bit_in() and recv_byte_in()
  */
-static uint8_t recv_any_in(void)
+static u_char recv_any_in(void)
 {
 	while(state & S_RECV)
-		update_idle(vbitcount);
+		update_idle(bitcount);
 	if ((state & S_MASK) != S_CMD_IDLE)
 		longjmp(end_out,1);
 	return transbyte;
 }
 /*! TODO */
-uint8_t recv_bit_in(void)
+u_char recv_bit_in(void)
 {
-	uint8_t byte;
+	u_char byte;
 	byte = ((recv_any_in() & 0x80) != 0);
 	DBG_X(byte);
 	return byte;
 }
 /*! TODO */
-uint8_t recv_byte_in(void)
+u_char recv_byte_in(void)
 {
-	uint8_t byte;
+	u_char byte;
 	byte = recv_any_in();
 	DBG_X(byte);
 	return byte;
@@ -325,10 +320,10 @@ void set_idle(void)
  *
  *  this code is from owfs
  */
-static uint8_t parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
-uint16_t crc16(uint16_t r, uint8_t x)
+static u_char parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
+u_short crc16(u_short r, u_char x)
 {
-	uint16_t c = (x ^ (r & 0xFF));
+	u_short c = (x ^ (r & 0xFF));
 	r >>= 8;
 	if (parity_table[c & 0x0F] ^ parity_table[(c >> 4) & 0x0F])
 		r ^= 0xC001;
@@ -338,26 +333,55 @@ uint16_t crc16(uint16_t r, uint8_t x)
 }
 
 
-// Main program
+/*!
+ * initialize the hardware:
+ * cpu_setup:
+ *  - the prescaler for the 1-wire timer
+ *  - the 1-wire pin interrupt to be sensitive to any level change
+ *  owpin_setup:
+ *  - the 1-wire port pin to input
+ *  - the port register to 0 (so only DDR has to be changed to output)
+ *  get_ow_address:
+ *  - setup the 1-wire address (8 bytes) (from eeprom or wherever it might be)
+ *
+ *  - calls init_state() to setup application specific code
+ *  - initializes the debugging code
+ */
 int main(void)
 {
-#ifdef HAVE_TIMESTAMP
-	tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
-	uint16_t last_tb = 0;
-#endif
+	cpu_setup();
+	init_debug();
+	owpin_setup();
+	unmask_owpin();
 
-	state = S_IDLE;
-	setup();
-	set_idle();
+#ifdef DBGPIN
+	OWPORT &= ~(1 << DBGPIN);
+	OWDDR |= (1 << DBGPIN);
+#endif
+	// initialize time stamping code here, if any
+	// initialize global address buffer
+	// portability issue, this might be as simple as returning a pointer!
+	get_ow_address(addr);
+
+	state = S_IDLE; set_idle();
+	init_state();		// init application-specific code
 
 	// now go
 	sei();
 	DBG_P("\nInit done!\n");
 
+	// save context to return to in case a command is either completed
+	// or interrupted by a reset condition
 	setjmp(end_out);
+
 	while (1) {
 #ifdef HAVE_UART
-		volatile unsigned long long int x; // for 'worse' timing
+		/* portability problem, this might be really slow and quite fast
+		 * depending on processor speed, this is an 'alive' ticker
+		 * we could use the overflow of the 1-wire timer (at 8bit and ~1-10usec resolution)
+		 * = 250us .. 2.5ms, counting to 400-4000 overflows
+		 */
+		volatile unsigned long long int x;
 		DBG_C('/');
 		for(x=0;x<100000ULL;x++)
 #endif
@@ -366,25 +390,7 @@ int main(void)
 				do_command(transbyte);
 
 			// RESET processing takes > 12 bit times, plus one byte.
-			update_idle((state == S_IDLE) ? 20 : (state < 0x10) ? 8 : vbitcount);
-#ifdef HAVE_TIMESTAMP
-			unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
-			while(tbpos < n && n > 0) {
-				uint16_t this_tb = tsbuf[--n];
-				DBG_Y(this_tb-last_tb);
-				last_tb=this_tb;
-
-				DBG_C(lev ? '^' : '_');
-				lev = 1-lev;
-				cli();
-				if(tbpos == n) tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
-				sei();
-			}
-			if (n == 0) {
-				DBG_P("<?>");
-				tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
-			}
-#endif
+			update_idle((state == S_IDLE) ? 20 : (state < 0x10) ? 8 : bitcount);
 		}
 	}
 }
@@ -394,19 +400,20 @@ static void set_reset(void) {
 	state = S_RESET;
 	bitcount = 8;
 	xmitlen = 0;
-	DBG_C('\n');
-	DBG_C('R');
+	DBG_P("\nR");
 	DBG_OUT();
 }
 
 
-/* ISRs cannot be interrupted, so this saves 50 bytes on gcc 4.3.3 */
-#define state *(uint8_t *)&state
+/* ISRs cannot be interrupted, so this saves 50 bytes on gcc 4.3.3, portability!
+ * using registers on AVR works even better (>150 bytes)
+ */
+// #define state *(u_char *)&state
 
 // Timer interrupt routine
 OW_TIMER_ISR()
 {
-	uint8_t pin, st = state & S_MASK;
+	u_char pin, st = state & S_MASK;
 	pin = owpin_value();		// sample immediately
 	clear_owtimer();
 	//DBG_C(pin ? '!' : ':');
@@ -555,30 +562,23 @@ end:;
 OW_PINCHANGE_ISR()
 {
 	/* all but XMIT2 bit */
-	uint8_t st = state & S_MASK;
+	u_char st = state & S_MASK;
 
 	if (owpin_value()) {
 		/* low to high transition */
-		DBG_TS();
 		//DBG_C('^');
-#ifdef HAVE_TIMESTAMP
-		TCCR1B &=~ (1<<ICES1);
-#endif
+
 		/* check the length of the pulse, smaller than timeout
 		 * and larger than T_RESET, TIMEOUT is 0xF0, this is
 		 * a reset pulse.
 		 */
-		if (((TCNT0 < 0xF0) || (st == S_IDLE)) && (TCNT0 > T_RESET)) {
+		if (TCNT0 > T_RESET && (TCNT0 < 0xF0 || st == S_IDLE)) {
 			set_owtimer(T_PRESENCEWAIT);
 			set_reset();
 		} // else do nothing special; the timer will read the state
 		return;
 	}
-	DBG_TS();
 	//DBG_C('_');
-#ifdef HAVE_TIMESTAMP
-	TCCR1B |= (1<<ICES1);
-#endif
 	/*
 	 * some transmitting state
 	 */

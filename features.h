@@ -16,6 +16,12 @@
 #ifndef FEATURES_H
 #define FEATURES_H
 
+/* some basic typedef, that should be very portable */
+typedef unsigned char u_char;
+typedef unsigned short u_short;
+typedef unsigned long u_long;
+
+
 /*! there are 3 types of configuration settings:
  *  - uP specific settings (like uP type, register names etc.)
  *  - hardware specific settings (like fuse stuff: F_CPU, pin usage ...)
@@ -72,6 +78,12 @@ static inline void get_ow_address(uint8_t *addr)
 		addr[i] =  EEDR;		// Return data from data register
 	}
 }
+
+#ifdef HAVE_UART
+static inline void init_debug(void) { uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU)); }
+#else
+#define init_debug()
+#endif
 #endif
 
 /* define __CPU used as name prefix and
