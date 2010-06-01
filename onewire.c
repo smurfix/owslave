@@ -25,10 +25,11 @@
  *   in application code create an interface function!
  */
 //  Bitmasks
-#define S_RECV 0x01		// all receiving states have this bit set
-#define S_XMIT 0x02		// all transmitting states have this bit set
-#define S_MASK 0x7F
-#define S_XMIT2 0x80	// flag to de-assert zero bit on xmit timeout
+#define S_RECV 		0x01		// all receiving states have this bit set
+#define S_XMIT 		0x02		// all transmitting states have this bit set
+#define S_MASK 		0x7F
+#define S_XMIT2 	0x80		// flag to de-assert zero bit on xmit timeout
+#define S_OPCODE	0x20		// opcode state (implemented by the actual device)
 
 //  initial states: >3 byte times
 #define S_IDLE            (       0x00) // wait for Reset
@@ -45,18 +46,23 @@
 #define S_SEARCHROM_R     (S_RECV|0x18) // search, step 3: check what the master wants
 #endif
 //  opcode states: 1 bit time
-#define S_RECEIVE_OPCODE  (S_RECV|0x20) // reading real opcode
-#define S_HAS_OPCODE      (       0x24) // has real opcode, mainloop
-#define S_CMD_RECV        (S_RECV|0x28) // receive bytes
-#define S_CMD_XMIT        (S_XMIT|0x28) // send bytes
-#define S_CMD_IDLE        (       0x28) // do nothing
+#define S_RECEIVE_OPCODE  (S_RECV|S_OPCODE|0x00)	// reading real opcode
+#define S_HAS_OPCODE      (       S_OPCODE|0x04)	// has real opcode, mainloop
+#define S_CMD_RECV        (S_RECV|S_OPCODE|0x08)	// receive bytes
+#define S_CMD_XMIT        (S_XMIT|S_OPCODE|0x08)	// send bytes
+#define S_CMD_IDLE        (       S_OPCODE|0x08)	// do nothing
 
 // 1wire interface
-register u_char bitcount asm("r12");
-register u_char transbyte asm("r13");
-register u_char xmitlen asm("r14");
+#if 0 // def __AVR__
+// register optimization does not seem to work, these variables get corrupted
+register u_char bitcount asm("r2");
+register u_char transbyte asm("r3");
+register u_char xmitlen asm("r4");
 // global
-register volatile u_char state asm("r15");
+register volatile u_char state asm("r5");
+#else
+static volatile u_char bitcount, transbyte, xmitlen, state;
+#endif
 
 static unsigned char addr[8];
 static jmp_buf end_out;
@@ -105,25 +111,23 @@ static char interest = 0;
  * ... the fallbacks may be invalid
  */
 #ifndef T_SAMPLE
-#if F_CPU > 9600000
-	#define T_SAMPLE T_(15)-2	// overhead
+#if F_CPU > 12000000
+	#define T_SAMPLE T_(15)-1
+#elif F_CPU > 9600000
+	#define T_SAMPLE T_(15)-2
 #else
+	#warning "This will probably only work for relatively slow masters!"
 	#define T_SAMPLE T_(25)-1	// only tested for atmega32, works but out of specification!
 #endif
-#define T_XMIT T_(60)-5			// overhead (measured w/ scope on ATmega168)
+#define T_XMIT T_(60)-4			// overhead (measured w/ scope on ATmega168)
 #endif
 
-// check timing setup
+// check timing setup, T_RESET depends on timer size (8bits for AVR)
 #if (T_SAMPLE<1)
-#error "Sample time too short, fix timing"
+#error "Sample time too short, fix timing!"
 #endif
 #if (T_RESET>200)
-#error "Reset slot is too wide, fix timing"
-#endif
-
-// 57600 and above did not work on atmega 32
-#ifndef BAUDRATE
-#define BAUDRATE 57600
+#error "Reset slot is too wide, fix timing!"
 #endif
 
 /*
@@ -164,7 +168,7 @@ static void xmit_any(u_char val, u_char len)
 	while(state & (S_RECV|S_XMIT))
 		update_idle(bitcount);
 	cli();
-	if(!(state & 0x20)) {
+	if(!(state & S_OPCODE)) {
 		sei();
 		if(state != S_IDLE) {
 			if (state < 0x10)
@@ -223,7 +227,7 @@ static void recv_any(u_char len)
 	while(state & (S_RECV|S_XMIT))
 		update_idle(bitcount);
 	cli();
-	if(!(state & 0x20)) {
+	if(!(state & S_OPCODE)) {
 		sei();
 		if (state != S_IDLE) {
 			if (state < 0x10)
@@ -232,11 +236,13 @@ static void recv_any(u_char len)
 		}
 		next_idle();
 	}
+	/* still something to transmit, but state not transmitting */
 	if(xmitlen) {
 		sei();
 		DBG_ONE("\nXbuflen error recv! ", xmitlen);
 		next_idle();
 	}
+	/* still something to receive, but state not receiving */
 	if(bitcount) {
 		sei();
 		DBG_ONE("\nBitcount error recv! ", bitcount);
@@ -352,7 +358,6 @@ int main(void)
 	cpu_setup();
 	init_debug();
 	owpin_setup();
-	unmask_owpin();
 
 #ifdef DBGPIN
 	OWPORT &= ~(1 << DBGPIN);
@@ -368,11 +373,14 @@ int main(void)
 
 	// now go
 	sei();
-	DBG_P("\nInit done!\n");
+	DBG_ONE("\nInit done! Tsample=", T_SAMPLE);
+	DBG_ONE("Treset=0x", T_RESET);
+	DBG_ONE("Txmit=0x", T_XMIT);
 
 	// save context to return to in case a command is either completed
 	// or interrupted by a reset condition
 	setjmp(end_out);
+	unmask_owpin();
 
 	while (1) {
 #ifdef HAVE_UART
@@ -386,6 +394,7 @@ int main(void)
 		for(x=0;x<100000ULL;x++)
 #endif
 		 {
+
 			if((state & S_MASK) == S_HAS_OPCODE)
 				do_command(transbyte);
 
@@ -394,16 +403,6 @@ int main(void)
 		}
 	}
 }
-
-/*! called by the state machine when reset pulse is seen ! */
-static void set_reset(void) {
-	state = S_RESET;
-	bitcount = 8;
-	xmitlen = 0;
-	DBG_P("\nR");
-	DBG_OUT();
-}
-
 
 /* ISRs cannot be interrupted, so this saves 50 bytes on gcc 4.3.3, portability!
  * using registers on AVR works even better (>150 bytes)
@@ -439,7 +438,7 @@ OW_TIMER_ISR()
 		goto end;
 	}
 	if (!(st & S_RECV)) { // any other non-receive situation is a NO-OP;
-		DBG_C('T');       // this really should not happen anyway
+		DBG_ONE("T ", st);	// this really should not happen anyway
 		set_idle();
 		goto end;
 	}
@@ -574,7 +573,11 @@ OW_PINCHANGE_ISR()
 		 */
 		if (TCNT0 > T_RESET && (TCNT0 < 0xF0 || st == S_IDLE)) {
 			set_owtimer(T_PRESENCEWAIT);
-			set_reset();
+			state = S_RESET;
+			bitcount = 8;
+			xmitlen = 0;
+			DBG_P("\nR");
+			DBG_OUT();
 		} // else do nothing special; the timer will read the state
 		return;
 	}
@@ -643,6 +646,7 @@ OW_PINCHANGE_ISR()
 	}
 	/* some other device sending a presence pulse */
 	else if (st == S_RESET) {
+		DBG_C('p');
 		state = S_RECEIVE_ROMCODE;
 		clear_owtimer();
 	}
