@@ -1,9 +1,10 @@
 # makefile, written by guido socher
 #MCU=atmega8		# ds2423.c won't compile
-#MCU=attiny13		# ds2423.c won't compile
-#MCU=attiny84
+#MCU=attiny13		# ds2423.c and uart.c won't compile (no uart)
+#MCU=attiny84		# uart.c won't compile (no uart)
 #MCU=atmega168
 MCU=atmega32		# ds2423.c won't compile
+
 
 #MCU_PROG=m168
 MCU_PROG=m32
@@ -38,12 +39,14 @@ ds2408 ds2423:
 %_dev:
 	@make DEVNAME=$(subst _dev,,$@) all
 
-# optimize for size: -Os leads to same size as -O3:
-CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -O3 -mcall-prologues
+# optimize for size!
+CFLAGS=-g -mmcu=$(MCU) -mcall-prologues -Wall -Wstrict-prototypes -Os
+# cortex: -mcpu=cortex-m3 -mthumb 
+# avr -mmcu=$(MCU) -mcall-prologues
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
-	$(CC) $(CFLAGS) -Os -c $<
+	$(CC) $(CFLAGS) -c $<
 $(DEVNAME).out : onewire.o uart.o $(DEVNAME).o
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
 $(DEVNAME).hex : $(DEVNAME).out 
