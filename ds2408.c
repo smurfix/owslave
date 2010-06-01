@@ -18,7 +18,7 @@
 
 #include "onewire.h"
 
-#define C_READ_PIO         0xF0 // TODO
+#define C_READ_PIO         0xF0
 #define C_READ_CHANNEL     0xF5 // TODO
 #define C_WRITE_CHANNEL    0x5A // TODO
 #define C_WRITE_CONDSEARCH 0xCC // TODO
@@ -42,10 +42,6 @@ void do_read_pio(void)
 	/*
 	 The following code does:
          * receive address (2 bytes), add them to CRC
-         * send 1..32 bytes (0xFF), add them to CRC
-	 * send counter (4 bytes, CRC)
-	 * send 4 zero bytes
-	 * send inverted CRC
          This is all very straightforward, except that the CRC calculation
 	 is delayed somewhat: the time between recv_byte_in() and xmit_byte()
 	 is only a bit wide, which may not be enough time to add a CRC byte.
@@ -99,6 +95,7 @@ void do_command(u_char cmd)
 void update_idle(u_char bits)
 {
 	//DBG_C('\\');
+	uart_try_send();
 }
 
 void init_state(void)
