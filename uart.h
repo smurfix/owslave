@@ -76,6 +76,8 @@ Extension: uart_puti, uart_puthex_nibble, uart_puthex_byte
 */
 extern void uart_init(unsigned int baudrate);
 
+/* only if polled mode enabled ! */
+extern void uart_try_send(void);
 
 /**
  *  @brief   Get received byte from ringbuffer
@@ -196,7 +198,7 @@ extern void uart_puthex_byte(const unsigned char b);
  * @return   none
  * @see      uart_puthex_byte
  */
-extern void uart_puthex_word(const uint16_t b);
+extern void uart_puthex_word(const unsigned short b);
 
 /*@}*/
 #endif // UART_H 
