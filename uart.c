@@ -446,5 +446,6 @@ void uart_puthex_word(const unsigned short b)
         uart_puthex_byte(b);
     }
 } /* uart_puthex_word */
-
+#else
+void uart_try_send(void) {}
 #endif // HAVE_UART
