@@ -70,7 +70,7 @@ static inline void AVR_ATtiny13_setup(void)
 
 static inline void AVR_ATtiny13_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATtiny13_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATtiny13_set_owtimer((u_char timeout)
+static inline void AVR_ATtiny13_set_owtimer(u_char timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);
