@@ -61,12 +61,12 @@ register u_char xmitlen asm("r4");
 // global
 register volatile u_char state asm("r5");
 #else
-static volatile u_char bitcount, transbyte, xmitlen, state;
+static u_char bitcount, transbyte, xmitlen; 		// TODO why not volatile ?
+static volatile u_char state;						// TODO volatile makes no difference?
 #endif
 
 static unsigned char addr[8];
 static jmp_buf end_out;
-
 
 #ifdef DBGPIN
 static char interest = 0;
@@ -142,7 +142,7 @@ void next_idle(void)
 	if(state != S_IDLE)
 		DBG_P("\nj_out\n");
 	set_idle();
-	longjmp(end_out,1);
+	longjmp(end_out, 1);
 }
 
 /*! currently not used at all */
@@ -155,38 +155,61 @@ void next_command(void)
 		bitcount = 8;
 		state = S_RECEIVE_OPCODE | (state & S_XMIT2);
 	}
-	longjmp(end_out,1);
+	longjmp(end_out, 1);
 }
 
-/*! called from xmit_bit() and xmit_byte()
- *   it waits calling the 'background task' via update_idle()
- *   for receive or transmit states to complete.
- *   error handling is done here as well -> next_idle()
+/*!
+ * waits for a receiving or transmitting state to complete.
+ * It calls update_idle() while waiting. After completion it
+ * tests for strange situations, like:
+ *  - transmission completed, but xmitlen != 0
+ *  - reception completed, but bitcount != 0
+ *  - and some state error I currently don't comprehend. TODO
+ *
+ *  \note If it returns (and not longjmp's to end_out) it will
+ *  still have interrupts globally disabled.
+ *
+ *  \note Debug output can still be distinguished between xmit and recv,
+ *    as they are preceded by either '<' or '>'.
  */
-static void xmit_any(u_char val, u_char len)
+static void wait_for_completion_and_check_for_errors(void)
 {
-	while(state & (S_RECV|S_XMIT))
+	/* wait for receive or transmit to end, call background task while waiting */
+	while(state & (S_RECV | S_XMIT))
 		update_idle(bitcount);
+
 	cli();
 	if(!(state & S_OPCODE)) {
 		sei();
 		if(state != S_IDLE) {
 			if (state < 0x10)
-				longjmp(end_out,1);
-			DBG_ONE("\nState error xmit! ", state);
+				longjmp(end_out, 1);
+			DBG_ONE("\nState error! ", state);
 		}
 		next_idle();
 	}
+	/* state does not S_XMIT, but xmitlen not 0 ! */
 	if(xmitlen) {
 		sei();
-		DBG_ONE("\nXbuflen error xmit! ", xmitlen);
+		DBG_ONE("\nXbuflen error! ", xmitlen);
 		next_idle();
 	}
+	/* state does not S_RECV, but bitcount not 0 */
 	if(bitcount) {
 		sei();
-		DBG_TWO("\nBitcount error xmit! ", state, bitcount);
+		DBG_TWO("\nBitcount error! ", state, bitcount);
 		next_idle();
 	}
+}
+
+/*! called by xmit_bit() and xmit_byte()
+ *  TODO: len is ignored here!
+ */
+static inline void xmit_any(u_char val, u_char len)
+{
+	wait_for_completion_and_check_for_errors();
+
+	/* set-up new transmit */
 	transbyte = val;
 	bitcount = 8;
 	state = S_CMD_XMIT | (state & S_XMIT2);
@@ -199,71 +222,46 @@ static void xmit_any(u_char val, u_char len)
 void xmit_bit(u_char val)
 {
 	DBG_C('<');	DBG_C('_');
-	xmit_any(!!val,1);
+	xmit_any(!!val, 1);
 }
 
 /*! transmit a byte */
 void xmit_byte(u_char val)
 {
 	DBG_C('<');
-	xmit_any(val,8);
+	xmit_any(val, 8);
 }
 
-/*! returns true if not a receiving or transmitting
- * state active
+/*! returns true if not a receiving or transmitting state active
+ * TODO: never used !
  */
 u_char rx_ready(void)
 {
-	return !(state & (S_RECV|S_XMIT));
+	return !(state & (S_RECV | S_XMIT));
 }
 
-/*! called from recv_bit() and recv_byte()
- *   it waits calling the 'background task' via update_idle()
- *   for receive or transmit states to complete.
- *   error handling is done here as well -> next_idle()
- */
-static void recv_any(u_char len)
+/*! called by recv_bit() and recv_byte() */
+static inline void recv_any(u_char len)
 {
-	while(state & (S_RECV|S_XMIT))
-		update_idle(bitcount);
-	cli();
-	if(!(state & S_OPCODE)) {
-		sei();
-		if (state != S_IDLE) {
-			if (state < 0x10)
-				longjmp(end_out,1);
-			DBG_ONE("\nState error recv! ", state);
-		}
-		next_idle();
-	}
-	/* still something to transmit, but state not transmitting */
-	if(xmitlen) {
-		sei();
-		DBG_ONE("\nXbuflen error recv! ", xmitlen);
-		next_idle();
-	}
-	/* still something to receive, but state not receiving */
-	if(bitcount) {
-		sei();
-		DBG_ONE("\nBitcount error recv! ", bitcount);
-		next_idle();
-	}
+	wait_for_completion_and_check_for_errors();
+
+	/* set-up new reception */
 	bitcount = len;
 	state = S_CMD_RECV | (state & S_XMIT2);
 	sei();
 	DBG_OFF();
-	DBG_C('>');
 }
 
 /*! receives a single bit */
 void recv_bit(void)
 {
+	DBG_C('>'); DBG_C('_');
 	recv_any(1);
-	DBG_C('_');
 }
 /*! receives a byte */
 void recv_byte(void)
 {
+	DBG_C('>');
 	recv_any(8);
 }
 
@@ -404,10 +402,10 @@ int main(void)
 	}
 }
 
-/* ISRs cannot be interrupted, so this saves 50 bytes on gcc 4.3.3, portability!
- * using registers on AVR works even better (>150 bytes)
- */
-// #define state *(u_char *)&state
+/* ISRs cannot be interrupted, so this saves 34 bytes on gcc 4.3.3 */
+#ifdef __AVR__
+  #define state (*(u_char *) &state)
+#endif
 
 // Timer interrupt routine
 OW_TIMER_ISR()
