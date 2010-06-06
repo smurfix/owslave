@@ -127,6 +127,7 @@ LICENSE:
  #define UART0_CONTROL  UCSR0B
  #define UART0_DATA     UDR0
  #define UART0_UDRIE    UDRIE0
+ #define UDRE			UDRE0
 #else
  #define UART0_STATUS   UCSRA
  #define UART0_CONTROL  UCSRB
@@ -176,8 +177,6 @@ static inline void uart_send(void)
 		/* get one byte from buffer and write it to UART */
 		UART0_DATA = UART_TxBuf[tmptail];  /* start transmission */
 		UART_TxTail = tmptail;
-
-
 	} else
         UART0_CONTROL &= ~_BV(UART0_UDRIE);
 }
