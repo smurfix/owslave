@@ -29,6 +29,7 @@
 #define S_XMIT 		0x02		// all transmitting states have this bit set
 #define S_MASK 		0x7F
 #define S_XMIT2 	0x80		// flag to de-assert zero bit on xmit timeout
+#define S_ROMCODE	0x10		// romcode state (like matchrom, readrom, searchrom)
 #define S_OPCODE	0x20		// opcode state (implemented by the actual device)
 
 //  initial states: >3 byte times
@@ -36,14 +37,14 @@
 #define S_RESET           (       0x04) // Reset seen
 #define S_PRESENCEPULSE   (       0x08) // sending Presence pulse
 //  selection opcode states: 1 byte times
-#define S_RECEIVE_ROMCODE (S_RECV|0x10) // reading selection opcode
-#define S_MATCHROM        (S_RECV|0x14) // select a known slave
-#define S_READROM         (S_XMIT|0x14) // single slave only!
+#define S_RECEIVE_ROMCODE (S_RECV|S_ROMCODE|0x00) // reading selection opcode
+#define S_MATCHROM        (S_RECV|S_ROMCODE|0x04) // select a known slave
+#define S_READROM         (S_XMIT|S_ROMCODE|0x04) // single slave only!
 
 #ifndef SKIP_SEARCH
-#define S_SEARCHROM       (S_XMIT|0x18) // search, step 1: send ID bit
-#define S_SEARCHROM_I     (S_XMIT|0x1C) // search, step 2: send inverted ID bit
-#define S_SEARCHROM_R     (S_RECV|0x18) // search, step 3: check what the master wants
+#define S_SEARCHROM       (S_XMIT|S_ROMCODE|0x08) // search, step 1: send ID bit
+#define S_SEARCHROM_I     (S_XMIT|S_ROMCODE|0x0C) // search, step 2: send inverted ID bit
+#define S_SEARCHROM_R     (S_RECV|S_ROMCODE|0x08) // search, step 3: check what the master wants
 #endif
 //  opcode states: 1 bit time
 #define S_RECEIVE_OPCODE  (S_RECV|S_OPCODE|0x00)	// reading real opcode
@@ -61,8 +62,11 @@ register u_char xmitlen asm("r4");
 // global
 register volatile u_char state asm("r5");
 #else
-static u_char bitcount, transbyte, xmitlen; 		// TODO why not volatile ?
-static volatile u_char state;						// TODO volatile makes no difference?
+/* everything is volatile here ? TODO */
+static u_char bitcount;			// number of bits to receive or transmit
+static u_char transbyte;		// shift buffer for xmit and recv
+static u_char xmitlen;			// number of bytes to transmit
+static volatile u_char state;
 #endif
 
 static unsigned char addr[8];
@@ -182,7 +186,8 @@ static void wait_for_completion_and_check_for_errors(void)
 	if(!(state & S_OPCODE)) {
 		sei();
 		if(state != S_IDLE) {
-			if (state < 0x10)
+			// a basic state (reset, presence pulse), but not idle
+			if (state < S_ROMCODE)
 				longjmp(end_out, 1);
 			DBG_ONE("\nState error! ", state);
 		}
@@ -202,16 +207,14 @@ static void wait_for_completion_and_check_for_errors(void)
 	}
 }
 
-/*! called by xmit_bit() and xmit_byte()
- *  TODO: len is ignored here!
- */
+/*! called by xmit_bit() and xmit_byte() */
 static inline void xmit_any(u_char val, u_char len)
 {
 	wait_for_completion_and_check_for_errors();
 
 	/* set-up new transmit */
 	transbyte = val;
-	bitcount = 8;
+	bitcount = len;
 	state = S_CMD_XMIT | (state & S_XMIT2);
 	DBG_X(val);
 	sei();
@@ -269,28 +272,33 @@ void recv_byte(void)
  * waits for receiving states to complete (calling
  * the 'background task' via update_idle()
  * skips out on all but ???? TODO
- * 		called by recv_bit_in() and recv_byte_in()
  */
 static u_char recv_any_in(void)
 {
 	while(state & S_RECV)
 		update_idle(bitcount);
+
 	if ((state & S_MASK) != S_CMD_IDLE)
-		longjmp(end_out,1);
+		longjmp(end_out, 1);
+
 	return transbyte;
 }
-/*! TODO */
+/*! return a bit received (start receiver with recv_bit())
+ * \note currently never called
+ */
 u_char recv_bit_in(void)
 {
 	u_char byte;
+
 	byte = ((recv_any_in() & 0x80) != 0);
 	DBG_X(byte);
 	return byte;
 }
-/*! TODO */
+/*! return a byte received (start receiver with recv_byte()) */
 u_char recv_byte_in(void)
 {
 	u_char byte;
+
 	byte = recv_any_in();
 	DBG_X(byte);
 	return byte;
@@ -539,8 +547,12 @@ OW_TIMER_ISR()
 		DBG_C('C');
 		goto end;
 	}
+	/* if the receiver is done (bitcount bits received)
+	 * state is changed to S_CMD_IDLE and the application
+	 * must set-up the new state within about 40usec!
+	 */
 	if (st == S_CMD_RECV) {
-		bitcount = 0;
+		bitcount = 0;			// fix bitcount (was set to 8 above)
 		state = S_CMD_IDLE;
 		DBG_ON();
 		goto end;
@@ -621,6 +633,10 @@ OW_PINCHANGE_ISR()
 				DBG_C('C');
 			}
 		}
+		/* if transmitter is done state is set to S_CMD_IDLE
+		 * and the application must set-up the next state
+		 * within about 1 bit-time (60usec)
+		 */
 		else if (st == S_CMD_XMIT) {
 			state = S_CMD_IDLE | (state & S_XMIT2);
 			DBG_ON();
@@ -632,6 +648,7 @@ OW_PINCHANGE_ISR()
 	}
 	/* non-transmitting states */
 	else if (st == S_CMD_IDLE) {
+		/* application did not continue with either S_CMD_RECV or S_CMD_XMIT */
 		DBG_C('x');
 		set_idle();
 	}
