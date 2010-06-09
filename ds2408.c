@@ -32,34 +32,40 @@ static u_char
 	cond_polarity_mask = 0x00,
 	control_status     = 0x88;
 
+/*
+ The following code does:
+     * receive address (2 bytes), add them to CRC
+     * transmit anything from this address onwards until
+       0x8F is reached
+     * send the 2 crc bytes.
+
+     This is all very straightforward, except that the CRC calculation
+ for the first byte to transmit is delayed somewhat:
+ the time between recv_byte_in() and xmit_byte() is only a bit wide,
+ which may not be enough time to add a CRC byte.
+ */
 void do_read_pio(void)
 {
 	u_short crc = 0;
 	u_short adr;
 	u_char bcrc = 1;
 	u_char b;
-
-	/*
-	 The following code does:
-         * receive address (2 bytes), add them to CRC
-         This is all very straightforward, except that the CRC calculation
-	 is delayed somewhat: the time between recv_byte_in() and xmit_byte()
-	 is only a bit wide, which may not be enough time to add a CRC byte.
-	 */
 	
 	recv_byte();
 	crc = crc16(crc,0xF0);
-	b = recv_byte_in();
+	b = recv_byte_in();			// address low byte
 	recv_byte();
-	crc = crc16(crc,b);
+	crc = crc16(crc, b);
 	adr = b;
-	b = recv_byte_in();
+	b = recv_byte_in();			// address high byte
 	adr |= b<<8;
-#define XMIT(val) do {                                     \
-		xmit_byte(val);                            \
-		if(bcrc) { crc = crc16(crc,b); bcrc = 0; } \
-		crc = crc16(crc,val);                      \
-	} while(0)
+
+	/* note: bcrc is only true for the first byte to transmit */
+#define XMIT(val) do { \
+	xmit_byte(val); \
+	if(bcrc) { crc = crc16(crc, b); bcrc = 0; } \
+	crc = crc16(crc,val); \
+} while(0)
 
 	while(adr < 0x88) { XMIT(0); adr++; }
 	switch(adr) {
