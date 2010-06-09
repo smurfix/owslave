@@ -40,9 +40,11 @@ ds2408 ds2423:
 	@make DEVNAME=$(subst _dev,,$@) all
 
 # optimize for size!
-CFLAGS=-g -mmcu=$(MCU) -mcall-prologues -Wall -Wstrict-prototypes -Os
-# cortex: -mcpu=cortex-m3 -mthumb 
-# avr -mmcu=$(MCU) -mcall-prologues
+ifeq ($(CC),avr-gcc)
+  CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+else
+  CFLAGS=-g -mcpu=cortex-m3 -mthumb -Wall -Wstrict-prototypes -Os
+endif
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
