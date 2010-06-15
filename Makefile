@@ -12,9 +12,10 @@ MCU_PROG=m32
 #PROG=usbtiny
 PROG=ponyser -P /dev/ttyS1
 
-CC=avr-gcc
-OBJCOPY=avr-objcopy
-OBJDUMP=avr-objdump
+ARCH=avr
+CC=$(ARCH)-gcc
+OBJCOPY=$(ARCH)-objcopy
+OBJDUMP=$(ARCH)-objdump
 
 #-------------------
 help: 
@@ -40,16 +41,18 @@ ds2408 ds2423:
 	@make DEVNAME=$(subst _dev,,$@) all
 
 # optimize for size!
-ifeq ($(CC),avr-gcc)
+ifeq ($(ARCH),avr-)
   CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+  UART=avr_uart.o
 else
-  CFLAGS=-g -mcpu=cortex-m3 -mthumb -Wall -Wstrict-prototypes -Os
+  CFLAGS=-g -mcpu=cortex-m0 -mthumb -Wall -Wstrict-prototypes -Os
+  UART=cortexm0_uart.o
 endif
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
 	$(CC) $(CFLAGS) -c $<
-$(DEVNAME).out : onewire.o uart.o $(DEVNAME).o
+$(DEVNAME).out : onewire.o $(UART) $(DEVNAME).o
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
 $(DEVNAME).hex : $(DEVNAME).out 
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
