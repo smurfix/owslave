@@ -12,6 +12,66 @@
 // debugging only
 #include "uart.h"
 
+// AVRs use 8 bit timers
+typedef unsigned char timer_t;
+
+/* hardware specific settings, just as the cpu should come from
+ * either the makefile or better something like Kconfig
+ */
+#ifndef F_CPU
+#warning "CPU frequency not defined, assuming 8MHz"
+#define F_CPU	8000000
+#endif
+
+#ifndef PRESCALE
+#define PRESCALE 64
+#endif
+
+/* macros to create timeout values in usec, e.g.
+ *   8MHz cpu clock, prescaled with 64 -> 8 usec per timer tick
+ *   120usec equals 15 ticks (8000000/64)/(1000000/120) = (8*120)/64 = 15
+ *
+ *   for the above example:
+ *   T_PRESENCE = 10
+ *   T_PRESENCEWAIT = 2.5 -> 2
+ *   T_RESET_ = (8*400)/64 = 50
+ *   T_RESET = 50-1 = 49
+ *
+ *   fallback values for 8MHz are
+ *   T_SAMPLE = (8*25)/64-1 = 1
+ *   T_XMIT = (8*60)/64-5 = 7.8..-5 ->7-5=2
+ *
+ */
+#define T_(c) ((F_CPU/PRESCALE)/(1000000/c))
+#define T_PRESENCE T_(120)-5
+#define T_PRESENCEWAIT T_(20)
+#define T_RESET_ T_(400)        // timestamp for sampling
+#define T_RESET (T_RESET_-T_SAMPLE)
+
+/* these are critical and should be set-up individually
+ * ... the fallbacks may be invalid
+ */
+#ifndef T_SAMPLE
+#if F_CPU > 12000000
+	#define T_SAMPLE T_(15)-1
+#elif F_CPU > 9600000
+	#define T_SAMPLE T_(15)-2
+#else
+	#warning "This will probably only work for relatively slow masters!"
+	#define T_SAMPLE T_(25)-1	// only tested for atmega32, works but out of specification!
+#endif
+#define T_XMIT T_(60)-4			// overhead (measured w/ scope on ATmega168)
+#endif
+
+// check timing setup, T_RESET depends on timer size (8bits for AVR)
+#if (T_SAMPLE<1)
+#error "Sample time too short, fix timing!"
+#endif
+#if (T_RESET>200)
+#error "Reset slot is too wide, fix timing!"
+#endif
+
+
 #define OW_PINCHANGE_ISR() ISR (INT0_vect)
 #define OW_TIMER_ISR() ISR (TIMER0_OVF_vect)
 
@@ -70,7 +130,7 @@ static inline void AVR_ATtiny13_setup(void)
 
 static inline void AVR_ATtiny13_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATtiny13_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATtiny13_set_owtimer(u_char timeout)
+static inline void AVR_ATtiny13_set_owtimer(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);
@@ -96,7 +156,7 @@ static inline void AVR_ATmega8_setup(void)
 
 static inline void AVR_ATmega8_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATmega8_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATmega8_set_owtimer(u_char timeout)
+static inline void AVR_ATmega8_set_owtimer(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR |= (1 << TOV0);
@@ -123,7 +183,7 @@ static inline void AVR_ATmega32_setup(void)
 
 static inline void AVR_ATmega32_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATmega32_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATmega32_set_owtimer(u_char timeout)
+static inline void AVR_ATmega32_set_owtimer(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR |= (1 << TOV0);
@@ -149,7 +209,7 @@ static inline void AVR_ATtiny84_setup(void)
 
 static inline void AVR_ATtiny84_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATtiny84_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATtiny84_set_owtimer(u_char timeout)
+static inline void AVR_ATtiny84_set_owtimer(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);
@@ -176,7 +236,7 @@ static inline void AVR_ATmega168_setup(void)
 
 static inline void AVR_ATmega168_mask_owpin(void) { EIMSK &= ~(1 << INT0); }
 static inline void AVR_ATmega168_unmask_owpin(void) { EIFR |= (1 << INTF0); EIMSK |= (1 << INT0); }
-static inline void AVR_ATmega168_set_owtimer(u_char timeout)
+static inline void AVR_ATmega168_set_owtimer(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);

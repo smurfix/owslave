@@ -85,55 +85,6 @@ static char interest = 0;
 #define DBG_OFF()
 #endif
 
-
-#ifndef PRESCALE
-#define PRESCALE 64
-#endif
-
-/* macros to create timeout values in usec, e.g.
- *   8MHz cpu clock, prescaled with 64 -> 8 usec per timer tick
- *   120usec equals 15 ticks (8000000/64)/(1000000/120) = (8*120)/64 = 15
- *
- *   for the above example:
- *   T_PRESENCE = 10
- *   T_PRESENCEWAIT = 2.5 -> 2
- *   T_RESET_ = (8*400)/64 = 50
- *   T_RESET = 50-1 = 49
- *
- *   fallback values for 8MHz are
- *   T_SAMPLE = (8*25)/64-1 = 1
- *   T_XMIT = (8*60)/64-5 = 7.8..-5 ->7-5=2
- *
- */
-#define T_(c) ((F_CPU/PRESCALE)/(1000000/c))
-#define T_PRESENCE T_(120)-5
-#define T_PRESENCEWAIT T_(20)
-#define T_RESET_ T_(400)        // timestamp for sampling
-#define T_RESET (T_RESET_-T_SAMPLE)
-
-/* these are critical and should be set-up individually
- * ... the fallbacks may be invalid
- */
-#ifndef T_SAMPLE
-#if F_CPU > 12000000
-	#define T_SAMPLE T_(15)-1
-#elif F_CPU > 9600000
-	#define T_SAMPLE T_(15)-2
-#else
-	#warning "This will probably only work for relatively slow masters!"
-	#define T_SAMPLE T_(25)-1	// only tested for atmega32, works but out of specification!
-#endif
-#define T_XMIT T_(60)-4			// overhead (measured w/ scope on ATmega168)
-#endif
-
-// check timing setup, T_RESET depends on timer size (8bits for AVR)
-#if (T_SAMPLE<1)
-#error "Sample time too short, fix timing!"
-#endif
-#if (T_RESET>200)
-#error "Reset slot is too wide, fix timing!"
-#endif
-
 /*
  * functions below are called by the command level
  * (application specific code) and not directly from the
@@ -379,9 +330,10 @@ int main(void)
 
 	// now go
 	sei();
-	DBG_ONE("\nInit done! Tsample=", T_SAMPLE);
-	DBG_ONE("Treset=0x", T_RESET);
-	DBG_ONE("Txmit=0x", T_XMIT);
+	DBG_P("\nInit done!\n");
+	DBG_TIMER(T_SAMPLE);
+	DBG_TIMER(T_RESET);
+	DBG_TIMER(T_XMIT);
 
 	// save context to return to in case a command is either completed
 	// or interrupted by a reset condition

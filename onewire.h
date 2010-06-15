@@ -27,11 +27,19 @@
 #define DBG_N(x) uart_puthex_nibble(x)
 #define DBG_X(x) uart_puthex_byte(x)
 #define DBG_Y(x) uart_puthex_word(x)
+#define DBG_L(x) uart_puthex_long(x)
 
 #define DBG_ONE(str, val) \
 	do { DBG_P(str); DBG_X(val); DBG_C('\n'); } while(0)
 #define DBG_TWO(str, v1, v2) \
 	do { DBG_P(str); DBG_X(v1); DBG_C(','); DBG_X(v2); DBG_C('\n'); } while(0)
+// timers may have cpu specific length
+#define DBG_TIMER(val) \
+	do { DBG_P(#val "= "); switch(sizeof(timer_t)) { \
+		case 1: DBG_X((u_char) val); break; \
+		case 2: DBG_Y((u_short) val); break; \
+		case 4: DBG_L((u_long) val); break; } \
+	DBG_C('\n'); } while(0);
 
 #else /* no UART */
 
@@ -42,6 +50,7 @@
 #define DBG_Y(x)
 #define DBG_ONE(str, val)
 #define DBG_TWO(str, v1, v2)
+#define DBG_TIMER(val)
 #endif
 
 /* return to idle state, i.e. wait for the next RESET pulse. */
