@@ -25,7 +25,9 @@
 #define HAVE_UART
 #define POLLED_TRANSMITTER
 #define BAUDRATE 57600
+// this is actually only relevant for AVRs (really ?)
 #define F_CPU 16000000
+// #define SKIP_SEARCH		// omits search rom code (single slave only!)
 
 /* some basic typedef, that should be very portable */
 typedef unsigned char u_char;
@@ -39,52 +41,12 @@ typedef unsigned long u_long;
  *  - project specific settings (ds2408, ds2423, ...)
  */
 
-/* hardware specific settings, just as the cpu should come from
- * either the makefile or better something like Kconfig
- */
-#ifndef F_CPU
-#warning "CPU frequency not defined, assuming 8MHz"
-#define F_CPU	8000000
-#endif
-
-/* other project specific settings
- * SKIP_SEARCH if you don't have enough ROM for search (saves ~200 bytes)
- * HAVE_UART   if you want to debug your code
-*/
-
 
 #ifdef __AVR__
 #include "avr.h"
 #else
-#define __CPU	CortexM3
-/*!
- * currently these are NO-OPs, compilability test only!
- */
-static inline void CortexM3_setup(void)
-{
-}
-
-static inline void CortexM3_mask_owpin(void) { }
-static inline void CortexM3_unmask_owpin(void) { }
-static inline void CortexM3_set_owtimer(u_char timeout)
-{
-}
-static inline void CortexM3_clear_owtimer(void) { }
-
-//
-static inline void CortexM3_owpin_setup(void) {  }
-static inline void CortexM3_owpin_low(void) { }
-static inline void CortexM3_owpin_hiz(void) { }
-static inline u_char CortexM3_owpin_value(void) { return 1; }
-
-// not really
-#define OW_TIMER_ISR() void __attribute__ ((interrupt)) __cs3_isr_systick (void)
-#define OW_PINCHANGE_ISR() void __attribute__ ((interrupt)) __cs3_isr_external_0 (void)
-#define cli()
-#define sli()
-
+#include "cortexm0.h"
 #endif
-
 
 // some macro magic for the functions
 #define _COMPOSE(c, f)		c ## f
