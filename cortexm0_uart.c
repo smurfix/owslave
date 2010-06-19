@@ -1,3 +1,8 @@
+/*
+ * very basic CortexM0 uart implementation, no interrupt support
+ * no receiver support, just enough for debug messages.
+ */
+
 #include "features.h"
 
 #ifdef HAVE_UART
@@ -7,6 +12,14 @@
 #ifndef UART_TX_BUFFER_SIZE
 #define UART_TX_BUFFER_SIZE 512
 #endif
+
+#define UART_TX_BUFFER_MASK ( UART_TX_BUFFER_SIZE - 1)
+
+#if ( UART_TX_BUFFER_SIZE & UART_TX_BUFFER_MASK )
+ #error "TX buffer size is not a power of 2"
+#endif
+
+
 #ifndef POLLED_TRANSMITTER
 #error "for Cortex M0 define POLLED_TRANSMITTER!"
 #endif
@@ -15,24 +28,24 @@
 #define IER_RBR		0x01
 #define IER_THRE	0x02
 #define IER_RLS		0x04
-
+#define LSR_THRE	0x20
 
 /* module global variables (init to 0) */
-static volatile unsigned char UART_TxBuf[UART_TX_BUFFER_SIZE];
-static volatile unsigned char UART_TxHead;
-static volatile unsigned char UART_TxTail;
+static unsigned char txbuf[UART_TX_BUFFER_SIZE];
+static u_long head;
+static u_long tail;
 
 /* helper to store a byte from the transmitter ring to the UART TX register */
 static inline void uart_send(void)
 {
-	unsigned char tmptail;
+	u_long tmptail;
 
-	if (UART_TxHead != UART_TxTail) {
+	if (head != tail) {
 		/* calculate and store new buffer index */
-		tmptail = (UART_TxTail + 1) & UART_TX_BUFFER_MASK;
+		tmptail = (tail + 1) & UART_TX_BUFFER_MASK;
 		/* get one byte from buffer and write it to UART */
-		LPC_UART->THR = UART_TxBuf[tmptail];  /* start transmission */
-		UART_TxTail = tmptail;
+		LPC_UART->THR = txbuf[tmptail];
+		tail = tmptail;
 	}
 }
 
@@ -47,9 +60,9 @@ void uart_try_send(void)
 void uart_init(unsigned int baudrate)
 {
 	u_long div;
-	volatile u_long r;
+//	volatile u_long r;
 
-	/* disable uart interrupts, we don't use it */
+	/* disable uart interrupt, we don't use it */
 	NVIC_DisableIRQ(UART_IRQn);
 	LPC_UART->IER = 0;
 
@@ -62,39 +75,30 @@ void uart_init(unsigned int baudrate)
 	LPC_SYSCON->UARTCLKDIV = 0x1;     /* divided by 1 */
 
 	LPC_UART->LCR = 0x83;             /* 8 bits, no Parity, 1 Stop bit */
-	r = LPC_SYSCON->UARTCLKDIV;
+//	r = LPC_SYSCON->UARTCLKDIV;
 
 	/* divider value */
-	div = (((SystemCoreClock * LPC_SYSCON->SYSAHBCLKDIV) / r) / 16) / baudrate ;
+	div = (((SystemCoreClock * LPC_SYSCON->SYSAHBCLKDIV)
+					/ LPC_SYSCON->UARTCLKDIV) / 16) / baudrate ;
 
 	LPC_UART->DLM = div / 256;
 	LPC_UART->DLL = div % 256;
 	LPC_UART->LCR = 0x03;				/* DLAB = 0 */
 	LPC_UART->FCR = 0x07;				/* enable and reset TX and RX FIFO. */
-
-#if 0
-	/* read to clear the line status. */
-	r = LPC_UART->LSR;
-
-	/* ensure a clean start, no data in either TX or RX FIFO. */
-	while((LPC_UART->LSR & (LSR_THRE | LSR_TEMT)) != (LSR_THRE|LSR_TEMT)) ;
-	while(LPC_UART->LSR & LSR_RDR)
-	  r = LPC_UART->RBR;
-#endif
 }
 
-void uart_putc(unsigned char data)
+void uart_putc(u_char b)
 {
-    unsigned char tmphead;
+    u_long tmphead;
 
-	if(data == '\n')
+	if(b == '\n')
 		uart_putc('\r');
 
     /* if full drop character, otherwise put to tail */
-    tmphead  = (UART_TxHead + 1) & UART_TX_BUFFER_MASK;
-    if (tmphead != UART_TxTail) {
-		UART_TxBuf[tmphead] = data;
-		UART_TxHead = tmphead;
+    tmphead = (head + 1) & UART_TX_BUFFER_MASK;
+    if (tmphead != tail) {
+		txbuf[tmphead] = b;
+		head = tmphead;
     }
 }
 
@@ -102,37 +106,44 @@ void uart_puts(const char *s )
 {
     while (*s)
       uart_putc(*s++);
-
 }
 
-void uart_puthex_nibble(const unsigned char b)
+void uart_puthex_nibble(u_char b)
 {
-    unsigned char  c = b & 0x0f;
-    if (c>9) c += 'A'-10;
-    else c += '0';
-    uart_putc(c);
+    b &= 0x0f;
+    b += b > 9 ? 'A'-10 : '0';
+    uart_putc(b);
 }
 
-void uart_puthex_byte_(const unsigned char b)
+void uart_puthex_byte_(u_char b)
 {
-    uart_puthex_nibble(b>>4);
+    uart_puthex_nibble(b >> 4);
     uart_puthex_nibble(b);
 }
 
-void uart_puthex_byte(const unsigned char  b)
+void uart_puthex_byte(u_char b)
 {
     if(b & 0xF0)
-        uart_puthex_nibble(b>>4);
+        uart_puthex_nibble(b >> 4);
     uart_puthex_nibble(b);
 }
-void uart_puthex_word(const unsigned short b)
+
+void uart_puthex_word(u_short b)
 {
-    if (b&0xFF00) {
-        uart_puthex_byte(b>>8);
+    if (b & 0xFF00) {
+        uart_puthex_byte(b >> 8);
         uart_puthex_byte_(b);
-    } else {
+    } else
         uart_puthex_byte(b);
-    }
+}
+
+void uart_puthex_long(u_long b)
+{
+    if (b & 0xFFFF0000) {
+        uart_puthex_word(b >> 8);
+        uart_puthex_word(b);
+    } else
+        uart_puthex_word(b);
 }
 #else
 void uart_try_send(void) {}
