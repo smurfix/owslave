@@ -41,7 +41,7 @@ ds2408 ds2423:
 	@make DEVNAME=$(subst _dev,,$@) all
 
 # optimize for size!
-ifeq ($(ARCH),avr-)
+ifeq ($(ARCH),avr)
   CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
   UART=avr_uart.o
 else
@@ -52,7 +52,7 @@ endif
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
 	$(CC) $(CFLAGS) -c $<
-$(DEVNAME).out : onewire.o $(UART) $(DEVNAME).o
+$(DEVNAME).out : onewire.o $(DEVNAME).o $(UART)
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
 $(DEVNAME).hex : $(DEVNAME).out 
 	$(OBJCOPY) -R .eeprom -O ihex $< $@

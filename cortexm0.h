@@ -29,7 +29,7 @@ typedef unsigned long timer_t;
 #define T_XMIT T_(60)
 
 #ifdef HAVE_UART
-static inline void init_debug(void) { uart_init(115200); }
+static inline void init_debug(void) { uart_init(BAUDRATE); }
 #else
 #define init_debug()
 #endif

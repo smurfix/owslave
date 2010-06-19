@@ -35,7 +35,7 @@
 	do { DBG_P(str); DBG_X(v1); DBG_C(','); DBG_X(v2); DBG_C('\n'); } while(0)
 // timers may have cpu specific length
 #define DBG_TIMER(val) \
-	do { DBG_P(#val "= "); switch(sizeof(timer_t)) { \
+	do { DBG_P(#val " = 0x"); switch(sizeof(timer_t)) { \
 		case 1: DBG_X((u_char) val); break; \
 		case 2: DBG_Y((u_short) val); break; \
 		case 4: DBG_L((u_long) val); break; } \

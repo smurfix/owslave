@@ -6,7 +6,6 @@
 #ifndef AVR_H_
 #define AVR_H_
 
-// probably useless #include <stdint.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 // debugging only
