@@ -6,6 +6,10 @@
 #include "features.h"
 
 #ifdef HAVE_UART
+#ifdef __USE_CMSIS
+#include "LPC11xx.h"
+#endif
+
 #include "uart.h"
 
 /** Size of the circular transmit buffer, must be power of 2 */
@@ -140,7 +144,7 @@ void uart_puthex_word(u_short b)
 void uart_puthex_long(u_long b)
 {
     if (b & 0xFFFF0000) {
-        uart_puthex_word(b >> 8);
+        uart_puthex_word(b >> 16);
         uart_puthex_word(b);
     } else
         uart_puthex_word(b);
