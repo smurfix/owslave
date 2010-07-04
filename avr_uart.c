@@ -70,13 +70,13 @@ LICENSE:
 #include <avr/pgmspace.h>
 #include "uart.h"
 
-/** Size of the circular receive buffer, must be power of 2 */
+/** Size of the circular receive buffer, must be power of 2 and fit to 8bit value */
 #ifndef UART_RX_BUFFER_SIZE
 #define UART_RX_BUFFER_SIZE 32
 #endif
-/** Size of the circular transmit buffer, must be power of 2 */
+/** Size of the circular transmit buffer, must be power of 2 and fit to 8bit value */
 #ifndef UART_TX_BUFFER_SIZE
-#define UART_TX_BUFFER_SIZE 512
+#define UART_TX_BUFFER_SIZE 256
 #endif
 
 /* size of RX/TX buffers */
