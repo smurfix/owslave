@@ -15,8 +15,6 @@
  *  GNU General Public License (included; see the file LICENSE)
  *  for more details.
  */
-#include "features.h"
-
 /* Debugging */
 #ifdef HAVE_UART
 #include "uart.h"

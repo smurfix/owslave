@@ -20,6 +20,46 @@
 #include "features.h"
 #include "onewire.h"
 
+
+// some macro magic for the functions
+#define _COMPOSE(c, f)		c ## f
+#define _SETUP(c)			_COMPOSE(c, _setup)
+#define _MASK_OWPIN(c)		_COMPOSE(c, _mask_owpin)
+#define _UNMASK_OWPIN(c)	_COMPOSE(c, _unmask_owpin)
+#define _SET_OWTIMEOUT(c)	_COMPOSE(c, _set_owtimeout)
+#define _CLEAR_OWTIMER(c)	_COMPOSE(c, _clear_owtimer)
+#define _OWTIMER(c)			_COMPOSE(c, _owtimer)
+#define _OWPIN_SETUP(c)		_COMPOSE(c, _owpin_setup)
+#define _OWPIN_LOW(c)		_COMPOSE(c, _owpin_low)
+#define _OWPIN_HIZ(c)		_COMPOSE(c, _owpin_hiz)
+#define _OWPIN_VALUE(c)		_COMPOSE(c, _owpin_value)
+#define _OWTIMER_IS_SET_TO_SHORT_TIMEOUT(c)	\
+	_COMPOSE(c, _owtimer_is_set_to_short_timeout)
+
+
+/* cpu independent functions, but with names that show the CPU (during debug),
+ *   unmask usually acknowledges the interrupt as-well
+ */
+#define cpu_setup		_SETUP(__CPU)
+#define mask_owpin		_MASK_OWPIN(__CPU)
+#define unmask_owpin	_UNMASK_OWPIN(__CPU)
+#define set_owtimeout	_SET_OWTIMEOUT(__CPU)
+#define clear_owtimer	_CLEAR_OWTIMER(__CPU)
+#define owtimer			_OWTIMER(__CPU)
+#define owpin_setup		_OWPIN_SETUP(__CPU)
+#define owpin_low		_OWPIN_LOW(__CPU)
+#define owpin_hiz		_OWPIN_HIZ(__CPU)
+#define owpin_value		_OWPIN_VALUE(__CPU)
+#define owtimer_is_set_to_short_timeout		_OWTIMER_IS_SET_TO_SHORT_TIMEOUT(__CPU)
+
+
+#ifdef __AVR__
+#include "avr.h"
+#else
+#include "cortexm0.h"
+#endif
+
+
 /* Basic bus state machine, coding should not be visible in applications
  *   as it may change (optimization etc.). If any of this is necessary
  *   in application code create an interface function!
@@ -54,20 +94,11 @@
 #define S_CMD_IDLE        (       S_OPCODE|0x08)	// do nothing
 
 // 1wire interface
-#if 0 // def __AVR__
-// register optimization does not seem to work, these variables get corrupted
-register u_char bitcount asm("r2");
-register u_char transbyte asm("r3");
-register u_char xmitlen asm("r4");
-// global
-register volatile u_char state asm("r5");
-#else
 /* everything is volatile here ? TODO */
 static u_char bitcount;			// number of bits to receive or transmit
 static u_char transbyte;		// shift buffer for xmit and recv
 static u_char xmitlen;			// number of bytes to transmit
 static volatile u_char state;
-#endif
 
 static unsigned char addr[8];
 static jmp_buf end_out;
@@ -352,7 +383,6 @@ int main(void)
 		for(x=0;x<100000ULL;x++)
 #endif
 		 {
-
 			if((state & S_MASK) == S_HAS_OPCODE)
 				do_command(transbyte);
 
@@ -373,7 +403,7 @@ OW_TIMER_ISR()
 	u_char pin, st = state & S_MASK;
 	pin = owpin_value();		// sample immediately
 	clear_owtimer();
-	//DBG_C(pin ? '!' : ':');
+//	DBG_C(pin ? '!' : ':');
 	if (state & S_XMIT2) {
 		// de-assert a '0' on the pin set in pin interrupt
 		state &= ~S_XMIT2;
@@ -385,7 +415,7 @@ OW_TIMER_ISR()
 	if (st == S_RESET) {       // send a presence pulse
 		owpin_low();
 		state = S_PRESENCEPULSE;
-		set_owtimer(T_PRESENCE);
+		set_owtimeout(T_PRESENCE);
 		DBG_C('P');
 		goto end;
 	}
@@ -529,12 +559,21 @@ OW_PINCHANGE_ISR()
 		/* low to high transition */
 		//DBG_C('^');
 
-		/* check the length of the pulse, smaller than timeout
-		 * and larger than T_RESET, TIMEOUT is 0xF0, this is
-		 * a reset pulse.
+		/*
+		 * note: original code was a hack and quite unportable
+		 *   - the AVR code sets the timer to a value to e.g. 250 (using set_owtimeout(5))
+		 *     to generate an overflow interrupt in 5 tick times
+		 *   - short time measurements will be around 1bit time (60usec),
+		 *     hence the timer will be set to values above 0xF0 (16*8usec = 128usec for AVR 8MHz)
+		 *   - during basic states (IDLE, RESET, PRESENCE..) clear_timer() sets it to 0
+		 *
+		 * Actually this means: If the timer was not set to short values or if the
+		 *   the state is IDLE and the timer went above T_RESET then a reset pulse was
+		 *   seen.
+		 *
 		 */
-		if (TCNT0 > T_RESET && (TCNT0 < 0xF0 || st == S_IDLE)) {
-			set_owtimer(T_PRESENCEWAIT);
+		if ((!owtimer_is_set_to_short_timeout() || st == S_IDLE) && owtimer() > T_RESET) {
+			set_owtimeout(T_PRESENCEWAIT);
 			state = S_RESET;
 			bitcount = 8;
 			xmitlen = 0;
@@ -551,7 +590,7 @@ OW_PINCHANGE_ISR()
 		if ((transbyte & 0x01) == 0) {
 			mask_owpin();
 			owpin_low();		// send zero
-			set_owtimer(T_XMIT);
+			set_owtimeout(T_XMIT);
 			state |= S_XMIT2;
 		} else
 			clear_owtimer();
@@ -609,7 +648,7 @@ OW_PINCHANGE_ISR()
 	}
 	/* any receiving state, synchronize sampling with h2l transition */
 	else if (state & S_RECV) {
-		set_owtimer(T_SAMPLE);
+		set_owtimeout(T_SAMPLE);
 	}
 	/* some other device sending a presence pulse */
 	else if (st == S_RESET) {

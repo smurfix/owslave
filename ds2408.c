@@ -15,7 +15,7 @@
 
 /* This code implements (some of) the DS2408 8-bit I/O (obsolete).
  */
-
+#include "features.h"
 #include "onewire.h"
 
 #define C_READ_PIO         0xF0

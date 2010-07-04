@@ -70,6 +70,9 @@ typedef unsigned char timer_t;
 #error "Reset slot is too wide, fix timing!"
 #endif
 
+// actually cpu specific, but AVRs work all the same
+#undef owtimer_is_set_to_short_timeout
+#define owtimer_is_set_to_short_timeout()	(TCNT0 > 0xF0)
 
 #define OW_PINCHANGE_ISR() ISR (INT0_vect)
 #define OW_TIMER_ISR() ISR (TIMER0_OVF_vect)
@@ -112,7 +115,7 @@ static inline void init_debug(void) { uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU)
 /* define __CPU used as name prefix and
  * their uP setup functions, they:
  * - define appropriate clock settings
- * - define the prescaler used the OW_timer
+ * - define the prescaler used by the OW_timer
  * - setup the OW_pinchange interrupt
  */
 #if defined(__AVR_ATtiny13__)
@@ -129,13 +132,14 @@ static inline void AVR_ATtiny13_setup(void)
 
 static inline void AVR_ATtiny13_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATtiny13_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATtiny13_set_owtimer(timer_t timeout)
+static inline void AVR_ATtiny13_set_owtimeout(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);
 	TIMSK0 |= (1 << TOIE0);
 }
 static inline void AVR_ATtiny13_clear_owtimer(void) { TCNT0 = 0; TIMSK0 &= ~(1 << TOIE0); }
+static inline timer_t AVR_ATtiny13_owtimer(void) { return TCNT0; }
 
 // use INT0 pin (PORT B1)
 static inline void AVR_ATtiny13_owpin_setup(void) { PORTB &= ~2; DDRB &= ~2; }
@@ -155,13 +159,14 @@ static inline void AVR_ATmega8_setup(void)
 
 static inline void AVR_ATmega8_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATmega8_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATmega8_set_owtimer(timer_t timeout)
+static inline void AVR_ATmega8_set_owtimeout(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR |= (1 << TOV0);
 	TIMSK |= (1 << TOIE0);
 }
 static inline void AVR_ATmega8_clear_owtimer(void) { TCNT0 = 0; TIMSK &= ~(1 << TOIE0); }
+static inline timer_t AVR_ATmega8_owtimer(void) { return TCNT0; }
 
 // use INT0 pin (PORT B2)
 static inline void AVR_ATmega8_owpin_setup(void) { PORTB &= ~4; DDRB &= ~4; }
@@ -182,13 +187,14 @@ static inline void AVR_ATmega32_setup(void)
 
 static inline void AVR_ATmega32_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATmega32_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATmega32_set_owtimer(timer_t timeout)
+static inline void AVR_ATmega32_set_owtimeout(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR |= (1 << TOV0);
 	TIMSK |= (1 << TOIE0);
 }
 static inline void AVR_ATmega32_clear_owtimer(void) { TCNT0 = 0; TIMSK &= ~(1 << TOIE0); }
+static inline timer_t AVR_ATmega32_owtimer(void) { return TCNT0; }
 
 // use INT0 pin (PORT D2)
 static inline void AVR_ATmega32_owpin_setup(void) { PORTD &= ~4; DDRD &= ~4; }
@@ -208,13 +214,14 @@ static inline void AVR_ATtiny84_setup(void)
 
 static inline void AVR_ATtiny84_mask_owpin(void) { GIMSK &= ~(1 << INT0); }
 static inline void AVR_ATtiny84_unmask_owpin(void) { GIFR |= (1 << INTF0); GIMSK |= (1 << INT0); }
-static inline void AVR_ATtiny84_set_owtimer(timer_t timeout)
+static inline void AVR_ATtiny84_set_owtimeout(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);
 	TIMSK0 |= (1 << TOIE0);
 }
 static inline void AVR_ATtiny84_clear_owtimer(void) { TCNT0 = 0; TIMSK0 &= ~(1 << TOIE0); }
+static inline timer_t AVR_ATtiny84_owtimer(void) { return TCNT0; }
 
 // use INT0 pin (PORT B2)
 static inline void AVR_ATtiny84_owpin_setup(void) { PORTB &= ~4; DDRB &= ~4; }
@@ -235,13 +242,14 @@ static inline void AVR_ATmega168_setup(void)
 
 static inline void AVR_ATmega168_mask_owpin(void) { EIMSK &= ~(1 << INT0); }
 static inline void AVR_ATmega168_unmask_owpin(void) { EIFR |= (1 << INTF0); EIMSK |= (1 << INT0); }
-static inline void AVR_ATmega168_set_owtimer(timer_t timeout)
+static inline void AVR_ATmega168_set_owtimeout(timer_t timeout)
 {
 	TCNT0 = ~timeout;	// overrun at 0xFF
 	TIFR0 |= (1 << TOV0);
 	TIMSK0 |= (1 << TOIE0);
 }
 static inline void AVR_ATmega168_clear_owtimer(void) { TCNT0 = 0; TIMSK0 &= ~(1 << TOIE0); }
+static inline timer_t AVR_ATtiny168_owtimer(void) { return TCNT0; }
 
 // use INT0 pin (PORT D2)
 static inline void AVR_ATmega168_owpin_setup(void) { PORTD &= ~4; DDRB &= ~4; }
