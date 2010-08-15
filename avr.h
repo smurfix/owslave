@@ -249,7 +249,7 @@ static inline void AVR_ATmega168_set_owtimeout(timer_t timeout)
 	TIMSK0 |= (1 << TOIE0);
 }
 static inline void AVR_ATmega168_clear_owtimer(void) { TCNT0 = 0; TIMSK0 &= ~(1 << TOIE0); }
-static inline timer_t AVR_ATtiny168_owtimer(void) { return TCNT0; }
+static inline timer_t AVR_ATmega168_owtimer(void) { return TCNT0; }
 
 // use INT0 pin (PORT D2)
 static inline void AVR_ATmega168_owpin_setup(void) { PORTD &= ~4; DDRB &= ~4; }
