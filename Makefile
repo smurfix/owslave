@@ -2,13 +2,13 @@
 #MCU=atmega8
 #MCU=attiny13
 #MCU=attiny84
-#MCU=attiny4313
-MCU=atmega168
-MCU_PROG=m168
+MCU=attiny4313
+#MCU=atmega168
+#MCU_PROG=m168
 #MCU_PROG=t84
-#MCU_PROG=attiny4313
+MCU_PROG=attiny4313
 #PROG=usbtiny
-PROG=avrmkispII
+PROG=avrispmkII
 PORT=usb
 
 CC=avr-gcc
