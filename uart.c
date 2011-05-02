@@ -68,11 +68,19 @@ LICENSE:
 
 /** Size of the circular receive buffer, must be power of 2 */
 #ifndef UART_RX_BUFFER_SIZE
+#if defined(__AVR_ATtiny4313__)  
+#define UART_RX_BUFFER_SIZE 16
+#else
 #define UART_RX_BUFFER_SIZE 32
+#endif
 #endif
 /** Size of the circular transmit buffer, must be power of 2 */
 #ifndef UART_TX_BUFFER_SIZE
+#if defined(__AVR_ATtiny4313__)  
+#define UART_TX_BUFFER_SIZE 16
+#else
 #define UART_TX_BUFFER_SIZE 256
+#endif
 #endif
 
 
@@ -110,6 +118,15 @@ LICENSE:
  #define UART0_STATUS   UCSRA
  #define UART0_CONTROL  UCSRB
  #define UART0_DATA     UDR 
+ #define UART0_UDRIE    UDRIE
+#elif  defined(__AVR_ATtiny4313__)  
+ #define ATTiny_UART
+ #define UART0_RECEIVE_INTERRUPT   USART_RX_vect
+ #define UART0_TRANSMIT_INTERRUPT  USART_UDRE_vect
+ #define UART0_STATUS   UCSRA
+ #define UART0_CONTROL  UCSRB
+ #define UCSR0C UCSRC
+ #define UART0_DATA     UDR
  #define UART0_UDRIE    UDRIE
 #elif  defined(__AVR_ATmega8__)  || defined(__AVR_ATmega16__) || defined(__AVR_ATmega32__) \
   || defined(__AVR_ATmega8515__) || defined(__AVR_ATmega8535__) \
@@ -279,6 +296,18 @@ void uart_init(unsigned int baudrate)
 
     /* enable UART receiver and transmmitter and receive complete interrupt */
     UART0_CONTROL = _BV(RXCIE)|_BV(RXEN)|BV(TXEN);
+#elif defined (ATTiny_UART)
+    /* Set baud rate */
+    UBRRH = (unsigned char)(baudrate>>8);
+    UBRRL = (unsigned char) baudrate;
+    //UART0_CONTROL = _BV(RXCIE)|(1<<RXEN)|(1<<TXEN);
+    UART0_CONTROL = _BV(RXCIE)|(1<<TXEN);
+    /* Set frame format: asynchronous, 8data, no parity, 1stop bit */
+    #ifdef URSEL
+    UCSRC = (1<<URSEL)|(3<<UCSZ0);
+    #else
+    UCSRC = (3<<UCSZ0);
+    #endif 
 
 #elif defined (ATMEGA_USART)
     /* Set baud rate */
@@ -325,8 +354,8 @@ void uart_init(unsigned int baudrate)
 
 inline void _uart_putc_now(unsigned char data)
 {
-	while(!(UCSR0A & _BV(UDRE0))) ;
-	UDR0 = data;
+	while(!(UART0_STATUS & _BV(UART0_UDRIE))) ;
+	UART0_DATA = data;
 	return;
 }
 inline void uart_putc_now(unsigned char data)

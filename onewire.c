@@ -50,6 +50,12 @@ static jmp_buf end_out;
 #define OWDDR DDRB
 #define ONEWIREPIN 2		 // INT0
 
+#elif defined (__AVR_ATtiny4313__)
+#define OWPIN PIND
+#define OWPORT PORTD
+#define OWDDR DDRD
+#define ONEWIREPIN PIND2		// INT0
+
 #elif defined (__AVR_ATmega8__)
 #define OWPIN PIND
 #define OWPORT PORTD
@@ -70,7 +76,11 @@ static jmp_buf end_out;
 #define T_(c) ((F_CPU/64)/(1000000/c))
 #define T_PRESENCE T_(120)-5
 #define T_PRESENCEWAIT T_(20)
+#if defined(__AVR_ATtiny4313__)
+#define T_SAMPLE T_(25)-2	// This timing seems to work for the 4313 
+#else
 #define T_SAMPLE T_(15)-2	// overhead
+#endif
 #define T_XMIT T_(60)-5		// overhead (measured w/ scope on ATmega168)
 #define T_RESET_ T_(400)        // timestamp for sampling
 #define T_RESET (T_RESET_-T_SAMPLE)
@@ -115,6 +125,15 @@ void setup(void)
 #elif defined (__AVR_ATtiny84__)
 	CLKPR = 0x80;	 // Prepare to ...
 	CLKPR = 0x00;	 // ... set to 8.0 MHz
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+
+#elif defined (__AVR_ATtiny4313__)
+	// Clock is set via fuse
+	// CKSEL = 01100100; (0xe4)   Fuse Low Byte Bits 3:0
+        //  
+	TCCR0A = 0;
+	TCCR0B = 0x03;	// Prescaler 1/64
 
 	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 	

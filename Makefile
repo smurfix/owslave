@@ -2,10 +2,14 @@
 #MCU=atmega8
 #MCU=attiny13
 #MCU=attiny84
+#MCU=attiny4313
 MCU=atmega168
 MCU_PROG=m168
 #MCU_PROG=t84
-PROG=usbtiny
+#MCU_PROG=attiny4313
+#PROG=usbtiny
+PROG=avrmkispII
+PORT=usb
 
 CC=avr-gcc
 OBJCOPY=avr-objcopy
@@ -53,10 +57,13 @@ $(DEVNAME).eeprom:
 	python gen_eeprom.py $(DEVCODE) > $@
 #------------------
 burn: $(DEVNAME).hex $(DEVNAME).eeprom
-	avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i -U eeprom:w:$(DEVNAME).eeprom:i 
+	avrdude -c $(PROG) -p $(MCU_PROG) -P $(PORT) -U flash:w:$(DEVNAME).hex:i -U eeprom:w:$(DEVNAME).eeprom:i 
 	#avrdude -V -c $(PROG) -p $(MCU_PROG) -U $(PRG).bin
 #-------------------
+fuse: 
+	avrdude -c $(PROG) -p $(MCU_PROG) -P $(PORT) -U lfuse:w:0xe4:m  -U hfuse:w:0xDF:m -U efuse:w:0xff:m
+#-------------------
 clean:
-	rm -f *.o *.map *.out *t.hex
+	rm -f *.o *.map *.out *.hex *.bin
 #-------------------
 

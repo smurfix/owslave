@@ -28,6 +28,17 @@
 #define IFR GIFR
 #endif
 
+#ifdef __AVR_ATtiny4313__
+#define F_CPU_                8000000
+
+#define IMSK GIMSK
+#define TIMSK0 TIMSK
+#define TIFR0 TIFR
+#define IFR EIFR
+#define EEARL EEAR
+
+#endif
+
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
 
