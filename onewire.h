@@ -118,6 +118,7 @@ void next_command(void) __attribute__((noreturn));
    After receiving data+crc, crc should be 0xB001.
  */
 uint16_t crc16(uint16_t crc, uint8_t x);
+uint8_t crc8(uint8_t crc, uint8_t value);
 
 
 /************** Your code's Prototypes ****************/

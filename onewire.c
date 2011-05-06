@@ -374,6 +374,17 @@ uint16_t crc16(uint16_t r, uint8_t x)
         return r;
 }
 
+uint8_t crc8( uint8_t crc, uint8_t value)
+{
+   uint8_t crc8_loop;
+   for (crc8_loop = 8; crc8_loop; crc8_loop--) {
+      uint8_t mix = (crc ^ value) & 0x01;
+      crc >>= 1;
+      if (mix) crc ^= 0x8C;
+         value >>= 1;
+   }
+   return crc;
+}
 
 // Main program
 int main(void)
