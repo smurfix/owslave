@@ -47,11 +47,15 @@ typedef unsigned char timer_t;
 #define T_RESET_ T_(400)        // timestamp for sampling
 #define T_RESET (T_RESET_-T_SAMPLE)
 
-/* these are critical and should be set-up individually
- * ... the fallbacks may be invalid
+/* these are critical and may be set-up individually in the CPU specific sections below:
+ * #if F_CPU == 14736489
+ * 	#undef T_SAMPLE
+ *	#define T_SAMPLE T_(37)-11
+ * #endif
+ * ... these fallbacks may be invalid
  */
 #ifndef T_SAMPLE
-#if F_CPU > 12000000
+#if F_CPU >= 12000000
 	#define T_SAMPLE T_(15)-1
 #elif F_CPU > 9600000
 	#define T_SAMPLE T_(15)-2
@@ -76,6 +80,9 @@ typedef unsigned char timer_t;
 
 #define OW_PINCHANGE_ISR() ISR (INT0_vect)
 #define OW_TIMER_ISR() ISR (TIMER0_OVF_vect)
+// not used by owslave code directly
+#define OW_OVFLOW_ISR() ISR (TIMER1_OVF_vect)
+#define OW_PERIOD_ISR() ISR (TIMER1_CAPT_vect)
 
 // stupidity
 #ifndef TIMER0_OVF_vect
@@ -168,11 +175,11 @@ static inline void AVR_ATmega8_set_owtimeout(timer_t timeout)
 static inline void AVR_ATmega8_clear_owtimer(void) { TCNT0 = 0; TIMSK &= ~(1 << TOIE0); }
 static inline timer_t AVR_ATmega8_owtimer(void) { return TCNT0; }
 
-// use INT0 pin (PORT B2)
-static inline void AVR_ATmega8_owpin_setup(void) { PORTB &= ~4; DDRB &= ~4; }
-static inline void AVR_ATmega8_owpin_low(void) { DDRB |= 4; }
-static inline void AVR_ATmega8_owpin_hiz(void) { DDRB &= ~4; }
-static inline u_char AVR_ATmega8_owpin_value(void) { return PINB & 4; }
+// use INT0 pin (PORT D2)
+static inline void AVR_ATmega8_owpin_setup(void) { PORTD &= ~4; DDRD &= ~4; }
+static inline void AVR_ATmega8_owpin_low(void) { DDRD |= 4; }
+static inline void AVR_ATmega8_owpin_hiz(void) { DDRD &= ~4; }
+static inline u_char AVR_ATmega8_owpin_value(void) { return PIND & 4; }
 
 #elif defined (__AVR_ATmega32__)
 #define __CPU	AVR_ATmega32
