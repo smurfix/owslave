@@ -5,7 +5,6 @@
 # Prints an 8-byte string (family code, 6-by random ID, checksum).
 
 import sys
-import struct
 
 id = [int(sys.argv[1],16)]
 if len(sys.argv) == 3:
