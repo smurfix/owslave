@@ -11,7 +11,7 @@ id = [int(sys.argv[1],16)]
 if len(sys.argv) == 3:
 	s = sys.argv[2]
 	if len(s) != 12:
-		assert RuntimeError("random ID must be 6 bytes long!")
+		raise RuntimeError("random ID must be 6 bytes long!")
 	while s:
 		id.append(int(s[0:2],16))
 		s = s[2:]
