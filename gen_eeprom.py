@@ -5,6 +5,7 @@
 # Prints an 8-byte string (family code, 6-by random ID, checksum).
 
 import sys
+from random import randint
 
 id = [int(sys.argv[1],16)]
 if len(sys.argv) == 3:
@@ -15,10 +16,8 @@ if len(sys.argv) == 3:
 		id.append(int(s[0:2],16))
 		s = s[2:]
 else:
-	rand = open("/dev/urandom","r")
-	s = rand.read(4)
-	rand.close()
-	id.extend((ord(c) for c in s))
+	for _ in xrange(4):
+		id.append(randint(0, 255))
 	id.extend((0xBE,0x42));
 
 table=( 0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
