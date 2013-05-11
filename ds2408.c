@@ -15,16 +15,16 @@
 
 /* This code implements (some of) the DS2408 8-bit I/O (obsolete).
  */
-
+#include "features.h"
 #include "onewire.h"
 
-#define C_READ_PIO         0xF0 // TODO
+#define C_READ_PIO         0xF0
 #define C_READ_CHANNEL     0xF5 // TODO
 #define C_WRITE_CHANNEL    0x5A // TODO
 #define C_WRITE_CONDSEARCH 0xCC // TODO
 #define C_RESET_LATCHES    0xC3 // TODO
 
-static uint8_t
+static u_char
 	pio_logic          = 0xFF,
 	pio_output_latch   = 0xFF,
 	pio_activity_latch = 0x00,
@@ -32,38 +32,40 @@ static uint8_t
 	cond_polarity_mask = 0x00,
 	control_status     = 0x88;
 
+/*
+ The following code does:
+     * receive address (2 bytes), add them to CRC
+     * transmit anything from this address onwards until
+       0x8F is reached
+     * send the 2 crc bytes.
+
+     This is all very straightforward, except that the CRC calculation
+ for the first byte to transmit is delayed somewhat:
+ the time between recv_byte_in() and xmit_byte() is only a bit wide,
+ which may not be enough time to add a CRC byte.
+ */
 void do_read_pio(void)
 {
-	uint16_t crc = 0;
-	uint16_t adr;
-	uint8_t bcrc = 1;
-	uint8_t b;
-
-	/*
-	 The following code does:
-         * receive address (2 bytes), add them to CRC
-         * send 1..32 bytes (0xFF), add them to CRC
-	 * send counter (4 bytes, CRC)
-	 * send 4 zero bytes
-	 * send inverted CRC
-         This is all very straightforward, except that the CRC calculation
-	 is delayed somewhat: the time between recv_byte_in() and xmit_byte()
-	 is only a bit wide, which may not be enough time to add a CRC byte.
-	 */
+	u_short crc = 0;
+	u_short adr;
+	u_char bcrc = 1;
+	u_char b;
 	
 	recv_byte();
 	crc = crc16(crc,0xF0);
-	b = recv_byte_in();
+	b = recv_byte_in();			// address low byte
 	recv_byte();
-	crc = crc16(crc,b);
+	crc = crc16(crc, b);
 	adr = b;
-	b = recv_byte_in();
+	b = recv_byte_in();			// address high byte
 	adr |= b<<8;
-#define XMIT(val) do {                                     \
-		xmit_byte(val);                            \
-		if(bcrc) { crc = crc16(crc,b); bcrc = 0; } \
-		crc = crc16(crc,val);                      \
-	} while(0)
+
+	/* note: bcrc is only true for the first byte to transmit */
+#define XMIT(val) do { \
+	xmit_byte(val); \
+	if(bcrc) { crc = crc16(crc, b); bcrc = 0; } \
+	crc = crc16(crc,val); \
+} while(0)
 
 	while(adr < 0x88) { XMIT(0); adr++; }
 	switch(adr) {
@@ -84,7 +86,7 @@ void do_read_pio(void)
 	}
 }
 
-void do_command(uint8_t cmd)
+void do_command(u_char cmd)
 {
 	if(cmd == C_READ_PIO) {
 		DBG_P(":I");
@@ -96,9 +98,10 @@ void do_command(uint8_t cmd)
 	}
 }
 
-void update_idle(uint8_t bits)
+void update_idle(u_char bits)
 {
 	//DBG_C('\\');
+	uart_try_send();
 }
 
 void init_state(void)

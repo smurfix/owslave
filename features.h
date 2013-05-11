@@ -16,68 +16,28 @@
 #ifndef FEATURES_H
 #define FEATURES_H
 
-/* External definitions:
- * F_CPU       clock rate
- * SKIP_SEARCH if you don't have enough ROM for search (saves ~200 bytes)
- * HAVE_UART   if you want to debug your code
+/* these are the current project settings, should be configurable in a way */
+
+/* HAVE_UART is really critical, the POLLED_TRANSMITTER works better
+ *   as it wont delay the 1-wire interrupts. This is especially true if large
+ *   amounts of data are output (pin debug and edge debug on!)
  */
-#ifdef __AVR_ATtiny13__
-#define F_CPU_                9600000
+#define HAVE_UART
+#define POLLED_TRANSMITTER
+#define BAUDRATE 57600
+#define F_CPU 16000000		// cortex-M0 currently at 48000000
+// #define SKIP_SEARCH		// omits search rom code (single slave only!)
 
-#define IMSK GIMSK
-#define IFR GIFR
-#endif
+/* some basic typedef, that should be very portable */
+typedef unsigned char u_char;
+typedef unsigned short u_short;
+typedef unsigned long u_long;
 
-#ifdef __AVR_ATtiny4313__
-#define F_CPU_                8000000
 
-#define IMSK GIMSK
-#define TIMSK0 TIMSK
-#define TIFR0 TIFR
-#define IFR EIFR
-#define EEARL EEAR
-
-#endif
-
-#ifdef __AVR_ATmega8__
-#define F_CPU_                8000000
-
-#define IMSK GIMSK
-#define TIMSK0 TIMSK
-#define TIFR0 TIFR
-#define EEPE EEWE
-#define EEMPE EEMWE
-#define IFR EIFR
-#endif
-
-#ifdef __AVR_ATtiny84__
-#define F_CPU_                8000000
-
-#define IMSK GIMSK
-#define IFR GIFR
-#define ADPIN PINA
-#define ADPIN_vect PCINT0_vect
-#define ADMSK PCMSK0
-#endif
-
-#ifdef __AVR_ATmega168__
-#define F_CPU_                16000000
-
-#define IMSK EIMSK
-#define IFR EIFR
-#define ADPIN PINC
-#define ADPIN_vect PCINT1_vect
-#define ADMSK PCMSK1
-#define ADIRQ
-// #define HAVE_UART
-#endif
-
-#ifndef F_CPU_
-#error Unknown AVR chip!
-#endif
-
-#ifndef F_CPU
-#define F_CPU F_CPU_
-#endif
+/*! there are 3 types of configuration settings:
+ *  - uP specific settings (like uP type, register names etc.)
+ *  - hardware specific settings (like fuse stuff: F_CPU, pin usage ...)
+ *  - project specific settings (ds2408, ds2423, ...)
+ */
 
 #endif /* FEATURES_H */

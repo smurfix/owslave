@@ -11,9 +11,10 @@ MCU_PROG=attiny4313
 PROG=avrispmkII
 PORT=usb
 
-CC=avr-gcc
-OBJCOPY=avr-objcopy
-OBJDUMP=avr-objdump
+ARCH=avr
+CC=$(ARCH)-gcc
+OBJCOPY=$(ARCH)-objcopy
+OBJDUMP=$(ARCH)-objdump
 
 #-------------------
 help: 
@@ -39,13 +40,19 @@ ds2408 ds2423 ds2502:
 %_dev:
 	@make DEVNAME=$(subst _dev,,$@) all
 
-# optimize for size:
-CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+# optimize for size!
+ifeq ($(ARCH),avr)
+  CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+  UART=avr_uart.o
+else
+  CFLAGS=-g -mcpu=cortex-m0 -mthumb -Wall -Wstrict-prototypes -Os
+  UART=cortexm0_uart.o
+endif
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
-	$(CC) $(CFLAGS) -Os -c $<
-$(DEVNAME).out : vbus.o onewire.o uart.o $(DEVNAME).o
+	$(CC) $(CFLAGS) -c $<
+$(DEVNAME).out : onewire.o $(DEVNAME).o $(UART)
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
 $(DEVNAME).hex : $(DEVNAME).out 
 	$(OBJCOPY) -R .eeprom -O ihex $< $@

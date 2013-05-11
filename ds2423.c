@@ -46,19 +46,31 @@
 #define C_READ_MEM_COUNTER 0xA5 // TODO
 
 #ifdef DEBUG
-uint8_t debug_state;
+u_char debug_state;
 #endif
 
 // The ADLAR bit is either in ADMUX or in ADCSRB.
 // If unknown, use a left shift in software.
 #if defined(__AVR_ATtiny84__)
+#define IFR	GIFR
+#define IMSK GIMSK
+#define ADPIN PINA
+#define ADPIN_vect PCINT0_vect
+#define ADMSK PCMSK0
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
 #elif defined (__AVR_ATmega168__)
+#define IFR	EIFR
+#define IMSK EIMSK
+#define ADPIN PINC
+#define ADPIN_vect PCINT1_vect
+#define ADMSK PCMSK1
+#define ADIRQ
 #define ADLARMUX (1<<ADLAR)
 #else
-#warning Where is the ADLAR bit?
+#warning "Where is the ADLAR bit?"
 #define NO_ADLAR
+#error "actually this won't compile for any other than ATtiny84 or ATmega168"
 #endif
 
 #ifdef ANALOG
@@ -67,29 +79,29 @@ uint8_t debug_state;
 // At 8 KHz sampling rate (approx), 1/10th second should be enough 
 //#define SLOW 4 // decay filter for lowpass-filtering
 
-static uint16_t last[NCOUNTERS];
-static uint16_t hyst[NCOUNTERS];
+static u_short last[NCOUNTERS];
+static u_short hyst[NCOUNTERS];
 #ifdef SLOW
 #if SLOW > 5
 static uint32_t decay[NCOUNTERS];
 #else
-static uint16_t decay[NCOUNTERS];
+static u_short decay[NCOUNTERS];
 #endif
 #endif
-static uint8_t cur_adc,bstate;
-static uint16_t samples;
+static u_char cur_adc,bstate;
+static u_short samples;
 
 #else // !ANALOG
-static uint8_t obits,cbits;
+static u_char obits,cbits;
 #endif
 static uint32_t counter[NCOUNTERS];
-static uint8_t unchecked;
+static u_char unchecked;
 
-static uint8_t byte_at(uint16_t adr)
+static u_char byte_at(u_short adr)
 {
 #ifdef DEBUG
 	if((adr & 0x1F) == 0x1F) {
-		uint8_t res = debug_state;
+		u_char res = debug_state;
 		if(debug_state == 0)
 			debug_state = 1;
 
@@ -103,10 +115,10 @@ static uint8_t byte_at(uint16_t adr)
 
 void do_mem_counter(void)
 {
-	uint16_t crc = 0;
-	uint8_t b,c;
-	uint8_t len;
-	uint16_t adr;
+	u_short crc = 0;
+	u_char b,c;
+	u_char len;
+	u_short adr;
 
 	/*
 	 The following code does:
@@ -186,7 +198,7 @@ xmore:
 		xmit_bit(1);
 }
 
-void do_command(uint8_t cmd)
+void do_command(u_char cmd)
 {
 	if(cmd == C_READ_MEM_COUNTER) {
 		DBG_P(":I");
@@ -218,8 +230,8 @@ void start_adc(void)
 void check_adc(void)
 {
 #ifdef ANALOG
-	uint16_t res;
-	uint8_t cur;
+	u_short res;
+	u_char cur;
 #ifdef DEBUG
 	if(debug_state == 1)
 		start_adc();
@@ -235,7 +247,7 @@ void check_adc(void)
 	res >>= 1;
 #endif
 #ifdef DEBUG
-	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_Y(res); DBG_NL();
+	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_Y(res); DBG_C('\n');
 #endif
 
 	cur = cur_adc;
@@ -256,14 +268,14 @@ void check_adc(void)
 		decay[cur] = ires;
 		res = ires>>16;
 #else
-		uint16_t last = decay[cur];
+		u_short last = decay[cur];
 		res = (res>>SLOW) + last - (last>>SLOW);
 		decay[cur] = res;
 #endif
 	}
 #endif
 #ifdef DEBUG
-	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_NL();
+	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_C('\n');
 #endif
 	if(!(bstate&(1<<cur))) {
 		if (res < last[cur]) {
@@ -285,8 +297,8 @@ void check_adc(void)
 	if(samples < 0xFFFF)
 		samples++;
 #else
-	uint8_t i = 0;
-	uint8_t now_bits,nbits,bits,ocbits;
+	u_char i = 0;
+	u_char now_bits,nbits,bits,ocbits;
 	cli();
 	now_bits = ADPIN;
 	nbits = now_bits;
@@ -314,13 +326,13 @@ void check_adc(void)
 #ifndef ANALOG
 ISR(ADPIN_vect)
 {
-	uint8_t nbits = ADPIN;
+	u_char nbits = ADPIN;
 	nbits ^= obits; // 'nbits' now contains the changed bits
 	cbits |= nbits;
 }
 #endif
 
-void update_idle(uint8_t bits)
+void update_idle(u_char bits)
 {
 	//DBG_C('\\');
 	if(bits > 0 || unchecked > 100)
@@ -334,7 +346,7 @@ void update_idle(uint8_t bits)
 #if 0
 	// ten times per second or so, do some housekeeping
 	if (samples > 800/NCOUNTERS) {
-		uint8_t i = NCOUNTERS;
+		u_char i = NCOUNTERS;
 		samples -= 800/NCOUNTERS;
 
 		while(i) {
@@ -350,7 +362,7 @@ void update_idle(uint8_t bits)
 void init_state(void)
 {
 #ifdef ANALOG
-	uint8_t i;
+	u_char i;
 #endif
 	memset(counter,0,sizeof(counter));
 #ifdef ANALOG
