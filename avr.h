@@ -215,7 +215,9 @@ static inline u_char AVR_ATmega32_owpin_value(void) { return PIND & 4; }
 static inline void AVR_ATtiny84_setup(void)
 {
 	CLKPR = 0x80;	// Prepare to ...
-	CLKPR = 0x00;	// ... set to 8.0 MHz
+	CLKPR = 0x00;	// ... set to 16.0 MHz
+	TCCR0A = 0;
+	TCCR0B = 0x03;			// Prescaler 1/64
 	MCUCR |= (1 << ISC00);	// Interrupt on both level changes
 }
 
