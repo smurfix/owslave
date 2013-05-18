@@ -108,7 +108,7 @@ void do_command(u_char cmd)
          //DEACTIVATE MAIN and AUX
          PORTA |= (MAIN_CONTROL|AUX_CONTROL);
          //Clear Event Flags
-         status_info &= (S_MAIN_EVENT|S_AUX_EVENT); 
+         status_info &= ~(S_MAIN_EVENT|S_AUX_EVENT); 
          //UPDATE AUTO CONTROL
          if( !(status_info&S_MODE) )
             status_info |= (S_MAIN_STAT|S_AUX_STAT);
@@ -281,8 +281,18 @@ void do_command(u_char cmd)
 
 void update_idle(u_char bits)
 {
-	//DBG_C('\\');
-	//uart_try_send();
+        //Check for events
+        //FIXME maybe pinchange interrupts
+        //Check if Main inactive
+        if( status_info & S_MAIN_STAT )
+           //Pin Low is Event
+           if( ! (PINA&MAIN_IN))
+              status_info |= S_MAIN_EVENT;
+        //Check if Aux inactive
+        if( status_info & S_AUX_STAT )
+           //Pin Low is Event
+           if( ! (PINA&AUX_IN))
+              status_info |= S_AUX_EVENT;
 }
 
 void init_state(void)
