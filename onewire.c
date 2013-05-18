@@ -203,6 +203,12 @@ static inline void xmit_any(u_char val, u_char len)
 	DBG_OFF();
 }
 
+void xmit_any_out(void)
+{
+	while( state & S_XMIT  )
+           update_idle(bitcount);
+}
+
 /*! transmit a single bit (true or false) */
 void xmit_bit(u_char val)
 {
@@ -210,11 +216,23 @@ void xmit_bit(u_char val)
 	xmit_any(!!val, 1);
 }
 
+/*! Wait until bit has been transmitted */
+void xmit_bit_out(void)
+{
+   xmit_any_out();
+}
+
 /*! transmit a byte */
 void xmit_byte(u_char val)
 {
 	DBG_C('<');
 	xmit_any(val, 8);
+}
+
+/*! Wait until byte has been transmitted */
+void xmit_byte_out(void)
+{
+   xmit_any_out();
 }
 
 /*! returns true if not a receiving or transmitting state active

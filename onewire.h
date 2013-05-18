@@ -57,6 +57,8 @@ void set_idle(void);
 /* send something. Will return as soon as transmission is active. */
 void xmit_bit(u_char bit);
 void xmit_byte(u_char bit);
+void xmit_bit_out(void);
+void xmit_byte_out(void);
 /* receive something. For concurrency, you need to declare your intention
    to receive as soon as possible. Then call recv_bit() or recv_byte()
    when you really need the data. */
