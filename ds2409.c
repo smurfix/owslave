@@ -171,13 +171,13 @@ void do_command(u_char cmd)
          for(loop=8;loop>0;loop--)
          {
             xmit_bit( presence );
-            //xmit_bit( 1 );
-            //xmit_bit_out();
+            xmit_bit_out();
          }
          if( shortcircuit )
          {
             //Return Inverted Command
             xmit_byte(~C_SMART_MAIN_ON);
+            xmit_byte_out();
             //UPDATE AUTO CONTROL
             status_info &= ~S_MAIN_LEVL;
          }
@@ -185,14 +185,12 @@ void do_command(u_char cmd)
          {
             //Return Command
             xmit_byte(C_SMART_MAIN_ON);
-            //FIXME Wait for xmit
-            //PORTA |= DEBUGP;
-            for( loop=3200; loop > 0; loop--)
+            xmit_byte_out();
+            //Add some delay.
+            for ( loop = 300; loop > 0; loop -- )
             {
-               //Test shortcuit here?
-               presence &=(PINA&MAIN_IN);
+               presence&=(PINA&MAIN_IN);
             }
-            //PORTA &= DEBUGP;
             //AUX OFF
             PORTA |= (AUX_CONTROL);
             //MAIN ON
@@ -243,13 +241,13 @@ void do_command(u_char cmd)
          for(loop=8;loop>0;loop--)
          {
             xmit_bit( presence );
-            //xmit_bit( 1 );
-            //xmit_bit_out();
+            xmit_bit_out();
          }
          if( shortcircuit )
          {
             //Return Inverted Command
             xmit_byte(~C_SMART_AUX_ON);
+            xmit_byte_out();
             //UPDATE AUTO CONTROL
             status_info &= ~S_AUX_LEVL;
          }
@@ -257,14 +255,12 @@ void do_command(u_char cmd)
          {
             //Return Command
             xmit_byte(C_SMART_AUX_ON);
-            //FIXME Wait for xmit instead of looping
-            //PORTA |= DEBUGP;
-            for( loop=3200; loop > 0; loop--)
+            xmit_byte_out();
+            //Add some delay.
+            for ( loop = 300; loop > 0; loop -- )
             {
-               //Test shortcuit here?
-               presence &=(PINA&AUX_IN);
+               presence&=(PINA&AUX_IN);
             }
-            //PORTA &= DEBUGP;
             //MAIN OFF
             PORTA |= (MAIN_CONTROL);
             //AUX ON
