@@ -32,6 +32,7 @@
 #define MAIN_IN	(0x01<<PA3)
 #define AUX_IN  (0x01<<PA2)
 #define DEBUGP  (0x01<<PA5)
+#define CONTROL_OUTPUT (0x01<<PA4)
 
 #define S_MODE       0x80
 #define S_CONTROL    0x40
@@ -70,20 +71,37 @@ void do_command(u_char cmd)
              if( status_info&S_MODE) 
              {
                 //Manual Mode
-                //FIXME Set output transistor.
                 if ( control_byte & 0x80 )
+                {
                    status_info |= S_CONTROL;
+                   PORTA |= (CONTROL_OUTPUT);
+                }
                 else
+                {
                    status_info &= ~S_CONTROL;
+                   PORTA &= ~(CONTROL_OUTPUT);
+                }
              }
              else
              {
                 //Auto Mode
                 //FIXME Set output transistor.
                 if ( control_byte & 0x40 )
+                {
                    status_info |= S_CONTROL;
+                   //Set status transtor based on association
+                   if ( ! (status_info & S_MAIN_STAT) )
+                      PORTA |= (CONTROL_OUTPUT);
+                   else if ( ! (status_info & S_AUX_STAT) )
+                      PORTA &= ~(CONTROL_OUTPUT);
+                }
                 else
                    status_info &= ~S_CONTROL;
+                   //Set status transtor based on inverted association
+                   if ( ! (status_info & S_AUX_STAT) )
+                      PORTA |= (CONTROL_OUTPUT);
+                   else if ( ! (status_info & S_MAIN_STAT) )
+                      PORTA &= ~(CONTROL_OUTPUT);
              }
          }
          //Check if Main and Aux have no short circuit
@@ -133,11 +151,15 @@ void do_command(u_char cmd)
          //UPDATE AUTO CONTROL
          xmit_byte(C_DIRECT_MAIN_ON);
          status_info &= ~(S_MAIN_STAT);
+         status_info |= (S_AUX_STAT);
          if( !(status_info&S_MODE) )
          {
             status_info &= ~(S_CONTROL);   
+            if( status_info&S_CONTROL )
+               PORTA &= ~(CONTROL_OUTPUT);
+            else
+               PORTA |= (CONTROL_OUTPUT);
          }
-         //FIXME Set output transistor.
          break;
       case C_SMART_MAIN_ON:
       {
@@ -200,8 +222,13 @@ void do_command(u_char cmd)
             status_info |= S_AUX_STAT;
             status_info &= ~S_MAIN_STAT;
             if( !(status_info&S_MODE) )
+            {
                status_info &= ~(S_CONTROL);
-            //FIXME Set output transistor.
+               if( status_info&S_CONTROL )
+                  PORTA &= ~(CONTROL_OUTPUT);
+               else
+                  PORTA |= (CONTROL_OUTPUT);
+            }
          }
          break;
       }
@@ -269,8 +296,13 @@ void do_command(u_char cmd)
             status_info |= S_MAIN_STAT;
             status_info &= ~S_AUX_STAT;
             if( !(status_info&S_MODE) )
+            {
                status_info |= S_CONTROL;
-            //FIXME Set output transistor.
+               if( status_info&S_CONTROL )
+                  PORTA |= (CONTROL_OUTPUT);
+               else
+                  PORTA &= ~(CONTROL_OUTPUT);
+            }
          }
          break;
       }
@@ -297,13 +329,13 @@ void update_idle(u_char bits)
 
 void init_state(void)
 {
-   DDRA |= (MAIN_CONTROL|AUX_CONTROL);
+   DDRA |= (MAIN_CONTROL|AUX_CONTROL|CONTROL_OUTPUT);
    //PORTA &= ~(MAIN_CONTROL);
    //Set MAIN Control, AUX Control and Presence Outputs
    DDRA |= (MAIN_CONTROL|AUX_CONTROL);
    //DDRA |= (DEBUGP);
-   //Switch Off MAIN, AUX and Presence
-   PORTA |= (MAIN_CONTROL|AUX_CONTROL);
+   //Switch Off MAIN, AUX and CONTROL_OUTPUT ON
+   PORTA |= (MAIN_CONTROL|AUX_CONTROL|CONTROL_OUTPUT);
    //PORTA &= ~(DEBUGP);
    //Set MAIN In and Aux HIZ inputs, low output
    DDRA &= ~(MAIN_IN|AUX_IN);
