@@ -35,10 +35,10 @@ Extension: uart_puti, uart_puthex_nibble, uart_puthex_byte
  
 /*@{*/
 
+#ifdef __AVR__
 #if (__GNUC__ * 100 + __GNUC_MINOR__) < 303
 #error "This library requires AVR-GCC 3.3 or later, update to newer AVR-GCC compiler !"
 #endif
-
 
 /*
 ** constants and macros
@@ -50,18 +50,25 @@ Extension: uart_puti, uart_puthex_nibble, uart_puthex_byte
  */
 #define UART_BAUD_SELECT(baudRate,xtalCpu) ((xtalCpu)/((baudRate)*16l)-1)
 
-
 #ifndef P
 #define P(s) ({static const char c[] __attribute__ ((progmem)) = s;c;})
 #endif
 
+/**
+ * @brief    Macro to automatically put a string constant into program memory
+ */
+#define uart_puts_P(__s)		uart_puts_p(P(__s))
+#else		// __AVR__
+// other uP usually don't need to distinguish memory spaces
+#define uart_puts_P(__s)		uart_puts(__s)
+#endif
 
 /* 
 ** high byte error return code of uart_getc()
 */
 #define UART_FRAME_ERROR      0x0800              /* Framing Error by UART       */
 #define UART_OVERRUN_ERROR    0x0400              /* Overrun condition by UART   */
-#define UART_BUFFER_OVERFLOW  0x0200              /* receive ringbuffer overflow */
+#define UART_BUFFER_OVERFLOW  0x0200              /* receive ring buffer overflow */
 #define UART_NO_DATA          0x0100              /* no receive data available   */
 
 
@@ -71,27 +78,29 @@ Extension: uart_puti, uart_puthex_nibble, uart_puthex_byte
 
 /**
    @brief   Initialize UART and set baudrate 
-   @param   baudrate Specify baudrate using macro UART_BAUD_SELECT()
+   @param   baudrate (implmentation specific)
    @return  none
 */
 extern void uart_init(unsigned int baudrate);
 
+/* only if polled mode enabled ! */
+extern void uart_try_send(void);
 
 /**
- *  @brief   Get received byte from ringbuffer
+ *  @brief   Get received byte from ring buffer
  *
  * Returns in the lower byte the received character and in the 
  * higher byte the last receive error.
  * UART_NO_DATA is returned when no data is available.
  *
  *  @param   void
- *  @return  lower byte:  received byte from ringbuffer
+ *  @return  lower byte:  received byte from ring buffer
  *  @return  higher byte: last receive status
  *           - \b 0 successfully received data from UART
  *           - \b UART_NO_DATA           
  *             <br>no receive data available
  *           - \b UART_BUFFER_OVERFLOW   
- *             <br>Receive ringbuffer overflow.
+ *             <br>Receive ring buffer overflow.
  *             We are not reading the receive buffer fast enough, 
  *             one or more received character have been dropped 
  *           - \b UART_OVERRUN_ERROR     
@@ -106,97 +115,50 @@ extern unsigned int uart_getc(void);
 
 
 /**
- *  @brief   Put byte to ringbuffer for transmitting via UART
- *  @param   data byte to be transmitted
- *  @return  none
+ *  @brief   Put byte to ring buffer for transmitting via UART
  */
 extern void uart_putc(unsigned char data);
 extern void uart_putc_now(unsigned char data);
 
 
 /**
- *  @brief   Put string to ringbuffer for transmitting via UART
- *
- *  The string is buffered by the uart library in a circular buffer
- *  and one character at a time is transmitted to the UART using interrupts.
- *  Blocks if it can not write the whole string into the circular buffer.
- * 
- *  @param   s string to be transmitted
- *  @return  none
+ *  @brief   Put string to ring buffer for transmitting via UART
  */
 extern void uart_puts(const char *s );
 
 
 /**
- * @brief    Put string from program memory to ringbuffer for transmitting via UART.
- *
- * The string is buffered by the uart library in a circular buffer
- * and one character at a time is transmitted to the UART using interrupts.
- * Blocks if it can not write the whole string into the circular buffer.
- *
+ * @brief    Put string from program memory to ring buffer for transmitting via UART.
  * @param    s program memory string to be transmitted
- * @return   none
- * @see      uart_puts_P
  */
 extern void uart_puts_p(const char *s );
 
 /**
- * @brief    Macro to automatically put a string constant into program memory
- */
-#define uart_puts_P(__s)       uart_puts_p(P(__s))
-
-/**
- * @brief    Put integer to ringbuffer for transmitting via UART.
- *
- * The integer is converted to a string which is buffered by the uart 
- * library in a circular buffer and one character at a time is transmitted 
- * to the UART using interrupts.
- *
- * @param    value to transfer
- * @return   none
- * @see      uart_puts_p
+ * @brief    Put integer to ring buffer for transmitting via UART.
  */
 extern void uart_puti( int i );
 extern void uart_putl( long i );
 
 /**
- * @brief    Put nibble as hex to ringbuffer for transmit via UART.
- *
- * The lower nibble of the parameter is convertet to correspondig
- * hex-char and put in a circular buffer and one character at a time 
- * is transmitted to the UART using interrupts.
- *
- * @param    value to transfer (byte, only lower nibble converted)
- * @return   none
- * @see      uart_putc
+ * @brief    Put lower nibble as hex to ring buffer for transmit via UART.
  */
-extern void uart_puthex_nibble(const unsigned char b);
+extern void uart_puthex_nibble(unsigned char b);
 
 /**
- * @brief    Put byte as hex to ringbuffer for transmit via UART.
- *
- * The upper and lower nibble of the parameter are convertet to 
- * correspondig hex-chars and put in a circular buffer and one 
- * character at a time is transmitted to the UART using interrupts.
- *
- * @param    value to transfer
- * @return   none
- * @see      uart_puthex_nibble
+ * @brief    Put byte as hex to ring buffer for transmit via UART.
  */
-extern void uart_puthex_byte(const unsigned char b);
+extern void uart_puthex_byte(unsigned char b);
 
 /**
- * @brief    Put two bytes as hex to ringbuffer for transmit via UART.
- *
- * The upper and lower bytes of the parameter are convertet to 
- * correspondig hex-chars and put in a circular buffer and one 
- * character at a time is transmitted to the UART using interrupts.
- *
- * @param    value to transfer
- * @return   none
- * @see      uart_puthex_byte
+ * @brief    Put two bytes as hex to ring buffer for transmit via UART.
  */
-extern void uart_puthex_word(const uint16_t b);
+extern void uart_puthex_word(unsigned short b);
+
+/**
+ * @brief    Put 4 bytes as hex to ring-buffer for transmit via UART.
+ */
+extern void uart_puthex_long(unsigned long b);
+
 
 /*@}*/
 #endif // UART_H 
