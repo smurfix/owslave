@@ -60,3 +60,9 @@ clean:
 	rm -f *.o *.map *.out *t.hex
 #-------------------
 
+fs: fastslave.hex
+fastslave.hex: fastslave.c
+	avr-gcc -mmcu=attiny25 -O2 -c fastslave.c -o fastslave.o
+	avr-gcc -mmcu=attiny25  fastslave.o -o fastslave.elf
+	objcopy -O ihex  fastslave.elf fastslave.hex
+	
