@@ -40,27 +40,28 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define OW_PORTN (1<<PINB1)  //Pin as bit in registers
 #define OW_PINN (1<<PINB1)
 #define OW_DDR DDRB  //pin direction register
-#define SET_LOW OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;  //set 1-Wire line to low
-#define RESET_LOW {OW_DDR&=~OW_PINN;}  //set 1-Wire pin as input
+#define SET_LOW() do {OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;} while(0)  //set 1-Wire line to low
+#define RESET_LOW() do {OW_DDR&=~OW_PINN;} while(0) //set 1-Wire pin as input
 //Pin interrupt	
-#define EN_OWINT {GIMSK|=(1<<INT0);GIFR|=(1<<INTF0);}  //enable interrupt 
-#define DIS_OWINT  GIMSK&=~(1<<INT0);  //disable interrupt
-#define SET_RISING MCUCR=(1<<ISC01)|(1<<ISC00);  //set interrupt at rising edge
-#define SET_FALLING MCUCR=(1<<ISC01); //set interrupt at falling edge
+#define EN_OWINT() do {GIMSK|=(1<<INT0);GIFR|=(1<<INTF0);}while(0)  //enable interrupt 
+#define DIS_OWINT() do {GIMSK&=~(1<<INT0);} while(0)  //disable interrupt
+#define SET_RISING() do {MCUCR=(1<<ISC01)|(1<<ISC00);} while(0)  //set interrupt at rising edge
+#define SET_FALLING() do {MCUCR=(1<<ISC01);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN (GIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
 #define PIN_INT ISR(INT0_vect)  // the interrupt service routine
 //Timer Interrupt
-#define EN_TIMER {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);} //enable timer interrupt
-#define DIS_TIMER TIMSK0  &= ~(1<<TOIE0); // disable timer interrupt
+#define EN_TIMER() do {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);} while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK0 &= ~(1<<TOIE0);} while(0) // disable timer interrupt
 #define TCNT_REG TCNT0  //register of timer-counter
 #define TIMER_INT ISR(TIM0_OVF_vect) //the timer interrupt service routine
 
 //Initializations of AVR
-#define INIT_AVR CLKPR=(1<<CLKPCE);\
+#define INIT_AVR() do { CLKPR=(1<<CLKPCE);\
 				   CLKPR=0;/*9.6Mhz*/\
 				   TIMSK0=0;\
 				   GIMSK=(1<<INT0);/*set direct GIMSK register*/\
-				   TCCR0B=(1<<CS00)|(1<<CS01); /*9.6mhz /64 couse 8 bit Timer interrupt every 6,666us*/
+				   TCCR0B=(1<<CS00)|(1<<CS01); /*9.6mhz /64 couse 8 bit Timer interrupt every 6,666us*/\
+				} while(0)
 
 
 //Times
@@ -82,18 +83,18 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define OW_PORTN (1<<PINB2)  //Pin as bit in registers
 #define OW_PINN (1<<PINB2)
 #define OW_DDR DDRB  //pin direction register
-#define SET_LOW OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;  //set 1-Wire line to low
-#define RESET_LOW {OW_DDR&=~OW_PINN;}  //set 1-Wire pin as input
+#define SET_LOW() do { OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;} while(0)  //set 1-Wire line to low
+#define RESET_LOW() do {OW_DDR&=~OW_PINN;} while(0) //set 1-Wire pin as input
 //Pin interrupt	
-#define EN_OWINT {GIMSK|=(1<<INT0);GIFR|=(1<<INTF0);}  //enable interrupt 
-#define DIS_OWINT  GIMSK&=~(1<<INT0);  //disable interrupt
-#define SET_RISING MCUCR=(1<<ISC01)|(1<<ISC00);  //set interrupt at rising edge
-#define SET_FALLING MCUCR=(1<<ISC01); //set interrupt at falling edge
+#define EN_OWINT() do {GIMSK|=(1<<INT0);GIFR|=(1<<INTF0);}while(0)  //enable interrupt 
+#define DIS_OWINT() do {GIMSK&=~(1<<INT0);} while(0)  //disable interrupt
+#define SET_RISING() do {MCUCR=(1<<ISC01)|(1<<ISC00);} while(0)  //set interrupt at rising edge
+#define SET_FALLING() do {MCUCR=(1<<ISC01);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN (GIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
 #define PIN_INT ISR(INT0_vect)  // the interrupt service routine
 //Timer Interrupt
-#define EN_TIMER {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);} //enable timer interrupt
-#define DIS_TIMER TIMSK  &= ~(1<<TOIE0); // disable timer interrupt
+#define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);} while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK  &= ~(1<<TOIE0);} while(0) // disable timer interrupt
 #define TCNT_REG TCNT0  //register of timer-counter
 #define TIMER_INT ISR(TIM0_OVF_vect) //the timer interrupt service routine
 
@@ -105,24 +106,22 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define OWT_LOWTIME 3 //for fast master, 4 for slow master and long lines
 
 //Initializations of AVR
-#define INIT_AVR CLKPR=(1<<CLKPCE); \
+#define INIT_AVR() do { \
+				   CLKPR=(1<<CLKPCE); \
 				   CLKPR=0; /*8Mhz*/  \
 				   TIMSK=0; \
 				   GIMSK=(1<<INT0);  /*set direct GIMSK register*/ \
-				   TCCR0B=(1<<CS00)|(1<<CS01); /*8mhz /64 couse 8 bit Timer interrupt every 8us*/
+				   TCCR0B=(1<<CS00)|(1<<CS01); /*8mhz /64 couse 8 bit Timer interrupt every 8us*/ \
+				  } while(0)
 				   
-#define PC_INT_ISR ISR(PCINT0_vect) { /*ATT25 with 0 by PCINT*/ \
-					if (((PINB&(1<<PINB3))==0)&&((istat&(1<<PINB3))==(1<<PINB3))) {	Counter0++;	}		\
-					if (((PINB&(1<<PINB4))==0)&&((istat&(1<<PINB4))==(1<<PINB4))) {	Counter1++;	}		\
-					istat=PINB;}	\
-					
-#define INIT_COUNTER_PINS /* Counter Interrupt */\
+#define PC_INT_VECT PCINT0_vect
+
+#define INIT_COUNTER_PINS() do { /* Counter Interrupt */\
 						GIMSK|=(1<<PCIE);\
 						PCMSK=(1<<PCINT3)|(1<<PCINT4);	\
 						DDRB &=~((1<<PINB3)|(1<<PINB4)); \
 						istat=PINB;\
-					
-				   
+					} while(0)
 
 
 #endif // __AVR_ATtiny25__ 
@@ -137,18 +136,18 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define OW_PORTN (1<<PIND2)  //Pin as bit in registers
 #define OW_PINN (1<<PIND2)
 #define OW_DDR DDRD  //pin direction register
-#define SET_LOW OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;  //set 1-Wire line to low
-#define RESET_LOW {OW_DDR&=~OW_PINN;}  //set 1-Wire pin as input
+#define SET_LOW() do { OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;}while(0)  //set 1-Wire line to low
+#define RESET_LOW do {OW_DDR&=~OW_PINN;} while(0) //set 1-Wire pin as input
 //Pin interrupt	
-#define EN_OWINT {GIMSK|=(1<<INT0);EIFR|=(1<<INTF0);}  //enable interrupt 
-#define DIS_OWINT  GIMSK&=~(1<<INT0);  //disable interrupt
-#define SET_RISING MCUCR|=(1<<ISC01)|(1<<ISC00);  //set interrupt at rising edge
-#define SET_FALLING {MCUCR|=(1<<ISC01);MCUCR&=~(1<<ISC00);} //set interrupt at falling edge
+#define EN_OWINT() do {GIMSK|=(1<<INT0);EIFR|=(1<<INTF0);}while(0)  //enable interrupt 
+#define DIS_OWINT() do {GIMSK&=~(1<<INT0);} while(0)  //disable interrupt
+#define SET_RISING() do {MCUCR|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
+#define SET_FALLING() do {MCUCR|=(1<<ISC01);MCUCR&=~(1<<ISC00);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN (GIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
 #define PIN_INT ISR(INT0_vect)  // the interrupt service routine
 //Timer Interrupt
-#define EN_TIMER {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);} //enable timer interrupt
-#define DIS_TIMER TIMSK  &= ~(1<<TOIE0); // disable timer interrupt
+#define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);}while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
 #define TCNT_REG TCNT0  //register of timer-counter
 #define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
 
@@ -160,25 +159,24 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define OWT_LOWTIME 3 //for fast master, 4 for slow master and long lines
 
 //Initializations of AVR
-#define INIT_AVR CLKPR=(1<<CLKPCE); \
+#define INIT_AVR() do { \
+				   CLKPR=(1<<CLKPCE); \
 				   CLKPR=0; /*8Mhz*/  \
 				   TIMSK=0; \
 				   GIMSK=(1<<INT0);  /*set direct GIMSK register*/ \
-				   TCCR0B=(1<<CS00)|(1<<CS01); /*8mhz /64 couse 8 bit Timer interrupt every 8us*/
+				   TCCR0B=(1<<CS00)|(1<<CS01); /*8mhz /64 couse 8 bit Timer interrupt every 8us*/ \
+				} while(0)
 				   
 				   
 
-#define PC_INT_ISR ISR(PCINT_vect) { /*ATT2313 without 0 by PCINT*/ \
-					if (((PINB&(1<<PINB3))==0)&&((istat&(1<<PINB3))==(1<<PINB3))) {	Counter0++;	}		\
-					if (((PINB&(1<<PINB4))==0)&&((istat&(1<<PINB4))==(1<<PINB4))) {	Counter1++;	}		\
-					istat=PINB;}	\
+#define PC_INT_VECT PCINT_vect
 
-#define INIT_COUNTER_PINS /* Counter Interrupt */\
+#define INIT_COUNTER_PINS() do { /* Counter Interrupt */\
 						GIMSK|=(1<<PCIE);\
 						PCMSK=(1<<PCINT3)|(1<<PCINT4);	\
 						DDRB &=~((1<<PINB3)|(1<<PINB4)); \
 						istat=PINB;\
-
+					} while(0)
 
 
 #endif // __AVR_ATtiny2313__ 
@@ -246,12 +244,12 @@ volatile uint8_t srcount; //counter for search rom
 PIN_INT {
 	uint8_t lwmode=wmode;  //let this variables in registers
 	uint8_t lmode=mode;
-	if ((lwmode==OWW_WRITE_0)) {SET_LOW;lwmode=OWW_NO_WRITE;}    //if necessary set 0-Bit 
-	DIS_OWINT; //disable interrupt, only in OWM_SLEEP mode it is active
+	if ((lwmode==OWW_WRITE_0)) {SET_LOW(); lwmode=OWW_NO_WRITE;}    //if necessary set 0-Bit 
+	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
 	switch (lmode) {
 		case OWM_SLEEP:  
 			TCNT_REG=~(OWT_MIN_RESET);
-			EN_OWINT; //other edges ?
+			EN_OWINT(); //other edges ?
 			break;
 		//start of reading with falling edge from master, reading closed in timer isr
 		case OWM_MATCH_ROM:  //falling edge wait for receive 
@@ -272,12 +270,12 @@ PIN_INT {
 			TCNT_REG=~(OWT_LOWTIME);
 			break;
 		case OWM_CHK_RESET:  //rising edge of reset pulse
-			SET_FALLING; 
+			SET_FALLING(); 
 			TCNT_REG=~(OWT_RESET_PRESENCE);  //waiting for sending presence pulse
 			lmode=OWM_RESET;
 			break;
 	}
-	EN_TIMER;
+	EN_TIMER();
 	mode=lmode;
 	wmode=lwmode;
 	
@@ -300,19 +298,19 @@ TIMER_INT {
 		//maybe reset pulse
 		if (p==0) { 
 			lmode=OWM_CHK_RESET;  //wait for rising edge
-			SET_RISING; 
+			SET_RISING(); 
 		}
-		DIS_TIMER;
+		DIS_TIMER();
 	} else
 	switch (lmode) {
 		case OWM_RESET:  //Reset pulse and time after is finished, now go in presence state
 			lmode=OWM_PRESENCE;
-			SET_LOW;
+			SET_LOW();
 			TCNT_REG=~(OWT_PRESENCE);
-			DIS_OWINT;  //No Pin interrupt necessary only wait for presence is done
+			DIS_OWINT();  //No Pin interrupt necessary only wait for presence is done
 			break;
 		case OWM_PRESENCE:
-			RESET_LOW;  //Presence is done now wait for a command
+			RESET_LOW();  //Presence is done now wait for a command
 			lmode=OWM_READ_COMMAND;
 			cbuf=0;lbitp=1;  //Command buffer have to set zero, only set bits will write in
 			break;
@@ -350,7 +348,7 @@ TIMER_INT {
 			}			
 			break;
 		case OWM_SEARCH_ROM:
-			RESET_LOW;  //Set low also if nothing send (branch takes time and memory)
+			RESET_LOW();  //Set low also if nothing send (branch takes time and memory)
 			lsrcount++;  //next search rom mode
 			switch (lsrcount) {
 				case 1:lwmode=!lactbit;  //preparation sending complement
@@ -413,7 +411,7 @@ TIMER_INT {
 			}			
 			break;	
 		case OWM_READ_MEMORY_COUNTER:
-			RESET_LOW;
+			RESET_LOW();
 			//CRC16 Calculation
 			if ((lscrc&1)!=lactbit) lscrc=(lscrc>>1)^0xA001; else lscrc >>=1;
 			p=lactbit;
@@ -451,7 +449,7 @@ TIMER_INT {
 			break;
 #ifdef _ONE_DEVICE_CMDS_	
 		case OWM_READ_ROM:
-			RESET_LOW;
+			RESET_LOW();
 			lbitp=(lbitp<<1);
 			if (!lbitp) {		
 				lbytep++;
@@ -466,10 +464,11 @@ TIMER_INT {
 			break;
 #endif		
 		}
-		if (lmode==OWM_SLEEP) {DIS_TIMER;}
+		if (lmode==OWM_SLEEP)
+			DIS_TIMER();
 		if (lmode!=OWM_PRESENCE)  { 
 			TCNT_REG=~(OWT_MIN_RESET-OWT_READLINE);  //OWT_READLINE around OWT_LOWTIME
-			EN_OWINT;
+			EN_OWINT();
 		}
 		mode=lmode;
 		wmode=lwmode;
@@ -482,7 +481,11 @@ TIMER_INT {
 
 
 
-PC_INT_ISR  //for counting  defined for specific device
+ISR(PC_INT_VECT) {
+	if (((PINB&(1<<PINB3))==0)&&((istat&(1<<PINB3))==(1<<PINB3))) {	Counter0++;	}
+	if (((PINB&(1<<PINB4))==0)&&((istat&(1<<PINB4))==(1<<PINB4))) {	Counter1++;	}
+	istat=PINB;
+}
 
 
 
@@ -497,12 +500,12 @@ int main(void) {
 	Counter1=0;
 
 	
-	SET_FALLING;
+	SET_FALLING();
 	
-	INIT_AVR
-	DIS_TIMER;
+	INIT_AVR();
+	DIS_TIMER();
 	
-	INIT_COUNTER_PINS
+	INIT_COUNTER_PINS();
 
 	sei();
 	
