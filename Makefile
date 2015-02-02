@@ -2,7 +2,8 @@
 #MCU=atmega8
 #MCU=attiny13
 #MCU=attiny84
-MCU=atmega168
+#MCU=atmega168
+MCU=attiny25
 MCU_PROG=m168
 #MCU_PROG=t84
 PROG=usbtiny
@@ -63,7 +64,7 @@ clean:
 
 fs: fastslave.hex
 fastslave.hex: fastslave.c
-	avr-gcc -mmcu=attiny25 -O2 -c fastslave.c -o fastslave.o
-	avr-gcc -mmcu=attiny25  fastslave.o -o fastslave.elf
+	avr-gcc $(CFLAGS) -c fastslave.c -o fastslave.o
+	avr-gcc $(CFLAGS) fastslave.o -o fastslave.elf
 	objcopy -O ihex  fastslave.elf fastslave.hex
 	
