@@ -33,17 +33,14 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 //does not work here because less memory by ATtiny13
 #if defined(__AVR_ATtiny13A__) || defined(__AVR_ATtiny13__)
 // OW_PORT Pin 6  - PB1
-//Analog input PB2
 #define _F_CPU 9600000
 
 //OW Pin
 #define OW_PORT PORTB //1 Wire Port
 #define OW_PIN PINB //1 Wire Pin as number
-#define OW_PORTN (1<<PINB1)  //Pin as bit in registers
-#define OW_PINN (1<<PINB1)
+#define OW_PINN PINB1
 #define OW_DDR DDRB  //pin direction register
-#define SET_LOW() do {OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;} while(0)  //set 1-Wire line to low
-#define RESET_LOW() do {OW_DDR&=~OW_PINN;} while(0) //set 1-Wire pin as input
+
 //Pin interrupt	
 #define EN_OWINT() do {GIMSK|=(1<<INT0);GIFR|=(1<<INTF0);}while(0)  //enable interrupt 
 #define DIS_OWINT() do {GIMSK&=~(1<<INT0);} while(0)  //disable interrupt
@@ -64,21 +61,18 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 				   GIMSK=(1<<INT0);/*set direct GIMSK register*/\
 				   TCCR0B=(1<<CS00)|(1<<CS01); /*9.6mhz /64 causes 8 bit Timer countdown every 6,666us*/\
 				} while(0)
-#endif
 
-#ifdef __AVR_ATtiny25__ 
+
+#elif defined(__AVR_ATtiny25__)
+
 // OW_PORT Pin 7  - PB2
-
 #define _F_CPU 8000000
 
 //OW Pin
 #define OW_PORT PORTB //1 Wire Port
 #define OW_PIN PINB //1 Wire Pin as number
-#define OW_PORTN (1<<PINB2)  //Pin as bit in registers
-#define OW_PINN (1<<PINB2)
+#define OW_PINN PINB2
 #define OW_DDR DDRB  //pin direction register
-#define SET_LOW() do { OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;} while(0)  //set 1-Wire line to low
-#define RESET_LOW() do {OW_DDR&=~OW_PINN;} while(0) //set 1-Wire pin as input
 //Pin interrupt	
 #define EN_OWINT() do {GIMSK|=(1<<INT0);GIFR|=(1<<INTF0);}while(0)  //enable interrupt 
 #define DIS_OWINT() do {GIMSK&=~(1<<INT0);} while(0)  //disable interrupt
@@ -111,9 +105,7 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 					} while(0)
 
 
-#endif // __AVR_ATtiny25__ 
-
-#if defined(__AVR_ATtiny2313A__) || defined(__AVR_ATtiny2313__)
+#elif defined(__AVR_ATtiny2313A__) || defined(__AVR_ATtiny2313__)
 // OW_PORT Pin 6  - PD2
 
 #define _F_CPU 8000000
@@ -121,11 +113,9 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 //OW Pin
 #define OW_PORT PORTD //1 Wire Port
 #define OW_PIN PIND //1 Wire Pin as number
-#define OW_PORTN (1<<PIND2)  //Pin as bit in registers
-#define OW_PINN (1<<PIND2)
+#define OW_PINN PIND2
 #define OW_DDR DDRD  //pin direction register
-#define SET_LOW() do { OW_DDR|=OW_PINN;OW_PORT&=~OW_PORTN;}while(0)  //set 1-Wire line to low
-#define RESET_LOW do {OW_DDR&=~OW_PINN;} while(0) //set 1-Wire pin as input
+
 //Pin interrupt	
 #define EN_OWINT() do {GIMSK|=(1<<INT0);EIFR|=(1<<INTF0);}while(0)  //enable interrupt 
 #define DIS_OWINT() do {GIMSK&=~(1<<INT0);} while(0)  //disable interrupt
@@ -148,8 +138,6 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 				   GIMSK=(1<<INT0);  /*set direct GIMSK register*/ \
 				   TCCR0B=(1<<CS00)|(1<<CS01); /*8mhz /64 couse 8 bit Timer interrupt every 8us*/ \
 				} while(0)
-				   
-				   
 
 #define PC_INT_VECT PCINT_vect
 
@@ -159,7 +147,6 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 						DDRB &=~((1<<PINB3)|(1<<PINB4)); \
 						istat=PINB;\
 					} while(0)
-
 
 #endif // __AVR_ATtiny2313__ 
 
@@ -175,6 +162,16 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define OWT_PRESENCE T_(160)
 #define OWT_READLINE (T_(35)-1)
 #define OWT_LOWTIME (T_(40)-2)
+
+#if (OWT_MIN_RESET>240)
+#error Reset timing is broken, your clock is too fast
+#endif
+#if (OWT_READLINE<2)
+#error Read timing is broken, your clock is too slow
+#endif
+
+#define SET_LOW() do { OW_DDR|=(1<<OW_PINN);OW_PORT&=~(1<<OW_PINN);} while(0)  //set 1-Wire line to low
+#define CLEAR_LOW() do {OW_DDR&=~(1<<OW_PINN);} while(0) //set 1-Wire pin as input
 
 //#define _ONE_DEVICE_CMDS_  //Commands for only one device on bus (Not tested)
 
@@ -285,7 +282,7 @@ TIMER_INT {
 	uint8_t lactbit=actbit;
 	uint16_t lscrc=scrc;
 	//Ask input line sate 
-	uint8_t p=((OW_PIN&OW_PINN)==OW_PINN);  
+	uint8_t p=((OW_PIN&(1<<OW_PINN))==(1<<OW_PINN));  
 	//Interrupt still active ?
 	if (CHK_INT_EN) {
 		//maybe reset pulse
@@ -303,7 +300,7 @@ TIMER_INT {
 			DIS_OWINT();  //No Pin interrupt necessary only wait for presence is done
 			break;
 		case OWM_PRESENCE:
-			RESET_LOW();  //Presence is done now wait for a command
+			CLEAR_LOW();  //Presence is done now wait for a command
 			lmode=OWM_READ_COMMAND;
 			cbuf=0;lbitp=1;  //Command buffer have to set zero, only set bits will write in
 			break;
@@ -341,7 +338,7 @@ TIMER_INT {
 			}			
 			break;
 		case OWM_SEARCH_ROM:
-			RESET_LOW();  //Set low also if nothing send (branch takes time and memory)
+			CLEAR_LOW();  //Set low also if nothing send (branch takes time and memory)
 			lsrcount++;  //next search rom mode
 			switch (lsrcount) {
 				case 1:lwmode=!lactbit;  //preparation sending complement
@@ -404,7 +401,7 @@ TIMER_INT {
 			}			
 			break;	
 		case OWM_READ_MEMORY_COUNTER:
-			RESET_LOW();
+			CLEAR_LOW();
 			//CRC16 Calculation
 			if ((lscrc&1)!=lactbit) lscrc=(lscrc>>1)^0xA001; else lscrc >>=1;
 			p=lactbit;
@@ -442,7 +439,7 @@ TIMER_INT {
 			break;
 #ifdef _ONE_DEVICE_CMDS_	
 		case OWM_READ_ROM:
-			RESET_LOW();
+			CLEAR_LOW();
 			lbitp=(lbitp<<1);
 			if (!lbitp) {		
 				lbytep++;
@@ -485,7 +482,7 @@ ISR(PC_INT_VECT) {
 int main(void) {
 	mode=OWM_SLEEP;
 	wmode=OWW_NO_WRITE;
-	OW_DDR&=~OW_PINN;
+	OW_DDR&=~(1<<OW_PINN);
 	
 	uint8_t i;
 	for(i=0;i<sizeof(counterpack);i++) counterpack.bytes[i]=0;
