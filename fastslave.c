@@ -201,23 +201,26 @@ const uint8_t owid[8]={0x1D, 0xA2, 0xD9, 0x84, 0x00, 0x00, 0x02, 0x37};
 volatile uint8_t bitp;  //pointer to current Byte
 volatile uint8_t bytep; //pointer to current Bit
 
-volatile uint8_t mode; //state
+//States / Modes
+typedef enum {
+	 OWM_SLEEP,  //Waiting for next reset pulse
+	 OWM_RESET,  //Reset pulse received 
+	 OWM_PRESENCE,  //sending presence pulse
+	 OWM_READ_COMMAND, //read 8 bit of command
+	 OWM_SEARCH_ROM,  //SEARCH_ROM algorithms
+	 OWM_MATCH_ROM,  //test number
+	 OWM_GET_ADRESS,
+	 OWM_READ_MEMORY_COUNTER,
+	 OWM_CHK_RESET,  //waiting of rising edge from reset pulse
+	 OWM_WRITE_SCRATCHPAD,
+	 OWM_READ_SCRATCHPAD,
+} mode_t;
+volatile mode_t mode; //state
+
 volatile uint8_t wmode; //if 0 next bit that send the device is  0
 volatile uint8_t actbit; //current
 volatile uint8_t srcount; //counter for search rom
 
-//States / Modes
-#define OWM_SLEEP 0  //Waiting for next reset pulse
-#define OWM_RESET 1  //Reset pulse received 
-#define OWM_PRESENCE 2  //sending presence pulse
-#define OWM_READ_COMMAND 3 //read 8 bit of command
-#define OWM_SEARCH_ROM 4  //SEARCH_ROM algorithms
-#define OWM_MATCH_ROM 5  //test number
-#define OWM_CHK_RESET 8  //waiting of rising edge from reset pulse
-#define OWM_GET_ADRESS 6
-#define OWM_READ_MEMORY_COUNTER 7
-#define OWM_WRITE_SCRATCHPAD 9
-#define OWM_READ_SCRATCHPAD 10
 
 #ifdef _ONE_DEVICE_CMDS_
 #define OWM_READ_ROM 50
@@ -233,7 +236,7 @@ volatile uint8_t srcount; //counter for search rom
 
 PIN_INT {
 	uint8_t lwmode=wmode;  //let this variables in registers
-	uint8_t lmode=mode;
+	mode_t lmode=mode;
 	if ((lwmode==OWW_WRITE_0)) {SET_LOW(); lwmode=OWW_NO_WRITE;}    //if necessary set 0-Bit 
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
 	switch (lmode) {
@@ -275,15 +278,17 @@ PIN_INT {
 
 TIMER_INT {
 	uint8_t lwmode=wmode; //let this variables in registers
-	uint8_t lmode=mode;
+	mode_t lmode=mode;
 	uint8_t lbytep=bytep;
 	uint8_t lbitp=bitp;
 	uint8_t lsrcount=srcount;
 	uint8_t lactbit=actbit;
 	uint16_t lscrc=scrc;
-	//Ask input line sate 
-	uint8_t p=((OW_PIN&(1<<OW_PINN))==(1<<OW_PINN));  
-	//Interrupt still active ?
+
+	//Read input line state 
+	uint8_t p=!!(OW_PIN&(1<<OW_PINN));
+
+	//Pin interrupt still active ?
 	if (CHK_INT_EN) {
 		//maybe reset pulse
 		if (p==0) { 

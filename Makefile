@@ -35,7 +35,8 @@ ds2408 ds2423:
 	@make DEVNAME=$(subst _dev,,$@) all
 
 # optimize for size:
-CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues
+CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -fshort-enums
+
 #  -I/usr/local/avr/include -B/usr/local/avr/lib
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
