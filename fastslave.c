@@ -29,10 +29,12 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+
 //does not work here because less memory by ATtiny13
 #if defined(__AVR_ATtiny13A__) || defined(__AVR_ATtiny13__)
 // OW_PORT Pin 6  - PB1
 //Analog input PB2
+#define _F_CPU 9600000
 
 //OW Pin
 #define OW_PORT PORTB //1 Wire Port
@@ -60,22 +62,14 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 				   CLKPR=0;/*9.6Mhz*/\
 				   TIMSK0=0;\
 				   GIMSK=(1<<INT0);/*set direct GIMSK register*/\
-				   TCCR0B=(1<<CS00)|(1<<CS01); /*9.6mhz /64 couse 8 bit Timer interrupt every 6,666us*/\
+				   TCCR0B=(1<<CS00)|(1<<CS01); /*9.6mhz /64 causes 8 bit Timer countdown every 6,666us*/\
 				} while(0)
-
-
-//Times
-#define OWT_MIN_RESET 51 //minimum duration of the Reset impulse
-
-#define OWT_RESET_PRESENCE 4 //time between rising edge of reset impulse and presence impulse
-#define OWT_PRESENCE 20 //duration of the presence impulse
-#define OWT_READLINE 4  //duration from master low to read the state of 1-Wire line
-#define OWT_LOWTIME 4 //length of low 
 #endif
 
 #ifdef __AVR_ATtiny25__ 
 // OW_PORT Pin 7  - PB2
 
+#define _F_CPU 8000000
 
 //OW Pin
 #define OW_PORT PORTB //1 Wire Port
@@ -97,13 +91,6 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define DIS_TIMER() do {TIMSK  &= ~(1<<TOIE0);} while(0) // disable timer interrupt
 #define TCNT_REG TCNT0  //register of timer-counter
 #define TIMER_INT ISR(TIM0_OVF_vect) //the timer interrupt service routine
-
-
-#define OWT_MIN_RESET 51
-#define OWT_RESET_PRESENCE 4
-#define OWT_PRESENCE 20 
-#define OWT_READLINE 3 //for fast master, 4 for slow master and long lines
-#define OWT_LOWTIME 3 //for fast master, 4 for slow master and long lines
 
 //Initializations of AVR
 #define INIT_AVR() do { \
@@ -129,6 +116,7 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #if defined(__AVR_ATtiny2313A__) || defined(__AVR_ATtiny2313__)
 // OW_PORT Pin 6  - PD2
 
+#define _F_CPU 8000000
 
 //OW Pin
 #define OW_PORT PORTD //1 Wire Port
@@ -151,12 +139,6 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define TCNT_REG TCNT0  //register of timer-counter
 #define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
 
-
-#define OWT_MIN_RESET 51
-#define OWT_RESET_PRESENCE 4
-#define OWT_PRESENCE 20 
-#define OWT_READLINE 3 //for fast master, 4 for slow master and long lines
-#define OWT_LOWTIME 3 //for fast master, 4 for slow master and long lines
 
 //Initializations of AVR
 #define INIT_AVR() do { \
@@ -181,6 +163,18 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 
 #endif // __AVR_ATtiny2313__ 
 
+// _F_CPU is the cpufreq without external crystal
+// but you can declare that your is faster (external crystal?)
+#ifndef F_CPU
+#define F_CPU _F_CPU
+#endif
+#define T_(c) ((F_CPU/64)/(1000000/c))
+
+#define OWT_MIN_RESET T_(410)
+#define OWT_RESET_PRESENCE (T_(40)-1)
+#define OWT_PRESENCE T_(160)
+#define OWT_READLINE (T_(35)-1)
+#define OWT_LOWTIME (T_(40)-2)
 
 //#define _ONE_DEVICE_CMDS_  //Commands for only one device on bus (Not tested)
 
