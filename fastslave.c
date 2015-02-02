@@ -193,7 +193,6 @@ typedef union {
 counterpack_t counterpack;
 volatile uint16_t scrc; //CRC calculation
 
-volatile uint8_t lastcps;
 volatile uint32_t Counter0;
 volatile uint32_t Counter1;
 volatile uint8_t istat;
