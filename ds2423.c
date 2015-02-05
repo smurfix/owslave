@@ -261,7 +261,7 @@ void check_adc(void)
 		decay[cur] = res;
 #endif
 	}
-#endif
+#endif // SLOW
 #ifdef DEBUG
 	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_NL();
 #endif
@@ -318,7 +318,7 @@ ISR(ADPIN_vect)
 	nbits ^= obits; // 'nbits' now contains the changed bits
 	cbits |= nbits;
 }
-#endif
+#endif // !ANALOG
 
 void update_idle(uint8_t bits)
 {
@@ -344,7 +344,7 @@ void update_idle(uint8_t bits)
 
 	}
 #endif
-#endif
+#endif // !ANALOG
 }
 
 void init_state(void)
@@ -371,7 +371,7 @@ void init_state(void)
 #define CLK_A 6
 #else
 #define CLK_A 5
-#endif
+#endif // F_CPU
 	ADCSRA = (1<<ADEN)|(1<<ADIF)|CLK_A;
 
 #ifdef ADLARREG
@@ -381,7 +381,7 @@ void init_state(void)
 	cur_adc = 0;
 	bstate = 0;
 	start_adc();
-#else
+#else // !ANALOG
 	obits = ADPIN;
 	ADMSK = (1<<NCOUNTERS)-1;
 	IFR |= (1<<PCIF0);
