@@ -66,5 +66,6 @@ fs: fastslave.hex
 fastslave.hex: fastslave.c
 	avr-gcc $(CFLAGS) -c fastslave.c -o fastslave.o
 	avr-gcc $(CFLAGS) fastslave.o -o fastslave.elf
-	objcopy -O ihex  fastslave.elf fastslave.hex
+	avr-objdump -h -S fastslave.elf > fastslave.lss
+	avr-objcopy -O ihex  fastslave.elf fastslave.hex
 	
