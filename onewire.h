@@ -92,6 +92,8 @@ void set_idle(void);
 #define S_CMD_XMIT        (S_XMIT|0x28) // send bytes
 #define S_CMD_IDLE        (       0x28) // do nothing
 
+#define S_IN_APP(x) ((x)&0x20) // in "application" state
+
 /* send something. Will return as soon as transmission is active. */
 void xmit_bit(uint8_t bit);
 void xmit_byte(uint8_t bit);

@@ -218,7 +218,7 @@ xmit_any(uint8_t val, uint8_t len)
 	while(state & (S_RECV|S_XMIT))
 		update_idle(vbitcount);
 	cli();
-	if(!(state & 0x20)) {
+	if(!S_IN_APP(state)) {
 		sei();
 		if(state != S_IDLE) {
 			if (state < 0x10)
@@ -276,7 +276,7 @@ recv_any(uint8_t len)
 	while(state & (S_RECV|S_XMIT))
 		update_idle(vbitcount);
 	cli();
-	if(!(state & 0x20)) {
+	if(!S_IN_APP(state)) {
 		sei();
 		if (state != S_IDLE) {
 			if (state < 0x10)
