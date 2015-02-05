@@ -28,6 +28,19 @@
 #define IFR GIFR
 #endif
 
+#ifdef __AVR_ATtiny25__
+#define F_CPU_                8000000
+
+#define IMSK GIMSK
+#define IFR GIFR
+
+#define ADPIN PINB
+#define ADPIN_vect PCINT0_vect
+#define ADMSK PCMSK
+#define PCIF0 PCIF
+#define PCIE0 PCIE
+#endif
+
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
 

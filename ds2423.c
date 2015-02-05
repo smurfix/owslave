@@ -54,6 +54,9 @@ uint8_t debug_state;
 #if defined(__AVR_ATtiny84__)
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
+#elif defined(__AVR_ATtiny25__)
+#define ADLARREG ADCSRB
+#define ADLARMUX 0
 #elif defined (__AVR_ATmega168__)
 #define ADLARMUX (1<<ADLAR)
 #else

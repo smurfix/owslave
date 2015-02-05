@@ -44,6 +44,12 @@ static jmp_buf end_out;
 #define OWDDR DDRB
 #define ONEWIREPIN 1		 // INT0
 
+#elif defined(__AVR_ATtiny25__)
+#define OWPIN PINB
+#define OWPORT PORTB
+#define OWDDR DDRB
+#define ONEWIREPIN 1		 // INT0
+
 #elif defined(__AVR_ATtiny84__)
 #define OWPIN PINB
 #define OWPORT PORTB
@@ -111,6 +117,15 @@ void setup(void)
 	TCCR0B = 0x03;	// Prescaler 1/64
 
 	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+
+#elif defined (__AVR_ATtiny25__)
+	CLKPR = 0x80;	 // Prepare to ...
+	CLKPR = 0x00;	 // ... set to 8.0 MHz
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+	
+#define TIFR0 TIFR
+#define TIMSK0 TIMSK
 
 #elif defined (__AVR_ATtiny84__)
 	CLKPR = 0x80;	 // Prepare to ...
