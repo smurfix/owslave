@@ -44,11 +44,31 @@ static jmp_buf end_out;
 #define OWDDR DDRB
 #define ONEWIREPIN 1		 // INT0
 
+static inline void mcu_init(void) {
+	CLKPR = 0x80;	 // Prepare to ...
+	CLKPR = 0x00;	 // ... set to 9.6 MHz
+
+	TCCR0A = 0;
+	TCCR0B = 0x03;	// Prescaler 1/64
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+}
+
 #elif defined(__AVR_ATtiny25__)
 #define OWPIN PINB
 #define OWPORT PORTB
 #define OWDDR DDRB
 #define ONEWIREPIN 1		 // INT0
+
+#define TIFR0 TIFR
+#define TIMSK0 TIMSK
+
+static inline void mcu_init(void) {
+	CLKPR = 0x80;	 // Prepare to ...
+	CLKPR = 0x00;	 // ... set to 8.0 MHz
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+}
 
 #elif defined(__AVR_ATtiny84__)
 #define OWPIN PINB
@@ -56,18 +76,44 @@ static jmp_buf end_out;
 #define OWDDR DDRB
 #define ONEWIREPIN 2		 // INT0
 
+static inline void mcu_init(void) {
+	CLKPR = 0x80;	 // Prepare to ...
+	CLKPR = 0x00;	 // ... set to 8.0 MHz
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+}
+
 #elif defined (__AVR_ATmega8__)
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
 
+static inline void mcu_init(void) {
+	// Clock is set via fuse
+	// CKSEL = 0100;   Fuse Low Byte Bits 3:0
+
+	TCCR0 = 0x03;	// Prescaler 1/64
+
+	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
+}
+
 #elif defined (__AVR_ATmega168__)
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
-//#define DBGPIN 3		// debug output
+
+static inline void mcu_init(void) {
+	//#define DBGPIN 3		// debug output
+
+	// Clock is set via fuse
+
+	TCCR0A = 0;
+	TCCR0B = 0x03;	// Prescaler 1/64
+
+	EICRA = (1<<ISC00); // interrupt of INT0 (pin D2) on both level changes
+}
 
 #else
 #error Pinout for your CPU undefined
@@ -109,49 +155,8 @@ static char interest = 0;
 void setup(void)
 {
 	unsigned char i;
-#ifdef __AVR_ATtiny13__
-	CLKPR = 0x80;	 // Prepare to ...
-	CLKPR = 0x00;	 // ... set to 9.6 MHz
 
-	TCCR0A = 0;
-	TCCR0B = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined (__AVR_ATtiny25__)
-	CLKPR = 0x80;	 // Prepare to ...
-	CLKPR = 0x00;	 // ... set to 8.0 MHz
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-	
-#define TIFR0 TIFR
-#define TIMSK0 TIMSK
-
-#elif defined (__AVR_ATtiny84__)
-	CLKPR = 0x80;	 // Prepare to ...
-	CLKPR = 0x00;	 // ... set to 8.0 MHz
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-	
-#elif defined (__AVR_ATmega8__)
-	// Clock is set via fuse
-	// CKSEL = 0100;   Fuse Low Byte Bits 3:0
-
-	TCCR0 = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined (__AVR_ATmega168__)
-	// Clock is set via fuse
-
-	TCCR0A = 0;
-	TCCR0B = 0x03;	// Prescaler 1/64
-
-	EICRA = (1<<ISC00); // interrupt of INT0 (pin D2) on both level changes
-
-#else
-#error Not yet implemented
-#endif
+	mcu_init();
 
 	OWPORT &= ~(1 << ONEWIREPIN);
 	OWDDR &= ~(1 << ONEWIREPIN);
