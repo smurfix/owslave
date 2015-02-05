@@ -42,13 +42,13 @@ CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -fshort-en
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
 	$(CC) $(CFLAGS) -Os -c $<
-$(DEVNAME).out : onewire.o uart.o $(DEVNAME).o
+$(DEVNAME).elf : onewire.o uart.o $(DEVNAME).o
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
-$(DEVNAME).hex : $(DEVNAME).out 
+$(DEVNAME).hex : $(DEVNAME).elf
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
-$(DEVNAME).lss : $(DEVNAME).out 
+$(DEVNAME).lss : $(DEVNAME).elf
 	$(OBJDUMP) -h -S $< > $@
-$(DEVNAME).bin : $(DEVNAME).out 
+$(DEVNAME).bin : $(DEVNAME).elf
 	$(OBJCOPY) -O binary $< $@
 
 $(DEVNAME).eeprom:
@@ -59,7 +59,7 @@ burn: $(DEVNAME).hex $(DEVNAME).eeprom
 	#avrdude -V -c $(PROG) -p $(MCU_PROG) -U $(PRG).bin
 #-------------------
 clean:
-	rm -f *.o *.map *.out *t.hex
+	rm -f *.o *.map *.elf *t.hex
 #-------------------
 
 fs: fastslave.hex
