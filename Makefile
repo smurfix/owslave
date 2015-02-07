@@ -69,4 +69,5 @@ fastslave.hex: fastslave.c
 	avr-gcc $(CFLAGS) fastslave.o -o fastslave.elf
 	avr-objdump -h -S fastslave.elf > fastslave.lss
 	avr-objcopy -O ihex  fastslave.elf fastslave.hex
-	
+fsb: fastslave.hex
+	sudo avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:fastslave.hex:i
