@@ -513,9 +513,9 @@ void uart_puthex_word(const uint16_t b)
 } /* uart_puthex_word */
 
 void uart_poll(void) {
-#ifdef HAVE_UART_IRQ
-    poll_uart0_recv()
-    poll_uart0_xmit(void)
+#ifndef HAVE_UART_IRQ
+    poll_uart0_recv();
+    poll_uart0_xmit();
 #endif
 }
 
