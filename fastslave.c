@@ -243,7 +243,7 @@ volatile uint8_t istat;
 
 
 volatile uint8_t cbuf; //Input buffer for a command
-const uint8_t owid[8]={0x1D, 0xA2, 0xD9, 0x84, 0x00, 0x00, 0x02, 0x37};    
+const uint8_t owid[8]={0x1D, 0x19, 0x00, 0x00, 0x00, 0x00, 0xc5, 0xFB};
 //set your own ID http://www.tm3d.de/index.php/tools/14-crc8-berechnung
 volatile uint8_t bitp;  //pointer to current Byte
 volatile uint8_t bytep; //pointer to current Bit
