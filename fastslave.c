@@ -250,39 +250,37 @@ volatile uint8_t bytep; //pointer to current Bit
 
 //States / Modes
 typedef enum {
-	 OWM_SLEEP,  //Waiting for next reset pulse
-	 OWM_RESET,  //Reset pulse received 
-	 OWM_PRESENCE,  //sending presence pulse
-	 OWM_READ_COMMAND, //read 8 bit of command
-	 OWM_SEARCH_ROM,  //SEARCH_ROM algorithms
-	 OWM_MATCH_ROM,  //test number
-	 OWM_GET_ADRESS,
-	 OWM_READ_MEMORY_COUNTER,
-	 OWM_CHK_RESET,  //waiting of rising edge from reset pulse
-	 OWM_WRITE_SCRATCHPAD,
-	 OWM_READ_SCRATCHPAD,
+	OWM_SLEEP,  //Waiting for next reset pulse
+	OWM_RESET,  //Reset pulse received 
+	OWM_PRESENCE,  //sending presence pulse
+	OWM_READ_COMMAND, //read 8 bit of command
+	OWM_SEARCH_ROM,  //SEARCH_ROM algorithms
+	OWM_MATCH_ROM,  //test number
+	OWM_GET_ADRESS,
+	OWM_READ_MEMORY_COUNTER,
+	OWM_CHK_RESET,  //waiting of rising edge from reset pulse
+	OWM_WRITE_SCRATCHPAD,
+	OWM_READ_SCRATCHPAD,
+#ifdef _ONE_DEVICE_CMDS_
+	OWM_READ_ROM,
+#endif
 } mode_t;
 volatile mode_t mode; //state
 
-volatile uint8_t wmode; //if 0 next bit that send the device is  0
+//Write a bit after next falling edge from master
+//it's for sending a zero as soon as possible 
+typedef enum {
+		OWW_WRITE_0,
+		OWW_WRITE_1,
+		OWW_NO_WRITE,
+} wmode_t;
+volatile wmode_t wmode; //if 0 next bit that send the device is  0
 volatile uint8_t actbit; //current
 volatile uint8_t srcount; //counter for search rom
 
-
-#ifdef _ONE_DEVICE_CMDS_
-#define OWM_READ_ROM 50
-#endif
-
-//Write a bit after next falling edge from master
-//its for sending a zero as soon as possible 
-#define OWW_NO_WRITE 2
-#define OWW_WRITE_1 1
-#define OWW_WRITE_0 0
-
-
 void real_PIN_INT(void) __attribute__((signal));
 void real_PIN_INT(void) {
-	uint8_t lwmode=wmode;  //let this variables in registers
+	wmode_t lwmode=wmode;  //let this variables in registers
 	mode_t lmode=mode;
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
 	switch (lmode) {
@@ -342,7 +340,7 @@ void PIN_INT(void) {
 }
 
 TIMER_INT {
-	uint8_t lwmode=wmode; //let this variables in registers
+	wmode_t lwmode=wmode; //let this variables in registers
 	mode_t lmode=mode;
 	uint8_t lbytep=bytep;
 	uint8_t lbitp=bitp;
