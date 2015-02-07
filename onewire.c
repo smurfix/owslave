@@ -143,7 +143,7 @@ static inline void mcu_init(void) {
 #  define TIMER0_OVF_vect TIM0_OVF_vect
 #endif
 
-#define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);OWPORT&=~(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
+#define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
 #define CLEAR_LOW() do {OWDDR&=~(1<<ONEWIREPIN);} while(0) //set 1-Wire pin as input
 
 // Initialise the hardware
@@ -427,6 +427,7 @@ int main(void)
 	OWDDR |= (1 << DBGPIN);
 #endif
 	OWDDR &= ~(1<<ONEWIREPIN);
+	OWPORT &= ~(1<<ONEWIREPIN);
 
 	DBG_IN();
 
