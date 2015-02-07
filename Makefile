@@ -3,8 +3,10 @@
 #MCU=attiny13
 #MCU=attiny84
 #MCU=atmega168
-MCU=attiny25
-MCU_PROG=m168
+MCU=atmega88
+#MCU=attiny25
+MCU_PROG=m88
+#MCU_PROG=m168
 #MCU_PROG=t84
 PROG=usbtiny
 
