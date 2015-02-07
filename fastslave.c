@@ -148,6 +148,53 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 						istat=PINB;\
 					} while(0)
 
+#elif defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
+// OW_PORT Pin 6  - PD2
+
+#define _F_CPU 16000000
+
+//OW Pin
+#define OW_PORT PORTD //1 Wire Port
+#define OW_PIN PIND //1 Wire Pin as number
+#define OW_PINN PIND2
+#define OW_DDR DDRD  //pin direction register
+
+#define TIMSK TIMSK0
+#define TIFR TIFR0
+
+//Pin interrupt	
+#define EN_OWINT() do {EIMSK|=(1<<INT0);EIFR|=(1<<INTF0);}while(0)  //enable interrupt 
+#define DIS_OWINT() do {EIMSK&=~(1<<INT0);} while(0)  //disable interrupt
+#define SET_RISING() do {MCUCR|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
+#define SET_FALLING() do {MCUCR|=(1<<ISC01);MCUCR&=~(1<<ISC00);} while(0) //set interrupt at falling edge
+#define CHK_INT_EN (EIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
+#define PIN_INT INT0_vect  // the interrupt service routine
+//Timer Interrupt
+#define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);}while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
+#define TCNT_REG TCNT0  //register of timer-counter
+#define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
+
+
+//Initializations of AVR
+#define INIT_AVR() do { \
+				   CLKPR=(1<<CLKPCE); \
+				   CLKPR=0; /*8Mhz*/  \
+				   TIMSK=0; \
+				   EIMSK=(1<<INT0);  /*set direct EIMSK register*/ \
+				   TCCR0B=(1<<CS00)|(1<<CS01); /*8mhz /64 couse 8 bit Timer interrupt every 8us*/ \
+				} while(0)
+
+#define PC_INT_VECT PCINT1_vect
+#define PCMSK PCMSK1
+
+#define INIT_COUNTER_PINS() do { /* Counter Interrupt */\
+						EIMSK|=(1<<PCIE0);\
+						PCMSK=(1<<PCINT3)|(1<<PCINT4);	\
+						DDRB &=~((1<<PINB3)|(1<<PINB4)); \
+						istat=PINB;\
+					} while(0)
+
 #endif // __AVR_ATtiny2313__ 
 
 // _F_CPU is the cpufreq without external crystal

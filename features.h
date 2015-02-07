@@ -62,7 +62,7 @@
 #define ADMSK PCMSK0
 #endif
 
-#ifdef __AVR_ATmega168__
+#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
 #define F_CPU_                16000000
 
 #define IMSK EIMSK
@@ -72,6 +72,8 @@
 #define ADMSK PCMSK1
 #define ADIRQ
 // #define HAVE_UART
+#define DBGPIN 3 /* debug toggle */
+
 #endif
 
 #ifndef F_CPU_

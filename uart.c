@@ -116,8 +116,8 @@ LICENSE:
   || defined(__AVR_ATmega323__) 
   /* ATMega with one USART */
  #define ATMEGA_USART
- #define UART0_RECEIVE_INTERRUPT   SIG_UART_RECV
- #define UART0_TRANSMIT_INTERRUPT  SIG_UART_DATA
+ #define UART0_RECEIVE_INTERRUPT   USART_RXC_vect
+ #define UART0_TRANSMIT_INTERRUPT  USART_TXC_vect
  #define UART0_STATUS   UCSRA
  #define UART0_CONTROL  UCSRB
  #define UART0_DATA     UDR
@@ -125,17 +125,17 @@ LICENSE:
 #elif defined(__AVR_ATmega163__) 
   /* ATMega163 with one UART */
  #define ATMEGA_UART
- #define UART0_RECEIVE_INTERRUPT   SIG_UART_RECV
- #define UART0_TRANSMIT_INTERRUPT  SIG_UART_DATA
+ #define UART0_RECEIVE_INTERRUPT   UART_RX_vect
+ #define UART0_TRANSMIT_INTERRUPT  UART_TX_vect
  #define UART0_STATUS   UCSRA
  #define UART0_CONTROL  UCSRB
  #define UART0_DATA     UDR
  #define UART0_UDRIE    UDRIE
-#elif defined(__AVR_ATmega162__) || defined(__AVR_ATmega168__)
+#elif defined(__AVR_ATmega162__) || defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
  /* ATMega with two USART */
  #define ATMEGA_USART0
- #define UART0_RECEIVE_INTERRUPT   SIG_USART_RECV
- #define UART0_TRANSMIT_INTERRUPT  SIG_USART_DATA
+ #define UART0_RECEIVE_INTERRUPT   USART_RX_vect
+ #define UART0_TRANSMIT_INTERRUPT  USART_TX_vect
  #define UART0_STATUS   UCSR0A
  #define UART0_CONTROL  UCSR0B
  #define UART0_DATA     UDR0
@@ -143,8 +143,8 @@ LICENSE:
 #elif defined(__AVR_ATmega64__) || defined(__AVR_ATmega128__) 
  /* ATMega with two USART */
  #define ATMEGA_USART0
- #define UART0_RECEIVE_INTERRUPT   SIG_UART0_RECV
- #define UART0_TRANSMIT_INTERRUPT  SIG_UART0_DATA
+ #define UART0_RECEIVE_INTERRUPT   USART0_RX_vect
+ #define UART0_TRANSMIT_INTERRUPT  USART0_TX_vect
  #define UART0_STATUS   UCSR0A
  #define UART0_CONTROL  UCSR0B
  #define UART0_DATA     UDR0

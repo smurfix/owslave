@@ -98,7 +98,7 @@ static inline void mcu_init(void) {
 	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 }
 
-#elif defined (__AVR_ATmega168__)
+#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
