@@ -327,16 +327,14 @@ void PIN_INT(void) {
 	asm("lds r24,wmode");
 	asm("cpse r24,__zero_reg__");
 	asm("rjmp L2");
-	asm("sbi 0x17,2");
-	asm("cbi 0x18,2");
+	SET_LOW();
 	asm("ldi r24,lo8(2)");
 	asm("sts wmode,r24");
-	asm("L2: rcall real_PIN_INT");
-	asm("pop r24");
+	asm("L2: pop r24");
 	asm("pop r1");
 	asm("out __SREG__,r1");
 	asm("pop r1");
-	asm("reti");
+	asm("rcall real_PIN_INT");
 }
 
 TIMER_INT {
