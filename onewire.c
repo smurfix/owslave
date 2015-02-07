@@ -105,7 +105,6 @@ static inline void mcu_init(void) {
 #define ONEWIREPIN 2		// INT0
 
 static inline void mcu_init(void) {
-	//#define DBGPIN 3		// debug output
 
 	// Clock is set via fuse
 
@@ -132,19 +131,6 @@ static inline void mcu_init(void) {
 
 #define BAUDRATE 57600
 
-#ifdef DBGPIN
-static char interest = 0;
-#define DBG_IN() interest=1
-#define DBG_OUT() interest=0
-#define DBG_ON() if(interest) OWPORT |= (1<<DBGPIN)
-#define DBG_OFF() if(interest) OWPORT &= ~(1<<DBGPIN)
-#else
-#define DBG_IN() do { } while(0)
-#define DBG_OUT() do { } while(0)
-#define DBG_ON() do { } while(0)
-#define DBG_OFF() do { } while(0)
-#endif
-
 // stupidity
 #ifndef TIMER0_OVF_vect
 #  define TIMER0_OVF_vect TIM0_OVF_vect
@@ -161,10 +147,6 @@ void setup(void)
 	OWPORT &= ~(1 << ONEWIREPIN);
 	OWDDR &= ~(1 << ONEWIREPIN);
 
-#ifdef DBGPIN
-	OWPORT &= ~(1 << DBGPIN);
-	OWDDR |= (1 << DBGPIN);
-#endif
 #ifdef HAVE_TIMESTAMP
 	TCCR1A = 0;
 	TCCR1B = (1<<ICES1) | (1<<CS10);
@@ -379,6 +361,12 @@ uint16_t crc16(uint16_t r, uint8_t x)
 // Main program
 int main(void)
 {
+#ifdef DBGPIN
+	OWPORT &= ~(1 << DBGPIN);
+	OWDDR |= (1 << DBGPIN);
+#endif
+	DBG_IN();
+
 #ifdef HAVE_TIMESTAMP
 	tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
 	uint16_t last_tb = 0;
@@ -386,13 +374,19 @@ int main(void)
 
 	state = S_IDLE;
 	setup();
+	DBG_T(1);
+	DBG_T(1);
+
 	set_idle();
+	DBG_T(4);
 
 	// now go
 	sei();
+	DBG_ON();
 	DBG_P("\nInit done!\n");
 
 	setjmp(end_out);
+	DBG_OFF();
 	while (1) {
 #ifdef HAVE_UART
 		volatile unsigned long long int x; // for 'worse' timing
@@ -439,7 +433,7 @@ void set_idle(void)
 		state = S_IDLE;
 	}
 	DBG_OFF();
-	DBG_OUT();
+	//DBG_OUT();
 
 	bitcount = 0;
 	xmitlen = 0;
@@ -456,7 +450,7 @@ static void set_reset(void) {
 	xmitlen = 0;
 	DBG_C('\n');
 	DBG_C('R');
-	DBG_OUT();
+	//DBG_OUT();
 }
 
 
@@ -620,6 +614,7 @@ end:;
 ISR (INT0_vect)
 {
 	uint8_t st = state & S_MASK;
+	DBG_T(1);
 	if (OWPIN & (1 << ONEWIREPIN)) {	 // low => high transition
 		DBG_TS();
 		//DBG_C('^');
