@@ -44,7 +44,7 @@ CFLAGS=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -fshort-en
 #-------------------
 %.o : %.c Makefile $(wildcard *.h)
 	$(CC) $(CFLAGS) -Os -c $<
-$(DEVNAME).elf : onewire.o uart.o $(DEVNAME).o
+$(DEVNAME).elf : onewire.o uart.o $(DEVNAME).o irq_catcher.o
 	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
 $(DEVNAME).hex : $(DEVNAME).elf
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
