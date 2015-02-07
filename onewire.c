@@ -39,11 +39,6 @@ static jmp_buf end_out;
 
 
 #ifdef __AVR_ATtiny13__
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 1		 // INT0
-
 static inline void mcu_init(void) {
 	CLKPR = 0x80;	 // Prepare to ...
 	CLKPR = 0x00;	 // ... set to 9.6 MHz
@@ -55,11 +50,6 @@ static inline void mcu_init(void) {
 }
 
 #elif defined(__AVR_ATtiny25__)
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 1		 // INT0
-
 #define TIFR0 TIFR
 #define TIMSK0 TIMSK
 
@@ -71,11 +61,6 @@ static inline void mcu_init(void) {
 }
 
 #elif defined(__AVR_ATtiny84__)
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 2		 // INT0
-
 static inline void mcu_init(void) {
 	CLKPR = 0x80;	 // Prepare to ...
 	CLKPR = 0x00;	 // ... set to 8.0 MHz
@@ -84,11 +69,6 @@ static inline void mcu_init(void) {
 }
 
 #elif defined (__AVR_ATmega8__)
-#define OWPIN PIND
-#define OWPORT PORTD
-#define OWDDR DDRD
-#define ONEWIREPIN 2		// INT0
-
 static inline void mcu_init(void) {
 	// Clock is set via fuse
 	// CKSEL = 0100;   Fuse Low Byte Bits 3:0
@@ -99,11 +79,6 @@ static inline void mcu_init(void) {
 }
 
 #elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
-#define OWPIN PIND
-#define OWPORT PORTD
-#define OWDDR DDRD
-#define ONEWIREPIN 2		// INT0
-
 static inline void mcu_init(void) {
 
 	// Clock is set via fuse

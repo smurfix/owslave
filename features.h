@@ -16,6 +16,9 @@
 #ifndef FEATURES_H
 #define FEATURES_H
 
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
 /* External definitions:
  * F_CPU       clock rate
  * SKIP_SEARCH if you don't have enough ROM for search (saves ~200 bytes)
@@ -23,6 +26,10 @@
  */
 #ifdef __AVR_ATtiny13__
 #define F_CPU_                9600000
+#define OWPIN PINB
+#define OWPORT PORTB
+#define OWDDR DDRB
+#define ONEWIREPIN 1		 // INT0
 
 #define IMSK GIMSK
 #define IFR GIFR
@@ -30,6 +37,10 @@
 
 #ifdef __AVR_ATtiny25__
 #define F_CPU_                8000000
+#define OWPIN PINB
+#define OWPORT PORTB
+#define OWDDR DDRB
+#define ONEWIREPIN 1		 // INT0
 
 #define IMSK GIMSK
 #define IFR GIFR
@@ -43,6 +54,10 @@
 
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
+#define OWPIN PIND
+#define OWPORT PORTD
+#define OWDDR DDRD
+#define ONEWIREPIN 2		// INT0
 
 #define IMSK GIMSK
 #define TIMSK0 TIMSK
@@ -54,6 +69,10 @@
 
 #ifdef __AVR_ATtiny84__
 #define F_CPU_                8000000
+#define OWPIN PINB
+#define OWPORT PORTB
+#define OWDDR DDRB
+#define ONEWIREPIN 2		 // INT0
 
 #define IMSK GIMSK
 #define IFR GIFR
@@ -64,6 +83,10 @@
 
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
 #define F_CPU_                16000000
+#define OWPIN PIND
+#define OWPORT PORTD
+#define OWDDR DDRD
+#define ONEWIREPIN 2		// INT0
 
 #define IMSK EIMSK
 #define IFR EIFR
@@ -71,7 +94,7 @@
 #define ADPIN_vect PCINT1_vect
 #define ADMSK PCMSK1
 #define ADIRQ
-// #define HAVE_UART
+#define HAVE_UART
 #define DBGPIN 3 /* debug toggle */
 
 #endif
