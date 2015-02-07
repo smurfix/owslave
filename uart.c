@@ -198,7 +198,11 @@ unsigned int uart_getc(void)
 }/* uart_getc */
 
 
+#ifdef HAVE_UART_IRQ
 SIGNAL(UART0_RECEIVE_INTERRUPT)
+#else
+void poll_uart0_recv(void)
+#endif
 /*************************************************************************
 Function: UART Receive Complete interrupt
 Purpose:  called when the UART has received a character
@@ -208,7 +212,13 @@ Purpose:  called when the UART has received a character
     unsigned char data;
     unsigned char usr;
     unsigned char lastRxError;
- 
+
+#ifndef HAVE_UART_IRQ
+    if (!(UCSR0A & (1<<RXC0)))
+        return;
+    cli();
+#endif
+
     usr  = UART0_STATUS;
     data = UART0_DATA;
     
@@ -221,7 +231,7 @@ Purpose:  called when the UART has received a character
 #elif defined ( ATMEGA_UART )
     lastRxError = (usr & (_BV(FE)|_BV(DOR)) );
 #endif
-        
+    
     /* calculate buffer index */ 
     tmphead = ( UART_RxHead + 1) & UART_RX_BUFFER_MASK;
     
@@ -232,10 +242,17 @@ Purpose:  called when the UART has received a character
 	lastRxError = UART_BUFFER_OVERFLOW >> 8;
     }
     UART_LastRxError = lastRxError;   
+#ifndef HAVE_UART_IRQ
+    sei();
+#endif
 }
 
 
+#ifdef HAVE_UART_IRQ
 SIGNAL(UART0_TRANSMIT_INTERRUPT)
+#else
+void poll_uart0_xmit(void)
+#endif
 /*************************************************************************
 Function: UART Data Register Empty interrupt
 Purpose:  called when the UART is ready to transmit the next byte
@@ -243,6 +260,11 @@ Purpose:  called when the UART is ready to transmit the next byte
 {
     unsigned char tmptail;
     
+#ifndef HAVE_UART_IRQ
+    if (!(UCSR0A & (1<<UDRE0)))
+        return;
+    cli();
+#endif
     if ( UART_TxHead != UART_TxTail) {
         /* calculate and store new buffer index */
         tmptail = (UART_TxTail + 1) & UART_TX_BUFFER_MASK;
@@ -250,9 +272,14 @@ Purpose:  called when the UART is ready to transmit the next byte
         UART0_DATA = UART_TxBuf[tmptail];  /* start transmission */
         UART_TxTail = tmptail;
     } else {
+#ifdef HAVE_UART_IRQ
         /* tx buffer empty, disable UDRE interrupt */
         UART0_CONTROL &= ~_BV(UART0_UDRIE);
+#endif
     }
+#ifndef HAVE_UART_IRQ
+    sei();
+#endif
 }
 
 
@@ -278,7 +305,7 @@ void uart_init(unsigned int baudrate)
     UBRR = (unsigned char)baudrate; 
 
     /* enable UART receiver and transmmitter and receive complete interrupt */
-    UART0_CONTROL = _BV(RXCIE)|_BV(RXEN)|BV(TXEN);
+    UART0_CONTROL = _BV(RXEN)|BV(TXEN);
 
 #elif defined (ATMEGA_USART)
     /* Set baud rate */
@@ -286,7 +313,7 @@ void uart_init(unsigned int baudrate)
     UBRRL = (unsigned char) baudrate;
 
     /* Enable USART receiver and transmitter and receive complete interrupt */
-    UART0_CONTROL = _BV(RXCIE)|(1<<RXEN)|(1<<TXEN);
+    UART0_CONTROL = (1<<RXEN)|(1<<TXEN);
     
     /* Set frame format: asynchronous, 8data, no parity, 1stop bit */
     #ifdef URSEL
@@ -301,7 +328,7 @@ void uart_init(unsigned int baudrate)
     UBRR0L = (unsigned char) baudrate;
 
     /* Enable USART receiver and transmitter and receive complete interrupt */
-    UART0_CONTROL = _BV(RXCIE0)|(1<<RXEN0)|(1<<TXEN0);
+    UART0_CONTROL = (1<<RXEN0)|(1<<TXEN0);
     
     /* Set frame format: asynchronous, 8data, no parity, 2stop bit */
     #ifdef URSEL0
@@ -316,8 +343,13 @@ void uart_init(unsigned int baudrate)
     UBRR   = (unsigned char) baudrate;
 
     /* Enable UART receiver and transmitter and receive complete interrupt */
-    UART0_CONTROL = _BV(RXCIE)|(1<<RXEN)|(1<<TXEN);
+    UART0_CONTROL = (1<<RXEN)|(1<<TXEN);
 
+#else
+#error I do not know your UART
+#endif
+#ifdef HAVE_UART_IRQ
+    UART0_CONTROL |= _BV(RXCIE);
 #endif
 
 }/* uart_init */
@@ -367,7 +399,9 @@ void uart_putc(unsigned char data)
             UART_TxHead = tmphead;
 
             /* enable UDRE interrupt */
+#ifdef HAVE_UART_IRQ
             UART0_CONTROL    |= _BV(UART0_UDRIE);
+#endif
 	}
 
 	SREG = sreg;
@@ -477,5 +511,12 @@ void uart_puthex_word(const uint16_t b)
         uart_puthex_byte(b);
     }
 } /* uart_puthex_word */
+
+void uart_poll(void) {
+#ifdef HAVE_UART_IRQ
+    poll_uart0_recv()
+    poll_uart0_xmit(void)
+#endif
+}
 
 #endif // HAVE_UART

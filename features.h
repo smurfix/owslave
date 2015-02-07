@@ -95,6 +95,7 @@
 #define ADMSK PCMSK1
 #define ADIRQ
 #define HAVE_UART
+//#define HAVE_UART_IRQ
 #define DBGPIN 3 /* debug toggle */
 
 #endif

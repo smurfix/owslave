@@ -198,6 +198,17 @@ extern void uart_puthex_byte(const unsigned char b);
  */
 extern void uart_puthex_word(const uint16_t b);
 
+/**
+ * @brief    Poll the UART.
+ *
+ * Call this from your main loop.
+ *
+ * Does nothing if HAVE_UART_IRQ is defined.
+ *
+ * @return   none
+ */
+extern void uart_poll(void);
 /*@}*/
+
 #endif // UART_H 
 
