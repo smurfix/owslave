@@ -47,7 +47,7 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define SET_RISING() do {MCUCR=(1<<ISC01)|(1<<ISC00);} while(0)  //set interrupt at rising edge
 #define SET_FALLING() do {MCUCR=(1<<ISC01);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN (GIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
-#define PIN_INT ISR(INT0_vect)  // the interrupt service routine
+#define PIN_INT INT0_vect  // the interrupt service routine
 //Timer Interrupt
 #define EN_TIMER() do {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);} while(0) //enable timer interrupt
 #define DIS_TIMER() do {TIMSK0 &= ~(1<<TOIE0);} while(0) // disable timer interrupt
@@ -79,7 +79,7 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define SET_RISING() do {MCUCR=(1<<ISC01)|(1<<ISC00);} while(0)  //set interrupt at rising edge
 #define SET_FALLING() do {MCUCR=(1<<ISC01);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN (GIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
-#define PIN_INT ISR(INT0_vect)  // the interrupt service routine
+#define PIN_INT INT0_vect  // the interrupt service routine
 //Timer Interrupt
 #define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);} while(0) //enable timer interrupt
 #define DIS_TIMER() do {TIMSK  &= ~(1<<TOIE0);} while(0) // disable timer interrupt
@@ -122,7 +122,7 @@ avr-objcopy -O ihex  ow_slave_DS2423.elf ow_slave_DS2423.hex
 #define SET_RISING() do {MCUCR|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
 #define SET_FALLING() do {MCUCR|=(1<<ISC01);MCUCR&=~(1<<ISC00);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN (GIMSK&(1<<INT0))==(1<<INT0) //test if interrupt enabled
-#define PIN_INT ISR(INT0_vect)  // the interrupt service routine
+#define PIN_INT INT0_vect  // the interrupt service routine
 //Timer Interrupt
 #define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);}while(0) //enable timer interrupt
 #define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
@@ -233,11 +233,10 @@ volatile uint8_t srcount; //counter for search rom
 #define OWW_WRITE_0 0
 
 
-
-PIN_INT {
+void real_PIN_INT(void) __attribute__((signal));
+void real_PIN_INT(void) {
 	uint8_t lwmode=wmode;  //let this variables in registers
 	mode_t lmode=mode;
-	if ((lwmode==OWW_WRITE_0)) {SET_LOW(); lwmode=OWW_NO_WRITE;}    //if necessary set 0-Bit 
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
 	switch (lmode) {
 		case OWM_SLEEP:  
@@ -271,10 +270,29 @@ PIN_INT {
 	EN_TIMER();
 	mode=lmode;
 	wmode=lwmode;
-	
 }			
 
-	
+void PIN_INT(void) __attribute__((naked));
+void PIN_INT(void) {
+	asm("push r1");
+	asm("in r1,__SREG__");
+	asm("push r1");
+	asm("clr __zero_reg__");
+	asm("push r24");
+	asm("lds r24,wmode");
+	asm("cpse r24,__zero_reg__");
+	asm("rjmp L2");
+	asm("sbi 0x17,2");
+	asm("cbi 0x18,2");
+	asm("ldi r24,lo8(2)");
+	asm("sts wmode,r24");
+	asm("L2: rcall real_PIN_INT");
+	asm("pop r24");
+	asm("pop r1");
+	asm("out __SREG__,r1");
+	asm("pop r1");
+	asm("reti");
+}
 
 TIMER_INT {
 	uint8_t lwmode=wmode; //let this variables in registers
