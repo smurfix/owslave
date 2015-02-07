@@ -118,9 +118,10 @@ void do_mem_counter(void)
 	 * send counter (4 bytes, CRC)
 	 * send 4 zero bytes
 	 * send inverted CRC
-         This is all very straightforward, except that the CRC calculation
-	 is delayed somewhat: the time between recv_byte_in() and xmit_byte()
-	 is only a bit wide, which may not be enough time to add a CRC byte.
+	   This is all very straightforward, except that the CRC calculation
+	   for the received address is delayed somewhat: the available time
+	   between the second recv_byte_in() and xmit_byte() is less than a bit
+	   wide. That may not be enough time to update the CRC.
 	 */
 	
 	recv_byte();
