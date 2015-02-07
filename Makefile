@@ -55,7 +55,8 @@ $(DEVNAME).eeprom:
 	python gen_eeprom.py $(DEVCODE) > $@
 #------------------
 burn: $(DEVNAME).hex $(DEVNAME).eeprom
-	avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i -U eeprom:w:$(DEVNAME).eeprom:i 
+	#sudo avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i -U eeprom:w:$(DEVNAME).eeprom:i 
+	sudo avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i
 	#avrdude -V -c $(PROG) -p $(MCU_PROG) -U $(PRG).bin
 #-------------------
 clean:
