@@ -227,9 +227,9 @@ volatile xmode_t xmode;
 // Write this bit at next falling edge from master.
 // We use a whole byte for this for assembly speed reasons.
 typedef enum {
+	OWW_WRITE_0, // used in assembly
 	OWW_WRITE_1,
 	OWW_NO_WRITE,
-	OWW_WRITE_0 = 0xFF, // used in assembly
 } wmode_t;
 volatile wmode_t wmode;
 volatile uint8_t actbit; // current bit
@@ -803,11 +803,11 @@ end:;
 void real_PIN_INT(void) __attribute__((signal));
 void INT0_vect(void) __attribute__((naked));
 void INT0_vect(void) {
-	// No command in here may change the status register!
+	// WARNING: No command in here may change the status register!
 	asm("     push r24");
 	asm("     push r25");
 	asm("     lds r24,wmode");
-	asm("     ser r25");
+	asm("     ldi r25,0");
 	asm("     cpse r24,r25");
 	asm("     rjmp .Lj");
 	SET_LOW();
