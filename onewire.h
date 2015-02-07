@@ -74,42 +74,8 @@ EXTERN volatile char dbg_interest INIT(0);
 #define DBG_T(x) do { } while(0)
 #endif
 
-
-/* State machine. */
-EXTERN volatile uint8_t state;
-
 /* return to idle state, i.e. wait for the next RESET pulse. */
 void set_idle(void);
-
-// Basic bus state machine
-//  Bitmasks
-#define S_RECV 0x01
-#define S_XMIT 0x02
-#define S_MASK 0x7F
-#define S_XMIT2 0x80 // flag to de-assert zero bit on xmit timeout
-
-//  initial states: >3 byte times
-#define S_IDLE            (       0x00) // wait for Reset
-#define S_RESET           (       0x04) // Reset seen
-#define S_PRESENCEPULSE   (       0x08) // sending Presence pulse
-//  selection opcode states: 1 byte times
-#define S_RECEIVE_ROMCODE (S_RECV|0x10) // reading selection opcode
-#define S_MATCHROM        (S_RECV|0x14) // select a known slave
-#define S_READROM         (S_XMIT|0x14) // single slave only!
-
-#ifndef SKIP_SEARCH
-#define S_SEARCHROM       (S_XMIT|0x18) // search, step 1: send ID bit
-#define S_SEARCHROM_I     (S_XMIT|0x1C) // search, step 2: send inverted ID bit
-#define S_SEARCHROM_R     (S_RECV|0x18) // search, step 3: check what the master wants
-#endif
-//  opcode states: 1 bit time
-#define S_RECEIVE_OPCODE  (S_RECV|0x20) // reading real opcode
-#define S_HAS_OPCODE      (       0x24) // has real opcode, mainloop
-#define S_CMD_RECV        (S_RECV|0x28) // receive bytes
-#define S_CMD_XMIT        (S_XMIT|0x28) // send bytes
-#define S_CMD_IDLE        (       0x28) // do nothing
-
-#define S_IN_APP(x) ((x)&0x20) // in "application" state
 
 /* send something. Will return as soon as transmission is active. */
 void xmit_bit(uint8_t bit);
@@ -123,7 +89,7 @@ uint8_t recv_bit_in(void);
 uint8_t recv_byte_in(void);
 
 /* If you want to do background work, check whether the next unit can be
-   sent/received by calling rx_ready() */
+   received by calling rx_ready() */
 uint8_t rx_ready(void);
 
 void next_idle(void) __attribute__((noreturn));

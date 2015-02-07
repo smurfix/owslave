@@ -24,15 +24,6 @@
 #include "features.h"
 
 #define PRESCALE 64
-#define USEC2TICKS(x) (x/(F_CPU/PRESCALE))
-
-#undef  EMU_18b20 // temperature
-#define EMU_2423  // counter
-
-// 1wire interface
-static uint8_t bitcount, transbyte;
-#define vbitcount *(volatile uint8_t *)&bitcount
-static uint8_t xmitlen;
 
 #ifdef HAVE_EEPROM
 static uint8_t ow_addr[8];
@@ -108,7 +99,7 @@ static inline void mcu_init(void) {
 #endif
 
 // Frequency-dependent timing macros
-#define T_(c) ((F_CPU/64)/(1000000/c))
+#define T_(c) ((F_CPU/PRESCALE)/(1000000/c))
 #define OWT_MIN_RESET T_(410)
 #define OWT_RESET_PRESENCE (T_(40)-1)
 #define OWT_PRESENCE T_(160)
@@ -145,6 +136,8 @@ static inline void mcu_init(void) {
 
 #define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
 #define CLEAR_LOW() do {OWDDR&=~(1<<ONEWIREPIN);} while(0) //set 1-Wire pin as input
+
+static void do_select(uint8_t cmd);
 
 // Initialise the hardware
 void setup(void)
@@ -190,37 +183,28 @@ void setup(void)
 #endif
 }
 
-static inline void set_timer(int timeout)
-{
-	//DBG_C('T');
-	//DBG_X(timeout);
-	//DBG_C(',');
-	TCNT0 = ~timeout;
-	TIFR0 |= (1 << TOV0);
-	TIMSK |= (1 << TOIE0);
-}
-
-
 //States / Modes
 typedef enum {
 	OWM_SLEEP,  //Waiting for next reset pulse
 	OWM_CHK_RESET,  //waiting of rising edge from reset pulse
 	OWM_RESET,  //Reset pulse received 
 	OWM_PRESENCE,  //sending presence pulse
-	OWM_READ, //read some bits
-	OWM_WRITE, //write some bits
-	OWM_IDLE, //waiting for non-IRQ space
 	OWM_SEARCH_ZERO,  //SEARCH_ROM algorithm
 	OWM_SEARCH_ONE,
 	OWM_SEARCH_READ,
+
+	OWM_IDLE, // non-IRQ mode starts here (mostly)
+	OWM_READ, // reading some bits
+	OWM_WRITE, // writing some bits
 } mode_t;
 volatile mode_t mode; //state
 
 //next high-level state
 typedef enum {
 	OWX_IDLE, // nothing is happening
+	OWX_SELECT, // reading a selector (does the master even talk to us?)
 	OWX_COMMAND, // reading a command
-	OWX_READY, // waiting for non-interrupt space
+	OWX_RUNNING, // waiting for non-interrupt space
 } xmode_t;
 volatile xmode_t xmode;
 
@@ -232,8 +216,7 @@ typedef enum {
 	OWW_NO_WRITE,
 } wmode_t;
 volatile wmode_t wmode;
-volatile uint8_t actbit; // current bit
-volatile uint8_t srcount; // counter for search rom
+volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
 static inline void clear_timer(void)
 {
@@ -242,70 +225,73 @@ static inline void clear_timer(void)
 	TIMSK &= ~(1 << TOIE0);	   // turn off the timer IRQ
 }
 
+void next_idle(void) __attribute__((noreturn));
 void next_idle(void)
 {
-	if(state != S_IDLE)
-		DBG_P("\nj_out\n");
 	set_idle();
 	longjmp(end_out,1);
 }
 
+static inline void start_reading(uint8_t bits) {
+	mode = OWM_READ;
+	cbuf=0;
+	bitp=1<<(8-bits);
+}
+// same thing for within the timer interrupt
+#define START_READING(bits) do { \
+	lmode = OWM_READ; \
+	cbuf=0; \
+	lbitp=1<<(8-bits); \
+} while(0)
+
+static inline void wait_complete(char c)
+{
+	if(actbit || (wmode != OWW_NO_WRITE))
+		DBG_C('c');
+	while(actbit || (wmode != OWW_NO_WRITE)) {
+#ifdef HAVE_UART
+		uart_poll();
+#endif
+		update_idle(0); // actbit
+	}
+}
+
+void next_command(void) __attribute__((noreturn));
 void next_command(void)
 {
-	if ((state & S_MASK) != S_CMD_IDLE) {
-		DBG_P("\nc_out\n");
+	if (mode < OWM_IDLE) {
+		DBG_P("\nNX mode\n");
 		set_idle();
-	} else {
-		bitcount = 8;
-		state = S_RECEIVE_OPCODE | (state & S_XMIT2);
 	}
+	wait_complete('c');
+	start_reading(8);
 	longjmp(end_out,1);
 }
 
 static void
 xmit_any(uint8_t val, uint8_t len)
 {
-	while(state & (S_RECV|S_XMIT)) {
-#ifdef HAVE_UART
-		uart_poll();
-#endif
-		update_idle(vbitcount);
-	}
+	wait_complete('w');
 	cli();
-	if(!S_IN_APP(state)) {
+	if(mode == OWM_READ || mode == OWM_IDLE)
+		mode = OWM_WRITE;
+	if (mode != OWM_WRITE || xmode <= OWX_SELECT) {
 		sei();
-		if(state != S_IDLE) {
-			if (state < 0x10)
-				longjmp(end_out,1);
-			DBG_P("\nState error xmit! ");
-			DBG_X(state);
-			DBG_C('\n');
-		}
-		next_idle();
-	}
-	if(xmitlen) {
-		sei();
-		DBG_P("\nXbuflen error xmit! ");
-		DBG_X(xmitlen);
+		DBG_P("\nMode error xmit: ");
+		DBG_X(mode);
+		DBG_C(' ');
+		DBG_X(xmode);
 		DBG_C('\n');
 		next_idle();
 	}
-	if(bitcount) {
-		sei();
-		DBG_P("\nBitcount error xmit! ");
-		DBG_X(state);
-		DBG_C(',');
-		DBG_X(bitcount);
-		DBG_C('\n');
-		next_idle();
-	}
-	transbyte = val;
-	bitcount = len;
-	state = S_CMD_XMIT | (state & S_XMIT2);
+	actbit = 1 >> (8-len);
+	cbuf = val;
+
 	DBG_X(val);
 	sei();
 	DBG_OFF();
 }
+
 void xmit_bit(uint8_t val)
 {
 	DBG_C('<');
@@ -321,46 +307,27 @@ void xmit_byte(uint8_t val)
 
 uint8_t rx_ready(void)
 {
-	return !(state & (S_RECV|S_XMIT));
+	if (mode <= OWM_IDLE)
+		return 1;
+	return !actbit;
 }
 
 static void
 recv_any(uint8_t len)
 {
-	while(state & (S_RECV|S_XMIT)) {
-#ifdef HAVE_UART
-		uart_poll();
-#endif
-		update_idle(vbitcount);
-	}
+	wait_complete('r');
 	cli();
-	if(!S_IN_APP(state)) {
+	if(mode == OWM_WRITE || mode == OWM_IDLE)
+		mode = OWM_READ;
+	if (mode != OWM_READ || xmode <= OWX_SELECT) {
 		sei();
-		if (state != S_IDLE) {
-			if (state < 0x10)
-				longjmp(end_out,1);
-			DBG_P("\nState error recv! ");
-			DBG_X(state);
-			DBG_C('\n');
-		}
-		next_idle();
-	}
-	if(xmitlen) {
-		sei();
-		DBG_P("\nXbuflen error recv! ");
-		DBG_X(xmitlen);
+		DBG_P("\nState error recv! ");
+		DBG_X(mode);
 		DBG_C('\n');
 		next_idle();
 	}
-	if(bitcount) {
-		sei();
-		DBG_P("\nBitcount error recv! ");
-		DBG_X(bitcount);
-		DBG_C('\n');
-		next_idle();
-	}
-	bitcount = len;
-	state = S_CMD_RECV | (state & S_XMIT2);
+	actbit = 1 >> (8-len);
+	cbuf = 0;
 	sei();
 	DBG_OFF();
 	DBG_C('>');
@@ -368,15 +335,18 @@ recv_any(uint8_t len)
 
 static uint8_t recv_any_in(void)
 {
-	while(state & S_RECV) {
+	if(actbit)
+		DBG_C('i');
+	while(actbit) {
 #ifdef HAVE_UART
 		uart_poll();
 #endif
-		update_idle(vbitcount);
+		update_idle(1); // TODO
 	}
-	if ((state & S_MASK) != S_CMD_IDLE)
+	if (mode != OWM_READ)
 		longjmp(end_out,1);
-	return transbyte;
+	mode = OWM_IDLE;
+	return cbuf;
 }
 void recv_bit(void)
 {
@@ -436,21 +406,17 @@ int main(void)
 	uint16_t last_tb = 0;
 #endif
 
-	state = S_IDLE;
 	setup();
-	DBG_T(1);
 	DBG_T(1);
 
 	set_idle();
-	DBG_T(4);
 
 	// now go
 	sei();
-	DBG_ON();
 	DBG_P("\nInit done!\n");
+	DBG_T(2);
 
 	setjmp(end_out);
-	DBG_OFF();
 	while (1) {
 #ifdef HAVE_UART
 		volatile unsigned long long int x; // for really bad timing
@@ -461,11 +427,17 @@ int main(void)
 #ifdef HAVE_UART
 			uart_poll();
 #endif
-			if(state == S_HAS_OPCODE)
-				do_command(transbyte);
+			if(xmode == OWX_SELECT && !actbit) {
+				xmode = OWX_RUNNING;
+				do_select(cbuf);
+			}
+			if(xmode == OWX_COMMAND && !actbit) {
+				xmode = OWX_RUNNING;
+				do_command(cbuf);
+			}
 
-			// RESET processing takes > 12 bit times, plus one byte.
-			update_idle((state == S_IDLE) ? 20 : (state < 0x10) ? 8 : vbitcount);
+			// RESET processing takes longer.
+			update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
 
 #ifdef HAVE_TIMESTAMP
 			unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
@@ -496,18 +468,14 @@ void set_idle(void)
 		DBG_P(">idle:");
 		DBG_X(mode);
 		DBG_P(" b");
-		DBG_N(xmitlen);
-		DBG_N(bitcount);
 		DBG_NL();
 		mode = OWM_SLEEP;
 	}
 	DBG_OFF();
 	//DBG_OUT();
 
-	bitcount = 0;
-	xmitlen = 0;
-
 	mode = OWM_SLEEP;
+	xmode = OWX_IDLE;
 	wmode = OWW_NO_WRITE;
 	DIS_TIMER();
 	SET_FALLING();
@@ -518,28 +486,6 @@ void set_idle(void)
 	OWDDR &= ~(1 << ONEWIREPIN);	// set to input
 	sei();
 }
-
-#if 0
-static void set_reset(void) {
-	state = S_RESET;
-	bitcount = 8;
-	xmitlen = 0;
-	DBG_C('\n');
-	DBG_C('R');
-	//DBG_OUT();
-}
-#endif
-
-static inline void start_reading(uint8_t bits) {
-			mode = OWM_READ;
-			cbuf=0;
-			bitp=1<<(8-bits);
-}
-#define START_READING(bits) do { \
-			lmode = OWM_READ; \
-			cbuf=0; \
-			lbitp=1<<(8-bits); \
-} while(0)
 
 TIMER_INT {
 	wmode_t lwmode=wmode; //let these variables be in registers
@@ -610,7 +556,7 @@ TIMER_INT {
 		break;
 	case OWM_SEARCH_READ:
 		if (p != lactbit) {  //check master bit
-			lmode=OWM_SLEEP;  //not the same: go sleep
+			lmode = OWM_SLEEP;  //not the same: go to sleep
 			break;
 		}
 
@@ -619,12 +565,14 @@ TIMER_INT {
 			lbitp=1;
 			lbytep++;
 			if (lbytep>=8) {
-				lmode=OWM_SLEEP;  //all bits processed 
+				START_READING(8);
+				xmode = OWX_COMMAND;
 				break;
 			}
+			cbuf = ow_addr[lbytep];
 		}				
 		lmode = OWM_SEARCH_ZERO;
-		lactbit = !!(ow_addr[lbytep]&lbitp);
+		lactbit = !!(cbuf&lbitp);
 		lwmode = lactbit ? OWW_WRITE_1 : OWW_WRITE_0;
 		break;
 	}
@@ -640,164 +588,6 @@ TIMER_INT {
 	bitp=lbitp;
 	actbit=lactbit;
 }
-
-#if 0 // OLD
-/* ISRs cannot be interrupted, so this saves 80 bytes */
-#define state *(uint8_t *)&state
-
-// Timer interrupt routine
-ISR (TIMER0_OVF_vect)
-{
-	uint8_t pin, st = state & S_MASK;
-	pin = OWPIN & (1 << ONEWIREPIN);
-	clear_timer();
-	//DBG_C(pin ? '!' : ':');
-	if (state & S_XMIT2) {
-		state &= ~S_XMIT2;
-		IFR |= (1 << INTF0);
-		IMSK |= (1 << INT0);
-		OWDDR &= ~(1 << ONEWIREPIN);	// set to input
-		//DBG_C('x');
-		goto end;
-	}
-	if (st == S_RESET) {       // send a presence pulse
-		OWDDR |= (1 << ONEWIREPIN);
-		state = S_PRESENCEPULSE;
-		set_timer(OWT_PRESENCE);
-		DBG_C('P');
-		goto end;
-	}
-	if (st == S_PRESENCEPULSE) {
-		OWDDR &= ~(1 << ONEWIREPIN);	// Presence pulse done
-		state = S_RECEIVE_ROMCODE;		// wait for command
-		DBG_C('O');
-		goto end;
-	}
-	if (!(st & S_RECV)) { // any other non-receive situation is a NO-OP;
-		DBG_C('T');       // this really should not happen anyway
-		set_idle();
-		goto end;
-	}
-#ifndef SKIP_SEARCH
-	if (st == S_SEARCHROM_R) {
-		//DBG_C((pin != 0) + '0');
-		if (((transbyte & 0x01) == 0) == (pin == 0)) { // non-match => exit
-			// remember that S_SEARCHMEM_I left the bit inverted
-			DBG_C('-');
-			//DBG_X(transbyte);
-			set_idle();
-			goto end;
-		}
-		//DBG_C(' ');
-		transbyte >>= 1;
-		state = S_SEARCHROM;
-		if(!--bitcount) {
-			bitcount = 8;
-			if(xmitlen) {
-				transbyte = ow_addr[--xmitlen];
-				//DBG_C('?');
-				//DBG_X(transbyte);
-			} else {
-				state = S_RECEIVE_OPCODE;
-				DBG_C('C');
-			}
-		}
-		goto end;
-	}
-#endif
-	transbyte >>= 1;
-	if (pin)
-		transbyte |= 0x80;
-	if(--bitcount)
-		goto end;
-	bitcount = 8;
-
-	if (st == S_RECEIVE_ROMCODE) {
-		DBG_X(transbyte);
-		DBG_C(':');
-		if (transbyte == 0x55) {
-			state = S_MATCHROM;
-			xmitlen = 8;
-		}
-		else if (transbyte == 0xCC) {
-			 // skip ROM; nothing to do, just wait for next command
-			state = S_RECEIVE_OPCODE;
-			DBG_C('C');
-		}
-		else if (transbyte == 0x33) {
-			state = S_READROM;
-			xmitlen = 8;
-			transbyte = ow_addr[7];
-		}
-		else
-#ifndef SKIP_SEARCH
-		if (transbyte == 0xF0) {
-			state = S_SEARCHROM;
-			xmitlen = 7;
-			transbyte = ow_addr[7];
-			//DBG_C('?');
-			//DBG_X(transbyte);
-			//DBG_C(' ');
-		}
-		else
-#endif
-		{
-			DBG_P("::Unknown ");
-			DBG_X(transbyte);
-			set_idle();
-		}
-		goto end;
-	}
-	if (st == S_RECEIVE_OPCODE) {
-		DBG_IN();
-		DBG_X(transbyte);
-		bitcount = 0;
-		state = S_HAS_OPCODE | (state & S_XMIT2);
-		goto end;
-	}
-#ifndef SKIP_SEARCH
-	if (st == S_SEARCHROM) {
-		if (xmitlen) {
-			transbyte = ow_addr[--xmitlen];
-			//DBG_C('?');
-			//DBG_X(transbyte);
-		}
-		else {
-			state = S_RECEIVE_OPCODE;
-			DBG_C('C');
-		}
-		goto end;
-	}
-#endif
-	if (st == S_MATCHROM) {
-		if (transbyte != ow_addr[--xmitlen]) {
-			DBG_C('M');
-			set_idle();
-			goto end;
-		}
-		if (xmitlen)
-			goto end;
-		state = S_RECEIVE_OPCODE;
-		DBG_C('C');
-		goto end;
-	}
-	if (st == S_CMD_RECV) {
-		bitcount = 0;
-		state = S_CMD_IDLE;
-		DBG_ON();
-		goto end;
-	}
-	// no idea what to do here, probably the main program was too slow
-	{
-		DBG_P("? rcv s");
-		DBG_X(state);
-		set_idle();
-	}
-end:;
-	DBG_OFF();
-}
-#endif // OLD
-
 
 // 1wire level change.
 // Do this in assembler so that writing a zero is _fast_.
@@ -818,6 +608,8 @@ void INT0_vect(void) {
 	asm("     nop");
 }
 
+// This generates a spurious warning
+// which unfortunately cannot be turned off with GCC <4.8.2
 void real_PIN_INT(void) {
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
 	wmode = OWW_NO_WRITE;
@@ -855,100 +647,46 @@ void real_PIN_INT(void) {
 	EN_TIMER();
 }
 
-#if 0 // OLD
-void real_PIN_INT(void) {
-	DBG_T(1);
+void do_select(uint8_t cmd)
+{
+	uint8_t i;
 
-
-	uint8_t st = state & S_MASK;
-	if (OWPIN & (1 << ONEWIREPIN)) {	 // low => high transition
-		DBG_TS();
-		//DBG_C('^');
-#ifdef HAVE_TIMESTAMP
-		TCCR1B &=~ (1<<ICES1);
-#endif
-		if (((TCNT0 < 0xF0)||(st == S_IDLE)) && (TCNT0 > T_RESET)) {	// Reset pulse seen
-			set_timer(OWT_RESET_PRESENCE);
-			set_reset();
-		} // else do nothing special; the timer will read the state
-		goto end;
-	}
-	//TIFR0 |= (1 << TOV0);                 // clear timer IRQ
-	DBG_TS();
-	//DBG_C('_');
-#ifdef HAVE_TIMESTAMP
-	TCCR1B |= (1<<ICES1);
-#endif
-	if (st & S_XMIT) {
-		if ((transbyte & 0x01) == 0) {
-			IMSK &= ~(1 << INT0);
-			OWDDR |= (1 << ONEWIREPIN);	// send zero
-			set_timer(OWT_LOWTIME);
-			state |= S_XMIT2;
-		} else
-			clear_timer();
-
-#ifndef SKIP_SEARCH
-		if (st == S_SEARCHROM) {
-			//DBG_C((transbyte & 0x01) + '0');
-			transbyte ^= 0x01;
-			state = S_SEARCHROM_I | (state & S_XMIT2);
-			goto end;
-		} else if (st == S_SEARCHROM_I) {
-			//DBG_C((transbyte & 0x01) + '0');
-			// note: we leave the bit flipped here
-			// and check for equality later
-			state = S_SEARCHROM_R | (state & S_XMIT2);
-			goto end;
-		}
-#endif
-		transbyte >>= 1;
-		if (--bitcount)
-			goto end;
-
-		if (st == S_READROM) {
-			if (xmitlen) {
-				bitcount = 8;
-				transbyte = ow_addr[--xmitlen];
-				DBG_C('<');
-				DBG_X(transbyte);
-			} else {
-				state = S_RECEIVE_OPCODE | (state & S_XMIT2);
-				DBG_C('C');
+	switch(cmd) {
+	case 0xF0: // SEARCH_ROM; handled in interrupt
+		mode = OWM_SEARCH_ZERO;
+		bytep = 0;
+		bitp = 1;
+		cbuf = ow_addr[0];
+		actbit = cbuf&1;
+		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
+		return;
+	case 0x55: // MATCH_ROM
+		recv_byte();
+		for (i=0;;i++) {
+			if (recv_byte_in() != ow_addr[i]) {
+				DBG_P("\nMR msimatch\n");
+				next_idle();
 			}
+			if (i < 7)
+				recv_byte();
+			else
+				break;
 		}
-		else if (st == S_CMD_XMIT) {
-			state = S_CMD_IDLE | (state & S_XMIT2);
-			DBG_ON();
-		}
-		else {
-			DBG_P("\nxmit: bad state\n");
-			set_idle();
-		}
-		goto end;
+		xmode = OWX_COMMAND;
+		next_command();
+#ifdef _ONE_DEVICE_CMDS_
+	case 0xCC: // direct access
+		xmode = OWX_COMMAND;
+		next_command();
+	case 0x33:
+		for (i=0;i<8;i++) {
+			xmit_byte(ow_addr[i]);
+		
+		next_idle();
+#endif
+	default:
+		DBG_P("\nUnk select\n");
+		next_idle();
 	}
-	else if (st == S_CMD_IDLE) {
-		DBG_C('x');
-		set_idle();
-	}
-	else if (st == S_IDLE) {		   // first 1-0 transition
-		clear_timer();
-	}
-	else if (state & S_RECV) {
-		set_timer(OWT_READLINE);
-	}
-	else if (st == S_RESET) {		   // somebody else sends their Presence pulse
-		state = S_RECEIVE_ROMCODE;
-		clear_timer();
-	}
-	else if (st == S_PRESENCEPULSE)
-		;   // do nothing, this is our own presence pulse
-	else {
-		DBG_C('c');
-		set_idle();
-	}		
-end:;
 }
-#endif // OLD
-
 
