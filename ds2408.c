@@ -90,7 +90,7 @@ void do_command(uint8_t cmd)
 		DBG_P(":I");
 		do_read_pio();
 	} else {
-		DBG_P("?CI");
+		DBG_P("?CI ");
 		DBG_X(cmd);
 		set_idle();
 	}
