@@ -95,8 +95,10 @@
 #define ADMSK PCMSK1
 #define ADIRQ
 #define HAVE_UART
-//#define HAVE_UART_IRQ
+// #define HAVE_UART_IRQ
+#define HAVE_UART_SYNC // no output buffering
 #define DBGPIN 3 /* debug toggle */
+//#define HAVE_IRQ_CATCHER
 
 #endif
 
@@ -106,6 +108,10 @@
 
 #ifndef F_CPU
 #define F_CPU F_CPU_
+#endif
+
+#if defined(HAVE_UART_SYNC) && defined(HAVE_UART_IRQ)
+#error Poll. Or IRQ. Not both.
 #endif
 
 #endif /* FEATURES_H */
