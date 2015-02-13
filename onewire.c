@@ -228,7 +228,8 @@ static inline void clear_timer(void)
 void next_idle(void) __attribute__((noreturn));
 void next_idle(void)
 {
-	set_idle();
+	if(mode > OWM_PRESENCE)
+		set_idle();
 	sei();
 	DBGS_P(".e1");
 	longjmp(end_out,1);
@@ -283,12 +284,7 @@ xmit_any(uint8_t val, uint8_t len)
 	if(mode == OWM_READ || mode == OWM_IDLE)
 		mode = OWM_WRITE;
 	if (mode != OWM_WRITE || xmode < OWX_RUNNING) {
-		sei();
-		DBGS_P("\nMode error xmit: ");
-		DBGS_X(mode);
-		DBGS_C(' ');
-		DBGS_X(xmode);
-		DBGS_C('\n');
+		DBGS_P("\nErr xmit ");
 		next_idle();
 	}
 
@@ -493,6 +489,7 @@ void set_idle(void)
 	mode = OWM_SLEEP;
 	xmode = OWX_IDLE;
 	wmode = OWW_NO_WRITE;
+	CLEAR_LOW();
 	DIS_TIMER();
 	SET_FALLING();
 	DBG_C('s');
