@@ -273,6 +273,8 @@ void next_command(void)
 	wait_complete('n');
 	start_reading(8);
 	DBGS_P(".e4");
+
+	xmode = OWX_COMMAND;
 	longjmp(end_out,1);
 }
 
@@ -528,11 +530,9 @@ static inline void do_select(uint8_t cmd)
 			else
 				break;
 		}
-		xmode = OWX_COMMAND;
 		next_command();
 #ifdef _ONE_DEVICE_CMDS_
 	case 0xCC: // direct access
-		xmode = OWX_COMMAND;
 		next_command();
 	case 0x33:
 		for (i=0;i<8;i++) {
