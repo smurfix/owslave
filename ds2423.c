@@ -43,7 +43,7 @@
 #define C_READ_SCRATCHPAD  0xAA // TODO
 #define C_COPY_SCRATCHPAD  0x55 // TODO
 #define C_READ_MEM         0xF0 // TODO
-#define C_READ_MEM_COUNTER 0xA5 // TODO
+#define C_READ_MEM_COUNTER 0xA5
 
 #ifdef DEBUG
 uint8_t debug_state;
@@ -59,6 +59,9 @@ uint8_t debug_state;
 #define ADLARMUX 0
 #elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
 #define ADLARMUX (1<<ADLAR)
+#define PINCHANGE_vect PCINT1_vect
+#define PCIE PCIE1
+#define PCMSK PCMSK1
 #else
 #warning Where is the ADLAR bit?
 #define NO_ADLAR
@@ -83,7 +86,7 @@ static uint8_t cur_adc,bstate;
 static uint16_t samples;
 
 #else // !ANALOG
-static uint8_t obits,cbits;
+volatile static uint8_t obits,cbits;
 #endif
 static uint32_t counter[NCOUNTERS];
 static uint8_t unchecked;
@@ -145,6 +148,8 @@ xmore:
 
 	len = 0x1F - (adr & 0x1F);
 	adr++;
+	DBGS_C('L');
+	DBGS_X(len);
 
 	while(len) {
 		len--;
@@ -179,6 +184,7 @@ xmore:
 	SEND(0);
 #undef SEND
 
+	DBGS_P(".c.");
 	crc = ~crc;
 	xmit_byte(crc);
 	xmit_byte(crc >> 8);
@@ -196,7 +202,7 @@ void do_command(uint8_t cmd)
 		DBG_P(":I");
 		do_mem_counter();
 	} else {
-		DBG_P("?CI");
+		DBG_P("?CI ");
 		DBG_X(cmd);
 		set_idle();
 	}
@@ -288,7 +294,7 @@ void check_adc(void)
 	}
 	if(samples < 0xFFFF)
 		samples++;
-#else
+#else // !analog
 	uint8_t i = 0;
 	uint8_t now_bits,nbits,bits,ocbits;
 	cli();
@@ -300,15 +306,22 @@ void check_adc(void)
 	sei();
 	while(i < NCOUNTERS) {
 		// Count a 0-1 transition. We may have missed the subsequent 1-0.
-		if ((bits & 0x01) && ((nbits & 0x01) || !(ocbits & 0x01)))
+		if ((bits & 0x01) && ((nbits & 0x01) || !(ocbits & 0x01))) {
 			counter[i]++;
+
+			DBGS_P(".i");
+			DBGS_X(i);
+			DBGS_C('=');
+			DBGS_X(counter[i]);
+			DBGS_C(' ');
+		}
 		ocbits >>= 1;
 		nbits >>= 1;
 		bits >>= 1;
 		i++;
 	}
 	obits = now_bits;
-#endif
+#endif // !analog
 	unchecked = 0;
 #ifdef DEBUG
 	debug_state = 0;
@@ -316,17 +329,31 @@ void check_adc(void)
 }
 
 #ifndef ANALOG
+#ifdef ADIRQ
+#define poll_pins() do {} while(0)
 ISR(ADPIN_vect)
+#else
+static inline void poll_pins(void)
+#endif
 {
 	uint8_t nbits = ADPIN;
+#ifndef ADIRQ
+	if(nbits != obits) {
+		DBG_C('P');
+		DBG_X(nbits);
+	}
+#endif
 	nbits ^= obits; // 'nbits' now contains the changed bits
 	cbits |= nbits;
 }
+#else
+#define poll_pins() do {} while(0)
 #endif // !ANALOG
 
 void update_idle(uint8_t bits)
 {
 	//DBG_C('\\');
+	poll_pins();
 	if(bits > 0 || unchecked > 100)
 		check_adc();
 	else if((ADCSRA & (1<<ADIF)) && (unchecked < 0xFF))
@@ -387,9 +414,10 @@ void init_state(void)
 	start_adc();
 #else // !ANALOG
 	obits = ADPIN;
-	ADMSK = (1<<NCOUNTERS)-1;
-	IFR |= (1<<PCIF0);
-	IMSK |= (1<<PCIE0);
+#ifdef ADIRQ
+	PCICR |= (1<<PCIE);
+#endif
+	PCMSK |= (1<<NCOUNTERS)-1;
 #endif
 }
 
