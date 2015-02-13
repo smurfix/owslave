@@ -1,4 +1,7 @@
 #include "onewire.h"
+#include "features.h"
+
+#ifdef HAVE_IRQ_CATCHER
 
 void pingi(uint8_t c) {
     uint32_t j;
@@ -73,4 +76,6 @@ void __vector_28(void) { pingi(28); }
 void __vector_29(void) { pingi(29); }
 void __vector_30(void) { pingi(30); }
 void __vector_31(void) { pingi(31); }
+
+#endif
 
