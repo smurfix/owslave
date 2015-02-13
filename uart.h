@@ -1,5 +1,7 @@
 #ifndef UART_H
 #define UART_H
+#include "features.h"
+
 /************************************************************************
 Title:     Interrupt UART library with receive/transmit circular buffers
 Author:    Peter Fleury <pfleury@gmx.ch>   http://jump.to/fleury
@@ -64,6 +66,7 @@ Extension: uart_puti, uart_puthex_nibble, uart_puthex_byte
 #define UART_BUFFER_OVERFLOW  0x0200              /* receive ringbuffer overflow */
 #define UART_NO_DATA          0x0100              /* no receive data available   */
 
+#ifdef HAVE_UART
 
 /*
 ** function prototypes
@@ -111,7 +114,6 @@ extern unsigned int uart_getc(void);
  *  @return  none
  */
 extern void uart_putc(unsigned char data);
-extern void uart_putc_now(unsigned char data);
 
 
 /**
@@ -207,8 +209,29 @@ extern void uart_puthex_word(const uint16_t b);
  *
  * @return   none
  */
+#if !defined(HAVE_UART_IRQ) && !defined(HAVE_UART_SYNC)
 extern void uart_poll(void);
+#else
+#define uart_poll() do {} while(0)
+#endif
 /*@}*/
 
+#else // !HAVE_UART
+
+#define uart_init(baud) do {} while(0)
+#define uart_getc() UART_NO_DATA
+#define uart_putc(data) do {} while(0)
+#define uart_puts(s) do {} while(0)
+#define uart_puts_p(s) do {} while(0)
+#define uart_puts_P(s) do {} while(0)
+#define uart_puti(i) do {} while(0)
+#define uart_putl(i) do {} while(0)
+#define uart_puthex_nibble(b) do {} while(0)
+#define uart_puthex_byte(b) do {} while(0)
+#define uart_puthex_word(b) do {} while(0)
+#define uart_poll() do {} while(0)
+/*@}*/
+
+#endif // !HAVE_UART
 #endif // UART_H 
 

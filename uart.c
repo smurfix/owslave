@@ -111,6 +111,7 @@ LICENSE:
  #define UART0_CONTROL  UCSRB
  #define UART0_DATA     UDR 
  #define UART0_UDRIE    UDRIE
+ #define UART0_ERRMASK (_BV(FE)|_BV(DOR))
 #elif  defined(__AVR_ATmega8__)  || defined(__AVR_ATmega16__) || defined(__AVR_ATmega32__) \
   || defined(__AVR_ATmega8515__) || defined(__AVR_ATmega8535__) \
   || defined(__AVR_ATmega323__) 
@@ -122,6 +123,7 @@ LICENSE:
  #define UART0_CONTROL  UCSRB
  #define UART0_DATA     UDR
  #define UART0_UDRIE    UDRIE
+ #define UART0_ERRMASK (_BV(FE)|_BV(DOR))
 #elif defined(__AVR_ATmega163__) 
   /* ATMega163 with one UART */
  #define ATMEGA_UART
@@ -131,6 +133,7 @@ LICENSE:
  #define UART0_CONTROL  UCSRB
  #define UART0_DATA     UDR
  #define UART0_UDRIE    UDRIE
+ #define UART0_ERRMASK (_BV(FE)|_BV(DOR))
 #elif defined(__AVR_ATmega162__) || defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
  /* ATMega with two USART */
  #define ATMEGA_USART0
@@ -140,6 +143,7 @@ LICENSE:
  #define UART0_CONTROL  UCSR0B
  #define UART0_DATA     UDR0
  #define UART0_UDRIE    UDRIE0
+ #define UART0_ERRMASK (_BV(FE0)|_BV(DOR0))
 #elif defined(__AVR_ATmega64__) || defined(__AVR_ATmega128__) 
  /* ATMega with two USART */
  #define ATMEGA_USART0
@@ -157,12 +161,14 @@ LICENSE:
 /*
  *  module global variables
  */
+#ifndef DBG_UART_SYNC
 static volatile unsigned char UART_TxBuf[UART_TX_BUFFER_SIZE];
 static volatile unsigned char UART_RxBuf[UART_RX_BUFFER_SIZE];
 static volatile unsigned char UART_TxHead;
 static volatile unsigned char UART_TxTail;
 static volatile unsigned char UART_RxHead;
 static volatile unsigned char UART_RxTail;
+#endif
 static volatile unsigned char UART_LastRxError;
 
 
@@ -179,6 +185,13 @@ Returns:  lower byte:  received byte from ringbuffer
 
 unsigned int uart_getc(void)
 {    
+#ifdef HAVE_UART_SYNC
+    if (UCSR0A & _BV(RXC0)) {
+        return ((UART0_STATUS & UART0_ERRMASK) << 8) | UART0_DATA;
+    } else {
+        return UART_NO_DATA;   /* no data available */
+    }
+#else
     unsigned char tmptail;
     unsigned char data;
 
@@ -195,8 +208,10 @@ unsigned int uart_getc(void)
     data = UART_RxBuf[tmptail];
     
     return (UART_LastRxError << 8) + data;
+#endif
 }/* uart_getc */
 
+#ifndef HAVE_UART_SYNC
 
 #ifdef HAVE_UART_IRQ
 SIGNAL(UART0_RECEIVE_INTERRUPT)
@@ -222,15 +237,7 @@ Purpose:  called when the UART has received a character
     usr  = UART0_STATUS;
     data = UART0_DATA;
     
-#if defined( AT90_UART )
-    lastRxError = (usr & (_BV(FE)|_BV(DOR)) );
-#elif defined( ATMEGA_USART )
-    lastRxError = (usr & (_BV(FE)|_BV(DOR)) );
-#elif defined( ATMEGA_USART0 )
-    lastRxError = (usr & (_BV(FE0)|_BV(DOR0)) );
-#elif defined ( ATMEGA_UART )
-    lastRxError = (usr & (_BV(FE)|_BV(DOR)) );
-#endif
+    lastRxError = usr & UART0_ERRMASK;
     
     /* calculate buffer index */ 
     tmphead = ( UART_RxHead + 1) & UART_RX_BUFFER_MASK;
@@ -281,6 +288,8 @@ Purpose:  called when the UART is ready to transmit the next byte
     sei();
 #endif
 }
+
+#endif /* sync */
 
 
 /*************************************************************************
@@ -349,27 +358,14 @@ void uart_init(unsigned int baudrate)
 #error I do not know your UART
 #endif
 #ifdef HAVE_UART_IRQ
+#ifndef RXCIE
+#define RXCIE RXCIE0
+#endif
     UART0_CONTROL |= _BV(RXCIE);
 #endif
 
 }/* uart_init */
 
-
-inline void _uart_putc_now(unsigned char data)
-{
-	while(!(UCSR0A & _BV(UDRE0))) ;
-	UDR0 = data;
-	return;
-}
-inline void uart_putc_now(unsigned char data)
-{
-	unsigned char sreg = SREG;
-	cli();
-	if(data == '\n')
-		_uart_putc_now('\r');
-	_uart_putc_now(data);
-	SREG = sreg;
-}
 
 /*************************************************************************
 Function: uart_putc()
@@ -379,10 +375,15 @@ Returns:  none
 **************************************************************************/
 void uart_putc(unsigned char data)
 {
+    if(data == '\n')
+        uart_putc('\r');
+
+#ifdef HAVE_UART_SYNC
+    while(!(UCSR0A & _BV(UDRE0))) ;
+    UDR0 = data;
+#else
     unsigned char tmphead;
 
-	if(data == '\n')
-		uart_putc('\r');
 #if 0
     if(!(SREG & _BV(SREG_I))) {
 		_uart_putc_now(data);
@@ -405,7 +406,7 @@ void uart_putc(unsigned char data)
 	}
 
 	SREG = sreg;
-
+#endif /* sync */
 }/* uart_putc */
 
 
@@ -512,11 +513,11 @@ void uart_puthex_word(const uint16_t b)
     }
 } /* uart_puthex_word */
 
+#if !defined(HAVE_UART_IRQ) && !defined(HAVE_UART_SYNC)
 void uart_poll(void) {
-#ifndef HAVE_UART_IRQ
     poll_uart0_recv();
     poll_uart0_xmit();
-#endif
 }
+#endif
 
 #endif // HAVE_UART
