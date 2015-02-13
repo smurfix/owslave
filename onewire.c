@@ -291,16 +291,14 @@ xmit_any(uint8_t val, uint8_t len)
 	bitp = 1 << (8-len);
 	cbuf = val;
 	if(CHK_INT_EN()) {
-		DBG_C('k');
 		// next is pin interrupt
 		wmode = (cbuf & bitp) ? OWW_WRITE_1 : OWW_WRITE_0;
 		bitp <<= 1;
-	} else  {
-		// next is timer interrupt
-		DBG_C('K');
 	}
+	// otherwise the timer interrupt will do this
+	// can't simply switch off the timer here because we might still be
+	// writing a zero
 
-	DBG_X(val);
 	sei();
 	DBG_OFF();
 }
