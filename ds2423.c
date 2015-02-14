@@ -54,6 +54,9 @@ uint8_t debug_state;
 #if defined(__AVR_ATtiny84__)
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
+#define PINCHANGE_vect PCINT0_vect
+#define PCIE PCIE0
+#define PCMSK PCMSK0
 #elif defined(__AVR_ATtiny25__)
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
@@ -225,7 +228,7 @@ void start_adc(void)
 }
 #endif
 
-void check_adc(void)
+static inline void check_adc(void)
 {
 #ifdef ANALOG
 	uint16_t res;

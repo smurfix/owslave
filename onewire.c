@@ -102,6 +102,9 @@ static inline void mcu_init(void) {
 #ifndef TIFR
 #define TIFR TIFR0
 #endif
+#ifndef EICRA
+#define EICRA MCUCR
+#endif
 
 // Frequency-dependent timing macros
 #ifdef DBGPIN // additional overhead for playing with the trace pin
