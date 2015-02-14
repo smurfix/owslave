@@ -95,8 +95,8 @@
 #define ADMSK PCMSK1
 #define ADIRQ
 #define HAVE_UART
-// #define HAVE_UART_IRQ
-#define HAVE_UART_SYNC // no output buffering
+#define HAVE_UART_IRQ
+// #define HAVE_UART_SYNC // no output buffering
 #define DBGPIN 3 /* debug toggle */
 //#define HAVE_IRQ_CATCHER
 
