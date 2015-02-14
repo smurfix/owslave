@@ -307,14 +307,11 @@ xmit_any(uint8_t val, uint8_t len)
 
 void xmit_bit(uint8_t val)
 {
-	DBG_C('<');
-	DBG_C('_');
 	xmit_any(!!val,1);
 }
 
 void xmit_byte(uint8_t val)
 {
-	DBG_C('<');
 	xmit_any(val,8);
 }
 
@@ -342,7 +339,6 @@ recv_any(uint8_t len)
 	cbuf = 0;
 	sei();
 	DBG_OFF();
-	DBG_C('>');
 }
 
 static uint8_t recv_any_in(void)
