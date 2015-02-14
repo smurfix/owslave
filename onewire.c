@@ -99,17 +99,25 @@ static inline void mcu_init(void) {
 #endif
 
 // Frequency-dependent timing macros
-#define T_(c) ((F_CPU/PRESCALE)/(1000000/c))
+#ifdef DBGPIN // additional overhead for playing with the trace pin
+#define _ADD_T 1
+#else
+#define _ADD_T 0
+#endif
+// T_(x)-y => value for setting the timer
+// x: nominal time in microseconds
+// y: overhead: increase by 1 for each 64 clock ticks
+#define T_(c) ((F_CPU/PRESCALE)/(1000000/c)-_ADD_T)
 #define OWT_MIN_RESET T_(410)
 #define OWT_RESET_PRESENCE (T_(40)-1)
-#define OWT_PRESENCE T_(160)
-#define OWT_READLINE (T_(35)-2)
-#define OWT_LOWTIME (T_(40)-2)
+#define OWT_PRESENCE (T_(160)-1)
+#define OWT_READLINE (T_(30)-2)
+#define OWT_LOWTIME (T_(60)-3)
 
 #if (OWT_MIN_RESET>240)
 #error Reset timing is broken, your clock is too fast
 #endif
-#if (OWT_READLINE<2)
+#if (OWT_READLINE<1)
 #error Read timing is broken, your clock is too slow
 #endif
 
