@@ -148,8 +148,8 @@ xmore:
 
 	len = 0x1F - (adr & 0x1F);
 	adr++;
-	DBGS_C('L');
-	DBGS_X(len);
+	//DBGS_C('L');
+	//DBGS_X(len);
 
 	while(len) {
 		len--;
