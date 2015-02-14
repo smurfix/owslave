@@ -184,7 +184,7 @@ xmore:
 	SEND(0);
 #undef SEND
 
-	DBGS_P(".c.");
+	//DBGS_P(".c.");
 	crc = ~crc;
 	xmit_byte(crc);
 	xmit_byte(crc >> 8);
@@ -199,7 +199,7 @@ xmore:
 void do_command(uint8_t cmd)
 {
 	if(cmd == C_READ_MEM_COUNTER) {
-		DBG_P(":I");
+		//DBG_P(":I");
 		do_mem_counter();
 	} else {
 		DBG_P("?CI ");
@@ -337,7 +337,7 @@ static inline void poll_pins(void)
 #endif
 {
 	uint8_t nbits = ADPIN;
-#ifndef ADIRQ
+#if 0 // ndef ADIRQ
 	if(nbits != obits) {
 		DBG_C('P');
 		DBG_X(nbits);

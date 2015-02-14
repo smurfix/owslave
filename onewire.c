@@ -231,7 +231,7 @@ void next_idle(void)
 	if(mode > OWM_PRESENCE)
 		set_idle();
 	sei();
-	DBGS_P(".e1");
+	//DBGS_P(".e1");
 	longjmp(end_out,1);
 }
 
@@ -274,7 +274,7 @@ void next_command(void)
 {
 	wait_complete('n');
 	start_reading(8);
-	DBGS_P(".e4");
+	//DBGS_P(".e4");
 
 	xmode = OWX_COMMAND;
 	longjmp(end_out,1);
@@ -404,53 +404,57 @@ int main(void)
 	sei();
 	DBGS_P("\nInit done!\n");
 
+#ifdef HAVE_UART
+	volatile unsigned long long int x=0;
+#endif
+
 	setjmp(end_out);
 	while (1) {
 #ifdef HAVE_UART
-		volatile unsigned long long int x; // for really bad timing
-		DBGS_C('/');
-		for(x=0;x<100000ULL;x++)
+		if(++x == 100000ULL) {
+			x=0;
+			DBGS_C('/');
+		}
 #endif
-		 {
-#ifdef HAVE_UART
-			uart_poll();
-#endif
-			DBG_OFF();
-			if(xmode == OWX_SELECT && !bitp) {
+		uart_poll();
+		DBG_OFF();
+		if(!bitp) {
+			xmode_t lxmode = xmode;
+			if(lxmode == OWX_SELECT) {
 				//DBG_C('S');
 				//DBG_X(cbuf);
 				xmode = OWX_RUNNING;
 				do_select(cbuf);
 			}
-			if(xmode == OWX_COMMAND && !bitp) {
-				DBG_C('C');
-				DBG_X(cbuf);
+			else if(lxmode == OWX_COMMAND) {
+				//DBG_C('C');
+				//DBG_X(cbuf);
 				xmode = OWX_RUNNING;
 				do_command(cbuf);
 			}
+		}
 
-			// RESET processing takes longer.
-			update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_AFTER_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
+		// RESET processing takes longer.
+		update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_AFTER_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
 
 #ifdef HAVE_TIMESTAMP
-			unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
-			while(tbpos < n && n > 0) {
-				uint16_t this_tb = tsbuf[--n];
-				DBG_Y(this_tb-last_tb);
-				last_tb=this_tb;
+		unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
+		while(tbpos < n && n > 0) {
+			uint16_t this_tb = tsbuf[--n];
+			DBG_Y(this_tb-last_tb);
+			last_tb=this_tb;
 
-				DBG_C(lev ? '^' : '_');
-				lev = 1-lev;
-				cli();
-				if(tbpos == n) tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
-				sei();
-			}
-			if (n == 0) {
-				DBG_P("<?>");
-				tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
-			}
-#endif
+			DBG_C(lev ? '^' : '_');
+			lev = 1-lev;
+			cli();
+			if(tbpos == n) tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
+			sei();
 		}
+		if (n == 0) {
+			DBG_P("<?>");
+			tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
+		}
+#endif
 	}
 }
 
