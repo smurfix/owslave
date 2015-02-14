@@ -542,6 +542,9 @@ TIMER_INT {
 //	if(lmode == OWM_READ || lmode == OWM_SEARCH_READ)
 //		DBG_T(p+1);
 //	if (lmode > OWM_PRESENCE && lmode != OWM_WRITE)
+	if(DBG_PIN())
+		DBG_OFF();
+	else
 		DBG_ON();
 	wmode_t lwmode=OWW_NO_WRITE; // wmode; //let these variables be in registers
 	uint8_t lbytep=bytep;
@@ -686,8 +689,11 @@ void INT0_vect(void) {
 // which unfortunately cannot be turned off with GCC <4.8.2
 void real_PIN_INT(void) {
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
-	if (mode > OWM_PRESENCE)
+	if (mode > OWM_PRESENCE) {
 		DBG_ON();
+		if (wmode == OWW_NO_WRITE)
+			DBG_OFF();
+	}
 #if 0
 	if (mode == OWM_SLEEP) { // don't report anything
 	} else if (wmode != OWW_NO_WRITE) {
@@ -732,7 +738,6 @@ void real_PIN_INT(void) {
 		break;
 	}
 	EN_TIMER();
-	DBG_OFF();
 //	if (mode > OWM_PRESENCE)
 //		DBG_T(1);
 }

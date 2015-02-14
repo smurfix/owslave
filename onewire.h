@@ -80,14 +80,16 @@ volatile uint16_t tsbuf[100];
 
 #ifdef DBGPIN
 EXTERN volatile char dbg_interest INIT(0);
-#define DBG_IN() dbg_interest=1
-#define DBG_OUT() dbg_interest=0
-#define DBG_ON() if(dbg_interest) OWPORT |= (1<<DBGPIN)
-#define DBG_OFF() if(dbg_interest) OWPORT &= ~(1<<DBGPIN)
-#define DBG_T(x) if(dbg_interest) do { uint8_t _xx=(x); while(_xx) { _xx-=1; DBG_ON();DBG_OFF();} } while(0)
+#define DBG_IN() do { dbg_interest=1; } while(0)
+#define DBG_OUT() do { dbg_interest=0; } while(0)
+#define DBG_PIN() (OWPIN & (1<<DBGPIN))
+#define DBG_ON() do { if(dbg_interest) OWPORT |= (1<<DBGPIN); } while(0)
+#define DBG_OFF() do { if(dbg_interest) OWPORT &= ~(1<<DBGPIN); } while(0)
+#define DBG_T(x) do { if(dbg_interest) do { uint8_t _xx=(x); while(_xx) { _xx-=1; DBG_ON();DBG_OFF();} } while(0) } while(0)
 #else
 #define DBG_IN() do { } while(0)
 #define DBG_OUT() do { } while(0)
+#define DBG_PIN() 0
 #define DBG_ON() do { } while(0)
 #define DBG_OFF() do { } while(0)
 #define DBG_T(x) do { } while(0)
