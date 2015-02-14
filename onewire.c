@@ -329,12 +329,14 @@ void xmit_byte(uint8_t val)
 	xmit_any(val,8);
 }
 
+#if 0
 uint8_t rx_ready(void)
 {
 	if (mode <= OWM_IDLE)
 		return 1;
 	return !bitp;
 }
+#endif
 
 static inline void
 recv_any(uint8_t len)
@@ -343,7 +345,7 @@ recv_any(uint8_t len)
 	cli();
 	if(mode == OWM_WRITE || mode == OWM_IDLE)
 		mode = OWM_READ;
-	if (mode != OWM_READ || xmode <= OWX_SELECT) {
+	if (mode != OWM_READ || xmode < OWX_RUNNING) {
 		DBG_P("\nState error recv! ");
 		DBG_X(mode);
 		DBG_C('\n');
