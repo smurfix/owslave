@@ -714,11 +714,13 @@ void INT0_vect(void) {
 // which unfortunately cannot be turned off with GCC <4.8.2
 void real_PIN_INT(void) {
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
+#ifdef DBGPIN // modes are volatile
 	if (mode > OWM_PRESENCE) {
 		DBG_ON();
 		if (wmode == OWW_NO_WRITE)
 			DBG_OFF();
 	}
+#endif
 #if 0
 	if (mode == OWM_SLEEP) { // don't report anything
 	} else if (wmode != OWW_NO_WRITE) {
