@@ -37,6 +37,10 @@ volatile uint8_t bytep; // position of current byte
 volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 
 static jmp_buf end_out;
+static void go_out(void) __attribute__((noreturn));
+static void go_out(void) {
+	longjmp(end_out,1); // saves bytes
+}
 
 
 #ifdef __AVR_ATtiny13__
@@ -241,7 +245,7 @@ void next_idle(void)
 	if(mode > OWM_PRESENCE)
 		set_idle();
 	//DBGS_P(".e1");
-	longjmp(end_out,1);
+	go_out();
 }
 
 static inline void start_reading(uint8_t bits) {
@@ -286,7 +290,7 @@ void next_command(void)
 	//DBGS_P(".e4");
 
 	xmode = OWX_COMMAND;
-	longjmp(end_out,1);
+	go_out();
 }
 
 static inline void
@@ -364,7 +368,7 @@ recv_any_in(void)
 	wait_complete('i');
 	if (mode != OWM_READ) {
 		DBGS_P(".e2");
-		longjmp(end_out,1);
+		go_out();
 	}
 	mode = OWM_IDLE;
 	return cbuf;
