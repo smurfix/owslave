@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2010, Matthias Urlichs <matthias@urlichs.de>
+ *  Copyright © 2010-2015, Matthias Urlichs <matthias@urlichs.de>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
