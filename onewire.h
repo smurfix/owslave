@@ -104,6 +104,24 @@ void xmit_byte(uint8_t bit);
    when you really need the data. */
 void recv_bit(void);
 void recv_byte(void);
+
+uint8_t recv_any_in(void); // don't call directly
+static inline uint8_t recv_bit_in(void)
+{
+    uint8_t byte;
+    byte = ((recv_any_in() & 0x80) != 0);
+    // DBG_X(byte);
+    return byte;
+}
+static inline uint8_t recv_byte_in(void)
+{
+    uint8_t byte;
+    byte = recv_any_in();
+    // DBG_X(byte);
+    return byte;
+}
+
+
 uint8_t recv_bit_in(void);
 uint8_t recv_byte_in(void);
 

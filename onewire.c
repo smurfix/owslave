@@ -247,14 +247,16 @@ static inline void start_reading(uint8_t bits) {
 	lbitp=1<<(8-bits); \
 } while(0)
 
-static inline void wait_complete(char c)
+#define wait_complete(c) _wait_complete()
+//static inline void wait_complete(char c)
+static inline void _wait_complete()
 {
-	if(bitp || (wmode != OWW_NO_WRITE))
-		DBG_C(c);
+//	if(bitp || (wmode != OWW_NO_WRITE))
+//		DBG_C(c);
 	while(1) {
 		if (mode < OWM_IDLE) {
-			DBGS_P("s5");
-			longjmp(end_out,1);
+//			DBGS_P("s5");
+			next_idle();
 		}
 		if(!bitp && (wmode == OWW_NO_WRITE)) {
 			DBG_OFF();
@@ -310,6 +312,7 @@ void xmit_bit(uint8_t val)
 	xmit_any(!!val,1);
 }
 
+// It is a net space win not to inline this.
 void xmit_byte(uint8_t val)
 {
 	xmit_any(val,8);
@@ -341,7 +344,7 @@ recv_any(uint8_t len)
 	DBG_OFF();
 }
 
-static uint8_t recv_any_in(void)
+uint8_t recv_any_in(void)
 {
 	wait_complete('i');
 	if (mode != OWM_READ) {
@@ -361,22 +364,6 @@ void recv_byte(void)
 {
 	recv_any(8);
 }
-uint8_t recv_bit_in(void)
-{
-	uint8_t byte;
-	byte = ((recv_any_in() & 0x80) != 0);
-	DBG_X(byte);
-	return byte;
-}
-
-uint8_t recv_byte_in(void)
-{
-	uint8_t byte;
-	byte = recv_any_in();
-	DBG_X(byte);
-	return byte;
-}
-
 
 // this code is from owfs
 static uint8_t parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
