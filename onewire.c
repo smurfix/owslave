@@ -458,10 +458,13 @@ main(void)
 				xmode = OWX_RUNNING;
 				do_command(cbuf);
 			}
-		}
+			else
+				update_idle(2);
+		} else
+			update_idle(1);
 
 		// RESET processing takes longer.
-		update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_AFTER_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
+		// update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_AFTER_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
 
 #ifdef HAVE_TIMESTAMP
 		unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
@@ -489,6 +492,7 @@ void set_idle(void)
 	/* This code will fail to recognize a reset if we're already in one.
 	   Should happen rarely enough not to matter. */
 	cli();
+#ifdef HAVE_UART // mode is volatile
 	if(mode != OWM_SLEEP) {
 		DBGS_P(">idle:");
 		DBGS_X(mode);
@@ -498,6 +502,7 @@ void set_idle(void)
 		DBGS_X(bitp);
 		DBGS_NL();
 	}
+#endif
 	DBG_OFF();
 	//DBG_OUT();
 
@@ -623,8 +628,7 @@ TIMER_INT {
 		} else {
 			// Overrun!
 			DBGS_P("\nRead OVR!\n");
-			set_idle();
-			return;
+			lmode = OWM_SLEEP;
 		}
 		break;
 	case OWM_WRITE:
@@ -635,8 +639,7 @@ TIMER_INT {
 		} else {
 			// Overrun!
 			DBGS_P("\nWrite OVR!\n");
-			set_idle();
-			return;
+			lmode = OWM_SLEEP;
 		}
 		break;
 	case OWM_SEARCH_ZERO:
