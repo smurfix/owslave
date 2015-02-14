@@ -20,8 +20,9 @@
 #include <setjmp.h>
 
 #define MAIN
-#include "onewire.h"
 #include "features.h"
+#include "onewire.h"
+#include "uart.h"
 
 #define PRESCALE 64
 
@@ -257,7 +258,7 @@ static inline void start_reading(uint8_t bits) {
 
 #define wait_complete(c) _wait_complete()
 //static inline void wait_complete(char c)
-static inline void _wait_complete()
+static inline void _wait_complete(void)
 {
 //	if(bitp || (wmode != OWW_NO_WRITE))
 //		DBG_C(c);
@@ -536,9 +537,8 @@ static inline void do_select(uint8_t cmd)
 	case 0xCC: // SKIP_ROM
 		next_command();
 	case 0x33: // READ_ROM
-		for (i=0;i<8;i++) {
+		for (i=0;i<8;i++)
 			xmit_byte(ow_addr[i]);
-		
 		next_idle();
 #endif
 	default:
