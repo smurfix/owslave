@@ -167,7 +167,7 @@ void update_idle(uint8_t bits);
 
 /* Implement if you need it. */
 #ifdef CONDITIONAL_SEARCH
-char condition_met(void);
+uint8_t condition_met(void);
 #endif
 
 #endif // onewire.h

@@ -70,6 +70,10 @@ uint8_t debug_state;
 #define NO_ADLAR
 #endif
 
+#ifdef CONDITIONAL_SEARCH
+volatile uint8_t change_seen;
+#endif
+
 #ifdef ANALOG
 // Minimal hysteresis between hi and lo states
 #define HYST 100 // initial hysteresis; approx. 500 mV
@@ -230,6 +234,7 @@ void start_adc(void)
 
 static inline void check_adc(void)
 {
+	uint8_t changed = 0;
 #ifdef ANALOG
 	uint16_t res;
 	uint8_t cur;
@@ -285,6 +290,7 @@ static inline void check_adc(void)
 			bstate |= (1<<cur);
 			if(samples)
 				counter[cur]++;
+				changed = 1;
 			last[cur] = res;
 		}
 	} else {
@@ -311,6 +317,7 @@ static inline void check_adc(void)
 		// Count a 0-1 transition. We may have missed the subsequent 1-0.
 		if ((bits & 0x01) && ((nbits & 0x01) || !(ocbits & 0x01))) {
 			counter[i]++;
+			changed = 1;
 
 			DBGS_P(".i");
 			DBGS_X(i);
@@ -329,6 +336,8 @@ static inline void check_adc(void)
 #ifdef DEBUG
 	debug_state = 0;
 #endif
+	if (changed)
+		change_seen += 1;
 }
 
 #ifndef ANALOG
@@ -424,3 +433,8 @@ void init_state(void)
 #endif
 }
 
+#ifdef CONDITIONAL_SEARCH
+uint8_t condition_met(void) {
+	return change_seen;
+}
+#endif
