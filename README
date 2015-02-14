@@ -37,17 +37,18 @@ implement 1wire slaves in software.
 On the other hand, they do discontinue ICs like the DS2423 counter
 for which no known substitute exists.
 
-Therefore, code simulating existing ICs will only be entered into this
-project's repository if the ICs are no longer available or (at the
-very least) "not recommended for new design".
-
-Sorry if you want more, but IMHO this is the best compromise between
-practical and legal considerations.
+Therefore, code will only be added to this project's repository if the ICs
+are no longer available or "not recommended for new design".
+Of course, code that does things which doesn't have a silicon equivalent is
+always welcome.
 
 
 A nice and shiny 1wire client does not help if there's no server.
 Therefore, if you do write your own code, please also submit
 appropriate changes to the owfs project so that other people 
 can actually talk to your stuff.
+
+NB: OWFS supports conditional search even if the "alarm" directory is
+missing. You can still access it.
 
 -- Matthias Urlichs
