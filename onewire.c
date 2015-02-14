@@ -509,6 +509,12 @@ static inline void do_select(uint8_t cmd)
 		actbit = cbuf&1;
 		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
 		return;
+#ifdef CONDITIONAL_SEARCH
+	case 0xEC: // CONDITIONAL SEARCH
+		if (!condition_met())
+			next_idle();
+		/* FALL THRU */
+#endif
 	case 0x55: // MATCH_ROM
 		recv_byte();
 		for (i=0;;i++) {
@@ -526,10 +532,10 @@ static inline void do_select(uint8_t cmd)
 				break;
 		}
 		next_command();
-#ifdef _ONE_DEVICE_CMDS_
-	case 0xCC: // direct access
+#ifdef SINGLE_DEVICE
+	case 0xCC: // SKIP_ROM
 		next_command();
-	case 0x33:
+	case 0x33: // READ_ROM
 		for (i=0;i<8;i++) {
 			xmit_byte(ow_addr[i]);
 		

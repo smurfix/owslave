@@ -114,4 +114,6 @@
 #error Poll. Or IRQ. Not both.
 #endif
 
+#define SINGLE_DEVICE
+#define CONDITIONAL_SEARCH
 #endif /* FEATURES_H */

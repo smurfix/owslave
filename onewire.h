@@ -49,8 +49,8 @@
 #endif
 
 #ifdef HAVE_TIMESTAMP
-volatile unsigned char tbpos;
-volatile uint16_t tsbuf[100];
+EXTERN volatile unsigned char tbpos;
+EXTERN volatile uint16_t tsbuf[100];
 #define DBG_TS(void) do { if(tbpos) tsbuf[--tbpos]=ICR1; } while(0)
 #endif
 
@@ -169,4 +169,9 @@ void do_command(uint8_t cmd);
 /* 'bits' says how many 1wire bit times are left. */
 void update_idle(uint8_t bits);
 
+/* Implement if you need it. */
+#ifdef CONDITIONAL_SEARCH
+char condition_met(void);
 #endif
+
+#endif // onewire.h
