@@ -193,7 +193,7 @@ xmore:
 		goto xmore;
 	}
 	while(1)
-		xmit_bit(1);
+		xmit_byte(1);
 }
 
 void do_command(uint8_t cmd)

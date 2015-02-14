@@ -149,7 +149,8 @@ static inline void mcu_init(void) {
 static void do_select(uint8_t cmd);
 
 // Initialise the hardware
-void setup(void)
+void
+setup(void)
 {
 
 	mcu_init();
@@ -239,7 +240,6 @@ void next_idle(void)
 {
 	if(mode > OWM_PRESENCE)
 		set_idle();
-	sei();
 	//DBGS_P(".e1");
 	longjmp(end_out,1);
 }
@@ -289,7 +289,7 @@ void next_command(void)
 	longjmp(end_out,1);
 }
 
-static void
+static inline void
 xmit_any(uint8_t val, uint8_t len)
 {
 	wait_complete('w');
@@ -316,10 +316,12 @@ xmit_any(uint8_t val, uint8_t len)
 	DBG_OFF();
 }
 
+#ifdef NEED_BITS
 void xmit_bit(uint8_t val)
 {
 	xmit_any(!!val,1);
 }
+#endif
 
 // It is a net space win not to inline this.
 void xmit_byte(uint8_t val)
@@ -334,7 +336,7 @@ uint8_t rx_ready(void)
 	return !bitp;
 }
 
-static void
+static inline void
 recv_any(uint8_t len)
 {
 	wait_complete('j');
@@ -353,7 +355,9 @@ recv_any(uint8_t len)
 	DBG_OFF();
 }
 
-uint8_t recv_any_in(void)
+
+uint8_t
+recv_any_in(void)
 {
 	wait_complete('i');
 	if (mode != OWM_READ) {
@@ -363,20 +367,26 @@ uint8_t recv_any_in(void)
 	mode = OWM_IDLE;
 	return cbuf;
 }
-void recv_bit(void)
+#ifdef NEED_BIT
+void
+recv_bit(void)
 {
 	recv_any(1);
 	DBG_C('_');
 }
+#endif
 
-void recv_byte(void)
+void
+recv_byte(void)
 {
 	recv_any(8);
 }
 
 // this code is from owfs
 static uint8_t parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
-uint16_t crc16(uint16_t r, uint8_t x)
+
+uint16_t
+crc16(uint16_t r, uint8_t x)
 {
 	uint16_t c = (x ^ (r & 0xFF));
 	r >>= 8;
@@ -389,7 +399,8 @@ uint16_t crc16(uint16_t r, uint8_t x)
 
 
 // Main program
-int main(void)
+int
+main(void)
 {
 #ifdef DBGPIN
 	OWPORT &= ~(1 << DBGPIN);
@@ -469,6 +480,8 @@ int main(void)
 
 void set_idle(void)
 {
+	/* This code will fail to recognize a reset if we're already in one.
+	   Should happen rarely enough not to matter. */
 	cli();
 	if(mode != OWM_SLEEP) {
 		DBGS_P(">idle:");
@@ -488,12 +501,8 @@ void set_idle(void)
 	CLEAR_LOW();
 	DIS_TIMER();
 	SET_FALLING();
-	DBG_C('s');
 	EN_OWINT();
-
-	IFR |= (1 << INTF0);		// ack+enable level-change interrupt, just to be safe
-	IMSK |= (1 << INT0);
-	OWDDR &= ~(1 << ONEWIREPIN);	// set to input
+	DBG_C('s');
 	sei();
 }
 
@@ -520,13 +529,8 @@ static inline void do_select(uint8_t cmd)
 		recv_byte();
 		for (i=0;;i++) {
 			uint8_t b = recv_byte_in();
-			if (b != ow_addr[i]) {
-				DBGS_P("\nMR ");
-				DBGS_X(i);
-				DBGS_C('=');
-				DBGS_X(b);
+			if (b != ow_addr[i])
 				next_idle();
-			}
 			if (i < 7)
 				recv_byte();
 			else
@@ -614,7 +618,6 @@ TIMER_INT {
 			// Overrun!
 			DBGS_P("\nRead OVR!\n");
 			set_idle();
-			DBG_OFF();
 			return;
 		}
 		break;
@@ -627,7 +630,6 @@ TIMER_INT {
 			// Overrun!
 			DBGS_P("\nWrite OVR!\n");
 			set_idle();
-			DBG_OFF();
 			return;
 		}
 		break;

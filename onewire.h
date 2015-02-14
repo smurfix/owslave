@@ -123,10 +123,6 @@ static inline uint8_t recv_byte_in(void)
     return byte;
 }
 
-
-uint8_t recv_bit_in(void);
-uint8_t recv_byte_in(void);
-
 /* If you want to do background work, check whether the next unit can be
    received by calling rx_ready() */
 uint8_t rx_ready(void);
