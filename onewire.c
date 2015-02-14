@@ -216,9 +216,9 @@ volatile mode_t mode; //state
 //next high-level state
 typedef enum {
 	OWX_IDLE, // nothing is happening
-	OWX_SELECT, // reading a selector (does the master even talk to us?)
-	OWX_COMMAND, // reading a command
-	OWX_RUNNING, // waiting for non-interrupt space
+	OWX_SELECT, // will read a selector
+	OWX_COMMAND, // will read a command
+	OWX_RUNNING, // in user code
 } xmode_t;
 volatile xmode_t xmode;
 
