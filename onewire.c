@@ -288,7 +288,7 @@ xmit_any(uint8_t val, uint8_t len)
 	if(mode == OWM_READ || mode == OWM_IDLE)
 		mode = OWM_WRITE;
 	if (mode != OWM_WRITE || xmode < OWX_RUNNING) {
-		DBGS_P("\nErr xmit ");
+		// DBGS_P("\nErr xmit ");
 		next_idle();
 	}
 
