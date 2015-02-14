@@ -576,7 +576,6 @@ TIMER_INT {
 	else
 		DBG_ON();
 	wmode_t lwmode=OWW_NO_WRITE; // wmode; //let these variables be in registers
-	uint8_t lbytep=bytep;
 	uint8_t lbitp=bitp;
 	uint8_t lactbit=actbit;
 
@@ -661,7 +660,9 @@ TIMER_INT {
 
 		lbitp=(lbitp<<1);  //prepare next bit
 		if (!lbitp) {
+			uint8_t lbytep = bytep;
 			lbytep++;
+			bytep=lbytep;
 			if (lbytep>=8) {
 				START_READING(8);
 				//DBG_P("S2");
@@ -670,7 +671,7 @@ TIMER_INT {
 			}
 			lbitp=1;
 			cbuf = ow_addr[lbytep];
-		}				
+		}
 		lmode = OWM_SEARCH_ZERO;
 		lactbit = !!(cbuf&lbitp);
 		lwmode = lactbit ? OWW_WRITE_1 : OWW_WRITE_0;
@@ -684,7 +685,6 @@ TIMER_INT {
 	}
 	mode=lmode;
 	wmode=lwmode;
-	bytep=lbytep;
 	bitp=lbitp;
 	actbit=lactbit;
 	DBG_OFF();
