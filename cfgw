@@ -1,0 +1,47 @@
+#!/usr/bin/python3
+
+"""
+This program is part of MoaT.
+Its job is simply to extract values from a YAML-formatted config file.
+"""
+
+import sys
+import yaml
+from traceback import print_exc
+from ordered_yaml import load,dump
+
+def usage():
+    print("Usage: {} <file> <some.key value>…".format(sys.argv[0]), file=sys.stderr)
+    sys.exit(2)
+
+if len(sys.argv) < 2: usage()
+f,*kk = sys.argv[1:]
+if not kk or len(kk)%1: usage()
+
+s = load(open(sys.argv[1]))
+while kk:
+    v = s
+    ks = kk.pop(0).split('.')
+    lk = ks.pop()
+    for k in ks:
+        if not isinstance(v,dict):
+            raise RuntimeError("Not a dict at {}".format(".".join(ks)))
+        if k in v:
+            v = v[k]
+        else:
+            v[k] = {}
+            v = v[k]
+    if not isinstance(v,dict):
+        raise RuntimeError("Not a dict at {}.{}".format(".".join(ks),lk))
+    if not isinstance(v.get(lk,""),(str,int,float)):
+        raise RuntimeError("Not a scalar value at {}.{}".format(".".join(ks),lk))
+    val = kk.pop(0)
+    try: val = float(val)
+    except ValueError:
+        try: val = int(val)
+        except ValueError: pass
+        else: val = str(val)
+    v[lk] = val
+
+dump(s, stream=open(sys.argv[1],'w'))
+
