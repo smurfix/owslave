@@ -74,7 +74,7 @@ def getpath(s,ak,k1,*rest):
     except (KeyError,AttributeError) as e:
         try: v = ak['_ref']
         except KeyError: raise e
-        return getpath(s,getpath(s,s,*v.split('.')), k1,*rest)
+        return getpath(s,s,*(v.split('.')+[k1]+list(rest)))
 
 def _getkeys(lk,s,ak,*rest):
     if rest:
@@ -89,12 +89,12 @@ def _getkeys(lk,s,ak,*rest):
         for k in ak:
             lk.add(k)
     if isinstance(ak,dict) and '_ref' in ak:
-        _getkeys(lk,s,getpath(s,s,*ak['_ref'].split('.')), *rest)
+        _getkeys(lk,s,s,*(ak['_ref'].split('.')+list(rest)))
 
 def getkeys(s,*k):
     lk = set()
     _getkeys(lk,s,s,*k)
-    return lk
+    return sorted(list(lk))
 
 def getkv(s,*ks):
     for k in getkeys(s,*ks):
@@ -108,16 +108,43 @@ def getkv(s,*ks):
 f,*kk = sys.argv[1:]
 s = yaml.load(open(sys.argv[1]))
 if kk:
+    mode = ""
     for k in kk:
-        did=[]
-        ks = k.split('.')
-        res = getpath(s,s,*ks)
-        if isinstance(res,dict):
-            print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in getkv(s,*ks)))
-        elif isinstance(res,(list,tuple)):
-            print(" ".join(str(x) for x in res))
+        if mode == "":
+            if k[0] == '.':
+                mode = k[1:]
+            else:
+                did=[]
+                ks = k.split('.')
+                res = getpath(s,s,*ks)
+                if isinstance(res,dict):
+                    print(" ".join("{}={}".format(a,v) for a,v in getkv(s,*ks)))
+                elif isinstance(res,(list,tuple)):
+                    print(" ".join(str(x) for x in res))
+                else:
+                    print(res)
+        elif mode == "cdefs":
+            print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in getkv(s,'devices',k,'defs')))
+        elif mode == "cfiles":
+            files = []
+            if getpath(s,s,'devices',k,'defs','have_uart'):
+                files.append('uart.c')
+            ow = getpath(s,s,'devices',k,'defs','is_onewire')
+            if not ow: pass
+            elif ow in ('moat','ds2423','ds2408'):
+                files.append(ow+'.c')
+                files.append('onewire.c')
+            else:
+                print("Unknown onewire mode:",ow, file=sys.stderr)
+                sys.exit(2)
+            if not getpath(s,s,'devices',k,'defs','use_eeprom'):
+                files.append('config.o')
+
+            print(" ".join(files))
         else:
-            print(res)
+            print("Unknown mode:",mode, file=sys.stderr)
+            sys.exit(2)
 else:
     import pprint
     pprint.pprint(s)
+
