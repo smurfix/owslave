@@ -23,14 +23,14 @@
 #include "features.h"
 #include "onewire.h"
 #include "uart.h"
+#include "dev_data.h"
 
 #define PRESCALE 64
 
-#ifdef HAVE_EEPROM
-static uint8_t ow_addr[8];
-#else
-static const uint8_t ow_addr[8]={0x1D, 0x19, 0x00, 0x00, 0x00, 0x00, 0xc5, 0xFB};
-#endif
+union {
+	CFG_DATA(owid) ow_addr;
+	uint8_t addr[8];
+} ow_addr;
 
 volatile uint8_t bitp;  // mask of current bit
 volatile uint8_t bytep; // position of current byte
@@ -172,22 +172,7 @@ setup(void)
 	TCNT1 = 0;
 #endif
 
-#ifdef HAVE_EEPROM
-	// Get 64bit address from EEPROM
-	{
-		unsigned char i;
-		while(EECR & (1<<EEPE));	 // Wait for EPROM circuitry to be ready
-		for (i=8; i;) {
-			i--;
-			/* Set up address register */
-			EEARL = 7-i;			   // set EPROM Address
-			/* Start eeprom read by writing EERE */
-			EECR |= (1<<EERE);
-			/* Return data from data register */
-			ow_addr[i] =  EEDR;
-		}
-	}
-#endif
+	cfg_read(owid, ow_addr.ow_addr);
 
 	// init application-specific code
 	init_state();
@@ -529,7 +514,7 @@ static inline void do_select(uint8_t cmd)
 		mode = OWM_SEARCH_ZERO;
 		bytep = 0;
 		bitp = 1;
-		cbuf = ow_addr[0];
+		cbuf = ow_addr.addr[0];
 		actbit = cbuf&1;
 		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
 		return;
@@ -543,7 +528,7 @@ static inline void do_select(uint8_t cmd)
 		recv_byte();
 		for (i=0;;i++) {
 			uint8_t b = recv_byte_in();
-			if (b != ow_addr[i])
+			if (b != ow_addr.addr[i])
 				next_idle();
 			if (i < 7)
 				recv_byte();
@@ -556,7 +541,7 @@ static inline void do_select(uint8_t cmd)
 		next_command();
 	case 0x33: // READ_ROM
 		for (i=0;i<8;i++)
-			xmit_byte(ow_addr[i]);
+			xmit_byte(ow_addr.addr[i]);
 		next_idle();
 #endif
 	default:
@@ -673,7 +658,7 @@ TIMER_INT {
 				break;
 			}
 			lbitp=1;
-			cbuf = ow_addr[lbytep];
+			cbuf = ow_addr.addr[lbytep];
 		}
 		lmode = OWM_SEARCH_ZERO;
 		lactbit = !!(cbuf&lbitp);

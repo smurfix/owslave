@@ -126,7 +126,7 @@ if kk:
         elif mode == "cdefs":
             print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in getkv(s,'devices',k,'defs')))
         elif mode == "cfiles":
-            files = []
+            files = ['dev_data.c']
             if getpath(s,s,'devices',k,'defs','have_uart'):
                 files.append('uart.c')
             ow = getpath(s,s,'devices',k,'defs','is_onewire')
