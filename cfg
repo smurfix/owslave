@@ -5,146 +5,116 @@ This program is part of MoaT.
 Its job is simply to extract values from a YAML-formatted config file.
 """
 
+from Cfg import Cfg
 import sys
-import yaml
-from traceback import print_exc
 
-if len(sys.argv) < 2:
-    print("Usage: {} file [key…]".format(sys.argv[0]), file=sys.stderr)
-    sys.exit(2)
-
-#_depth = -2
-#def arm(p):
-#    def wrap(*a,**k):
-#        global _depth
-#        _depth += 2
-#        s=" "*_depth
-#        print(s+">",repr((p.__name__,a,k)))
-#        try:
-#            #if a[1] == ["test","0"]:
-#            #    import pdb;pdb.set_trace()
-#            r = p(*a,**k)
-#        except Exception:
-#            print_exc()
-#            raise
-#        else:
-#            print(s+"<"+repr(r))
-#            #if r is None:
-#            #    import pdb;pdb.set_trace()
-#            return r
-#        finally:
-#            _depth += -2
-#    return wrap
-
-#@arm
-def get1(ak,k):
-    try:
-        try:
-            return ak[k]
-        except KeyError:
-            raise KeyError((ak,k))
-    except Exception as e:
-        if isinstance(k,str):
-            #if k == "test.1":
-            #    import pdb;pdb.set_trace()
-            try:
-                k = int(k)
-            except ValueError:
-                raise e
-            else:
-                try:
-                    return ak[k]
-                except KeyError:
-                    raise KeyError((ak,k))
-
-#@arm
-def getpath(s,ak,k1,*rest):
-    try:
-        try:
-            v1 = get1(ak,k1)
-            if rest:
-                v1 = getpath(s,v1,*rest)
-            return v1
-        except (KeyError,AttributeError) as e:
-            try: v1 = get1(ak,'_default')
-            except KeyError: raise e
-            if rest:
-                v1 = getpath(s,v1,*rest)
-            return v1
-    except (KeyError,AttributeError) as e:
-        try: v = ak['_ref']
-        except KeyError: raise e
-        return getpath(s,s,*(v.split('.')+[k1]+list(rest)))
-
-def _getkeys(lk,s,ak,*rest):
-    if rest:
-        if isinstance(ak,list):
-            _getkeys(lk,s,ak[int(rest[0])],*rest[1:])
-        else:
-            if rest[0] in ak:
-                _getkeys(lk,s,ak[rest[0]],*rest[1:])
-            if '_default' in ak:
-                _getkeys(lk,s,ak['_default'], *rest[1:])
-    else:
-        for k in ak:
-            lk.add(k)
-    if isinstance(ak,dict) and '_ref' in ak:
-        _getkeys(lk,s,s,*(ak['_ref'].split('.')+list(rest)))
-
-def getkeys(s,*k):
-    lk = set()
-    _getkeys(lk,s,s,*k)
-    return sorted(list(lk))
-
-def getkv(s,*ks):
-    for k in getkeys(s,*ks):
-        if k.startswith('_'):
-            continue
-        kp=ks+(k,)
-        v = getpath(s,s,*kp)
-        if isinstance(v,(int,str,float)):
-            yield k,v
-
-f,*kk = sys.argv[1:]
-s = yaml.load(open(sys.argv[1]))
-if kk:
-    mode = ""
-    for k in kk:
-        if mode == "":
-            if k[0] == '.':
-                mode = k[1:]
-            else:
-                did=[]
-                ks = k.split('.')
-                res = getpath(s,s,*ks)
-                if isinstance(res,dict):
-                    print(" ".join("{}={}".format(a,v) for a,v in getkv(s,*ks)))
-                elif isinstance(res,(list,tuple)):
-                    print(" ".join(str(x) for x in res))
+def main(f,*kk):
+    s = Cfg(f)
+    if kk:
+        mode = ""
+        for k in kk:
+            if mode == "":
+                if k[0] == '.':
+                    mode = k[1:]
                 else:
-                    print(res)
-        elif mode == "cdefs":
-            print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in getkv(s,'devices',k,'defs')))
-        elif mode == "cfiles":
-            files = ['dev_data.c']
-            if getpath(s,s,'devices',k,'defs','have_uart'):
-                files.append('uart.c')
-            ow = getpath(s,s,'devices',k,'defs','is_onewire')
-            if not ow: pass
-            elif ow in ('moat','ds2423','ds2408'):
-                files.append(ow+'.c')
-                files.append('onewire.c')
+                    did=[]
+                    ks = k.split('.')
+                    res = s.subtree(*ks)
+                    if isinstance(res,dict):
+                        print(" ".join("{}={}".format(a,v) for a,v in s.keyval(*ks)))
+                    elif isinstance(res,(list,tuple)):
+                        print(" ".join(str(x) for x in res))
+                    else:
+                        try:
+                            f = float(res)
+                        except Exception:
+                            print(res)
+                        else:
+                            g = int(f)
+                            if float(g) == f:
+                                print(g)
+                            else:
+                                print(f)
+            elif mode == "hdr":
+                with open("device/"+k+"/dev_config.h","w") as f:
+                    print("""\
+#ifndef device_{}_config_h
+#define device_{}_config_h
+
+/*
+ * This file is auto-generated. It contains a mix of global and local
+ * definitions because I am lazy.
+ *
+ * Do not edit. Talk to 'moat.cfg' instead.
+ */
+    """.format(k,k), file=f);
+                    i = 0
+                    typecode = {}
+                    for a in s.subtree('codes','types'):
+                        typecode[a]=i
+                        i += 1
+                    i = 0x70
+                    for a in s.subtree('codes','types_x70'):
+                        typecode[a]=i
+                        print("#define TC_{} {}".format(a.upper(),i), file=f)
+                        i += 1
+
+                    i = 1
+                    print("typedef enum _ConfigID {", file=f);
+                    for a in s.subtree('codes','blocks'):
+                        typecode[a]=i
+                        print("    CfgID_{} = {},".format(a,i), file=f)
+                        i += 1
+                    print("} ConfigID;", file=f);
+
+                    for a,v in s.keyval('devices',k,'defs'):
+                        print("#define {} {}".format(a.upper(),v), file=f)
+
+                    max_t = -1
+                    for a,v in s.keyval('devices',k,'types'):
+                        v = int(v)
+                        if v > 0:
+                            print("#define TC_{} {}".format(a.upper(),typecode[a]), file=f)
+                            print("#define N_{} {}".format(a.upper(),v), file=f)
+
+                            if max_t < typecode[a]:
+                                max_t = typecode[a]
+                    print("""\
+#define MAX_TC {}
+
+#endif /* device_{}_config_h */
+    """.format(max_t,k,k), file=f);
+            elif mode == "type":
+                print(" ".join("{} {}".format(a,v) for a,v in s.keyval('devices',k,'types')))
+            elif mode == "cdefs":
+                types = dict((a,int(v)) for a,v in s.keyval('devices',k,'types') if int(v) > 0)
+                maxtype = max(())
+                print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in s.keyval('devices',k,'defs')) + " " + " ".join("-DN_{}={}".format(a.upper(),v) for a,v in s.keyval('devices',k,'types') if int(v) > 0))
+            elif mode == "cfiles":
+                files = ['dev_data.c']
+                if s.subtree('devices',k,'defs','have_uart'):
+                    files.append('uart.c')
+                ow = s.subtree('devices',k,'defs','is_onewire')
+                if not ow: pass
+                elif ow in ('moat','ds2423','ds2408'):
+                    files.append(ow+'.c')
+                    files.append('onewire.c')
+                else:
+                    print("Unknown onewire mode:",ow, file=sys.stderr)
+                    sys.exit(2)
+                if not s.subtree('devices',k,'defs','use_eeprom'):
+                    files.append('config.o')
+
+                print(" ".join(files))
             else:
-                print("Unknown onewire mode:",ow, file=sys.stderr)
+                print("Unknown mode:",mode, file=sys.stderr)
                 sys.exit(2)
-            if not getpath(s,s,'devices',k,'defs','use_eeprom'):
-                files.append('config.o')
+    else:
+        import pprint
+        pprint.pprint(s.data)
 
-            print(" ".join(files))
-        else:
-            print("Unknown mode:",mode, file=sys.stderr)
-            sys.exit(2)
-else:
-    import pprint
-    pprint.pprint(s)
-
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: {} file [type] [key…]".format(sys.argv[0]), file=sys.stderr)
+        sys.exit(2)
+    main(*sys.argv[1:])

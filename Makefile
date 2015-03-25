@@ -37,7 +37,9 @@ CC=avr-gcc
 OBJCOPY:=avr-objcopy
 OBJDUMP:=avr-objdump
 CFLAGS:=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -fshort-enums
-CFLAGS+=$(shell ./cfg ${CFG} .cdefs ${DEV})
+LDFLAGS:=$(CFLAGS)
+#CFLAGS+=$(shell ./cfg ${CFG} .cdefs ${DEV})
+CFLAGS+=-Idevice/${DEV}
 
 OW_TYPE:=$(shell ./cfg ${CFG} devices.${DEV}.defs.is_onewire || echo 0)
 
@@ -59,16 +61,20 @@ device/${DEV}:
 device/${DEV}/image.hex: device/${DEV}/image.elf
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
 device/${DEV}/image.elf: ${OBJS}
-	$(CC) $(CFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
+	$(CC) $(LDFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
+
+device/${DEV}/dev_config.h: ${CFG}
+	./cfg ${CFG} .hdr ${DEV}
 
 $(DEVNAME).hex : $(DEVNAME).elf
-device/${DEV}/eprom.bin: cfg
-	set -ex; \
+device/${DEV}/eprom.bin: ${CFG}
+	set -e; \
 	if [ ${OW_TYPE} != 0 ] ; then \
+		./gen_eeprom $@ type $$(./cfg ${CFG} .type ${DEV}); \
 		if ./gen_eeprom $@ owid serial >/dev/null 2>&1 ; then \
 			SER=$$(./gen_eeprom $@ owid serial); \
 			if ./cfg ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
-				test [ $$(./cfg ${CFG} devices.${DEV}.onewire_id) = $$SER ] ; \
+				test $$(./cfg ${CFG} devices.${DEV}.onewire_id) -eq $$SER ; \
 			else \
 				./cfgw ${CFG} devices.${DEV}.onewire_id $$SER; \
 			fi; \
@@ -79,14 +85,13 @@ device/${DEV}/eprom.bin: cfg
 	fi
 
 device/${DEV}/config.o: device/${DEV}/eprom.bin
-	sym=$$(echo -n _binary_$(notdir $^) | tr -c a-zA-Z0-9 _); \
 	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.progmem \
-		--redefine-sym "$${sym}_start=_config_start" \
-		--redefine-sym "$${sym}_size=_config_size" \
-		--redefine-sym "$${sym}_end=_config_end" \
+		--redefine-sym "_binary_device_${DEV}_eprom_bin_start=_config_start" \
+		--redefine-sym "_binary_device_${DEV}_eprom_bin_size=_config_size" \
+		--redefine-sym "_binary_device_${DEV}_eprom_bin_end=_config_end" \
 		$^ $@
 
-device/${DEV}/%.o: %.c
+device/${DEV}/%.o: %.c device/${DEV}/dev_config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 	

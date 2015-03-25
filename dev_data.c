@@ -1,12 +1,12 @@
 
 #include <avr/eeprom.h>
-#include <util/crc16.h>
 #include <avr/pgmspace.h>
+#include <util/crc16.h>
 
 #include "dev_data.h"
 
 #define CRC 0  // needs 300 bytes
-#define DEFAULT 1 // needs 30 bytes, plus _config data (built by DeviceID.py)
+#define DEFAULT 1 // needs 30 bytes, plus _config data (built by gen_eprom)
 
 /*
  * Layout of configuration blocks:
@@ -19,14 +19,8 @@
  *  2 CRC
  *
  *  Struct sizes must match exactly.
- *
  */
 
-char _cfg_read(void *data, uint8_t size, ConfigID id);
-#ifdef CFG_EEPROM
-char _cfg_write(void *data, uint8_t size, ConfigID id);
-using namespace DeviceConfig;
-    
 #if CRC
 static uint8_t read_byte(uint16_t &crc, uint8_t pos) {
 	uint8_t b = eeprom_read_byte((uint8_t *)EEPROM_POS + pos);
@@ -46,27 +40,13 @@ static inline void write_byte(uint8_t b, uint8_t pos) {
 	eeprom_write_byte((uint8_t *)EEPROM_POS + pos, b);
 }
 
-#if DEFAULT
-extern "C" {
-extern const unsigned char _config_start[] __attribute__ ((progmem));
-extern const unsigned char _config_end[] __attribute__ ((progmem));
-}
-
-static inline void copy_prog()
-{
-	const unsigned char *config = _config_start;
-	uint8_t i;
-	while(config < _config_end)
-		write_byte(i++, pgm_read_byte(config++));
-}
-#else
-const unsigned char _config_start[] PROGMEM = "DevC";
-#define copy_prog() return false
-
+#if !USE_EEPROM
+extern const uint8_t _config_start[] __attribute__ ((progmem));
+extern const uint8_t _config_end[] __attribute__ ((progmem));
 #endif
 
-#if CRC
-bool DeviceConfig::_do_crc(bool update) // from eeprom; True if CRC matches
+#if USE_EEPROM
+char _do_crc(bool update) // from eeprom; True if CRC matches
 {
 	static bool crc_checked = false;
 	static bool crc_good = false;
@@ -79,7 +59,6 @@ bool DeviceConfig::_do_crc(bool update) // from eeprom; True if CRC matches
 
 	for(j=0;j<4;j++) {
 		if(read_crc_byte(crc, i++) != pgm_read_byte(_config_start+j)) {
-			copy_prog();
 			break;
 		}
 	}
@@ -107,52 +86,44 @@ bool DeviceConfig::_do_crc(bool update) // from eeprom; True if CRC matches
 #endif
 
 
-bool DeviceConfig::_do_cf(ConfigID id, void *data, uint8_t size, bool write = false)
-{
-	uint8_t i=4, j;
-#if CRC
-	if(!_do_crc(false))
-		return false;
-#else
-	for(j=0;j<4;j++) {
-		if(read_crc_byte(crc, i++) != pgm_read_byte(_config_start+j)) {
-			copy_prog();
-			break;
-		}
+
+char _cfg_read(void *data, uint8_t size, ConfigID id) {
+	uint8_t off,len;
+	uint8_t *d = data;
+
+	cfg_addr(&off,&len,id);
+	if((!off) || (size != len)) return 0;
+
+	while(len) {
+		*d++ = read_byte(off++);
+		len--;
 	}
+	return 1;
+}
+
+#ifdef CFG_EEPROM
+char _cfg_write(void *addr, uint8_t size, ConfigID id) {
+}
 #endif
-
-	while ((j = read_byte(i++)) > 0) {
-		if (j != size) {
-			i += j+1;
-			continue;
+    
+void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id) {
+	uint8_t i=4,len,t;
+	while((len = read_byte(i++)) > 0) {
+		t = read_byte(i++);
+		if (t == id) {
+			*addr = i;
+			*size = len;
+			return;
 		}
-		if (read_byte(i++) != id) {
-			i += j;
-			continue;
-		}
-		uint8_t *dt = (uint8_t *)data;
-		while(j--) {
-			if (write)
-				write_byte(*dt++, i++);
-			else
-				*dt++ = read_byte(i++);
-		}
-		if(write)
-			_do_crc(true);
-		return true;
 	}
-	return false;
+	*addr = 0;
 }
 
-namespace DeviceConfig {
-template<> bool read_cf(config_rf12 &x) { return _read_cf(CfgID_rf12, (void *)&x, sizeof(x)); }
-template<> bool write_cf(config_rf12 &x) { return _write_cf(CfgID_rf12, (void *)&x, sizeof(x)); }
-
-template<> bool read_cf(config_euid &x) { return _read_cf(CfgID_euid, (void *)&x, sizeof(x)); }
-template<> bool write_cf(config_euid &x) { return _write_cf(CfgID_euid, (void *)&x, sizeof(x)); }
-
-template<> bool read_cf(config_crypto &x) { return _read_cf(CfgID_crypto, (void *)&x, sizeof(x)); }
-template<> bool write_cf(config_crypto &x) { return _write_cf(CfgID_crypto, (void *)&x, sizeof(x)); }
-
+uint8_t cfg_byte(uint8_t addr) {
+#ifdef CFG_EEPROM
+    return eeprom_read_byte(addr);
+#else
+    return pgm_read_byte(_config_start+addr);
+#endif
 }
+

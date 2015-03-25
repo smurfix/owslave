@@ -1,18 +1,11 @@
-#ifndef dev_data
-#define dev_data
+#ifndef dev_data_h
+#define dev_data_h
 
 #include <inttypes.h>
+#include "dev_config.h"
 
 #define EEPROM_POS 128
 #define EUID_LEN 8
-
-// mirrored in gen_eeprom
-typedef enum _ConfigID {
-	CfgID_euid     = 1,
-	CfgID_rf12     = 2,
-	CfgID_crypto   = 3,
-	CfgID_owid     = 4,
-} ConfigID;
 
 #define CFG_DATA(n) struct config_##n
 #define cfg_read(n,x) _cfg_read(&x, sizeof(struct config_##n), CfgID_##n)
@@ -23,7 +16,13 @@ typedef enum _ConfigID {
 char _cfg_read(void *data, uint8_t size, ConfigID id);
 #ifdef CFG_EEPROM
 char _cfg_write(void *data, uint8_t size, ConfigID id);
+#else
+extern const uint8_t _config_start[] __attribute__ ((progmem));
+extern const uint8_t _config_end[] __attribute__ ((progmem));
 #endif
+
+void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id);
+uint8_t cfg_byte(uint8_t addr);
 
 struct config_rf12 { // for radio devices
 	unsigned int band:2;
@@ -47,4 +46,10 @@ struct config_owid {
 	uint8_t crc;
 };
 
-#endif // dev_data
+// data for M_INFO; see OWFS:ow_moat.h for details
+struct config_info {
+	uint8_t types;
+	uint8_t data[0];
+};
+
+#endif // dev_data_h
