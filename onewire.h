@@ -83,8 +83,8 @@ void do_command(uint8_t cmd);
 /*
    Your code can do any one of:
    * call xmit|recv_bit|byte, as required
-   * call next_command() (wait for RESET pulse; will not return)
-   * call next_idle() (wait for next command, will not return)
+   * call next_command() (wait for next bus command, will not return)
+   * call next_idle() (wait for RESET pulse; will not return)
 
    If you need to run any expensive computations, do it in update_idle().
    Your steps need to be short enough to observe the timing requirements
