@@ -6,3 +6,6 @@
 *.lss
 *.out
 *.eeprom
+/device
+/__pycache__
+.*.swp
