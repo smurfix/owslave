@@ -62,6 +62,8 @@ uint8_t rx_ready(void);
 void next_idle(void) __attribute__((noreturn));
 void next_command(void) __attribute__((noreturn));
 
+/* Poll the bus. Will not return while a transaction is in progress. */
+void onewire_poll(void);
 
 /* Incrementally calculate CRC.
    Initially, 'crc' is zero.
@@ -77,6 +79,9 @@ uint16_t crc16(uint16_t crc, uint8_t x);
 /* Setup */
 /* Called before enabling 1wire interrupts */
 void init_state(void);
+
+/* Your main loop. You need to onewire_poll(). */
+void mainloop(void);
 
 /* Called to process commands. You implement this! */
 void do_command(uint8_t cmd);

@@ -418,7 +418,10 @@ main(void)
 	// now go
 	sei();
 	DBGS_P("\nInit done!\n");
+	while(1) mainloop();
+}
 
+void onewire_poll(void) {
 #ifdef HAVE_UART
 	volatile unsigned long long int x=0;
 #endif
@@ -473,6 +476,8 @@ main(void)
 			tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
 		}
 #endif
+		if (mode == OWM_SLEEP)
+			return;
 	}
 }
 

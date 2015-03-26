@@ -106,3 +106,6 @@ void init_state(void)
 {
 }
 
+void mainloop(void) {
+	while(1) onewire_poll();
+}

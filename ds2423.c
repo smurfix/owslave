@@ -439,3 +439,7 @@ uint8_t condition_met(void) {
 	return change_seen;
 }
 #endif
+
+void mainloop(void) {
+	while(1) onewire_poll();
+}

@@ -136,3 +136,7 @@ uint8_t condition_met(void) {
 	return 0; // change_seen;
 }
 #endif
+
+void mainloop(void) {
+	while(1) onewire_poll();
+}
