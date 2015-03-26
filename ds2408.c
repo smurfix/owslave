@@ -17,6 +17,7 @@
  */
 
 #include "onewire.h"
+#include "debug.h"
 
 #define C_READ_PIO         0xF0 // TODO
 #define C_READ_CHANNEL     0xF5 // TODO

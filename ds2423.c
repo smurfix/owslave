@@ -38,6 +38,7 @@
 #include <string.h>
 #include "onewire.h"
 #include "features.h"
+#include "debug.h"
 
 #define C_WRITE_SCRATCHPAD 0x0F // TODO
 #define C_READ_SCRATCHPAD  0xAA // TODO

@@ -38,6 +38,7 @@
 #include "features.h"
 #include "moat.h"
 #include "dev_data.h"
+#include "debug.h"
 
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4

@@ -24,6 +24,7 @@
 #include "onewire.h"
 #include "uart.h"
 #include "dev_data.h"
+#include "debug.h"
 
 #define PRESCALE 64
 
