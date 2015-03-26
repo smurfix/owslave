@@ -46,13 +46,17 @@ OW_TYPE:=$(shell ./cfg ${CFG} devices.${DEV}.defs.is_onewire || echo 0)
 OBJS:=$(addprefix device/${DEV}/,$(addsuffix .o,$(basename $(shell ./cfg ${CFG} .cfiles ${DEV}))))
 
 ifeq (${NO_BURN},)
+ifeq (shell ./cfg ${CFG} devices.${DEV}.defs.use_eeprom,1)
+EEP:=-U eeprom:w:device/${DEV}/eprom.bin:i
+else
+EEP:=
+endif
 burn: all
-	sudo avrdude -c $(PROG) -p $(MCU_PROG) \
+	sudo avrdude -c $(PROG) -p $(MCU_PROG) -s \
 		-U lfuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.l):m \
 		-U hfuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.h):m \
 		-U efuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.e):m \
-		-U flash:w:device/${DEV}/image.hex:i 
-		-U eeprom:w:device/${DEV}/eprom.bin:i 
+		-U flash:w:device/${DEV}/image.hex:i ${EEP}
 endif
 
 all: device/${DEV} device/${DEV}/image.hex device/${DEV}/eprom.bin device/${DEV}/image.lss
