@@ -55,13 +55,15 @@ burn: all
 		-U eeprom:w:device/${DEV}/eprom.bin:i 
 endif
 
-all: device/${DEV} device/${DEV}/image.hex device/${DEV}/eprom.bin
+all: device/${DEV} device/${DEV}/image.hex device/${DEV}/eprom.bin device/${DEV}/image.lss
 device/${DEV}: 
 	mkdir $@
 device/${DEV}/image.hex: device/${DEV}/image.elf
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
 device/${DEV}/image.elf: ${OBJS}
 	$(CC) $(LDFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
+device/${DEV}/image.lss: device/${DEV}/image.elf
+	$(OBJDUMP) -h -S $< > $@
 
 device/${DEV}/dev_config.h: ${CFG}
 	./cfg ${CFG} .hdr ${DEV}
