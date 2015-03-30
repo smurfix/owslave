@@ -133,7 +133,7 @@ LICENSE:
  #define UART0_DATA     UDR
  #define UART0_UDRIE    UDRIE
  #define UART0_ERRMASK (_BV(FE)|_BV(DOR))
-#elif defined(__AVR_ATmega162__) || defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
+#elif defined(__AVR_ATmega162__) || defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
  /* ATMega with two USART */
  #define ATMEGA_USART0
  #define UART0_RECEIVE_INTERRUPT   USART_RX_vect
