@@ -91,8 +91,6 @@ static void go_out(void) {
 #define TCNT_REG TCNT0  //register of timer-counter
 #define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
 
-#define BAUDRATE 38400
-
 // stupidity
 #ifndef TIMER0_OVF_vect
 #  define TIMER0_OVF_vect TIM0_OVF_vect

@@ -21,6 +21,10 @@
 
 #include "dev_config.h"
 
+#ifndef BAUDRATE
+#define BAUDRATE 38400
+#endif
+
 /* External definitions:
  * F_CPU       clock rate
  * SKIP_SEARCH if you don't have enough ROM for search (saves ~200 bytes)
