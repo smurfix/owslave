@@ -75,8 +75,8 @@ device/${DEV}/dev_config.h: ${CFG}
 $(DEVNAME).hex : $(DEVNAME).elf
 device/${DEV}/eprom.bin: ${CFG}
 	set -e; \
+	./gen_eeprom $@ type $$(./cfg ${CFG} .type ${DEV}); \
 	if [ ${OW_TYPE} != 0 ] ; then \
-		./gen_eeprom $@ type $$(./cfg ${CFG} .type ${DEV}); \
 		if ./gen_eeprom $@ owid serial >/dev/null 2>&1 ; then \
 			SER=$$(./gen_eeprom $@ owid serial); \
 			if ./cfg ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
