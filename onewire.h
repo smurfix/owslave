@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include "features.h"
 
+#ifdef HAVE_ONEWIRE
 /* return to idle state, i.e. wait for the next RESET pulse. */
 void set_idle(void);
 
@@ -61,6 +62,9 @@ uint8_t rx_ready(void);
 
 void next_idle(void) __attribute__((noreturn));
 void next_command(void) __attribute__((noreturn));
+
+/* Set up onewire-specific hardware */
+void onewire_init(void);
 
 /* Poll the bus. Will not return while a transaction is in progress. */
 void onewire_poll(void);
@@ -105,6 +109,12 @@ void update_idle(uint8_t bits);
 /* Implement if you need it. */
 #ifdef CONDITIONAL_SEARCH
 uint8_t condition_met(void);
+#endif
+
+#else /* !HAVE_ONEWIRE */
+#define onewire_init() do {} while(0)
+#define onewire_poll() do {} while(0)
+
 #endif
 
 #endif // onewire.h

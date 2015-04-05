@@ -68,6 +68,14 @@ def main(f,*kk):
                     print("} ConfigID;", file=f);
 
                     for a,v in s.keyval('devices',k,'defs'):
+                        try:
+                            v = int(v)
+                        except ValueError:
+                            v = '"{}"'.format(v.replace('\\','\\\\').replace('"','\\"'))
+                        else:
+                            if not v:
+                                continue
+
                         print("#define {} {}".format(a.upper(),v), file=f)
 
                     max_t = -1

@@ -22,6 +22,9 @@
 #ifdef HAVE_UART
 #include "uart.h"
 
+/* These macros always send something. They should only be used in
+ * sync-safe places, i.e. not in interrupt code or whatever.
+ */
 #define DBGS_C(x) uart_putc(x)
 #define DBGS_P(x) uart_puts_P(x)
 #define DBGS_N(x) uart_puthex_nibble(x)
@@ -30,6 +33,9 @@
 #define DBGS_NL() uart_putc('\n')
 
 #ifndef HAVE_UART_SYNC
+/* These macros can be used anywhere. They'll turn into no-ops when
+ * synchronous output is tuned on.
+ */
 #define DBG_C(x) DBGS_C(x)
 #define DBG_P(x) DBGS_P(x)
 #define DBG_N(x) DBGS_N(x)

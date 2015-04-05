@@ -19,342 +19,48 @@
 #include <avr/interrupt.h>
 #include <setjmp.h>
 
+#define MAIN
 #include "features.h"
 #include "onewire.h"
 #include "uart.h"
 #include "dev_data.h"
 #include "debug.h"
 
-#define PRESCALE 64
-
-union {
-	CFG_DATA(owid) ow_addr;
-	uint8_t addr[8];
-} ow_addr;
-
-volatile uint8_t bitp;  // mask of current bit
-volatile uint8_t bytep; // position of current byte
-volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
-
-static jmp_buf end_out;
-static void go_out(void) __attribute__((noreturn));
-static void go_out(void) {
-	longjmp(end_out,1); // saves bytes
-}
-
-
-
-#ifndef TIMSK
-#define TIMSK TIMSK0
-#endif
-#ifndef TIFR
-#define TIFR TIFR0
-#endif
-#ifndef EICRA
-#define EICRA MCUCR
-#endif
-
-// Frequency-dependent timing macros
-#ifdef DBGPIN // additional overhead for playing with the trace pin
-#define _ADD_T 1
-#else
-#define _ADD_T 0
-#endif
-// T_(x)-y => value for setting the timer
-// x: nominal time in microseconds
-// y: overhead: increase by 1 for each 64 clock ticks
-#define T_(c) ((F_CPU/PRESCALE)/(1000000/c)-_ADD_T)
-#define OWT_MIN_RESET T_(410)
-#define OWT_RESET_PRESENCE (T_(40)-1)
-#define OWT_PRESENCE (T_(160)-1)
-#define OWT_READLINE (T_(30)-1)
-#define OWT_LOWTIME (T_(60)-3)
-
-#if (OWT_MIN_RESET>240)
-#error Reset timing is broken, your clock is too fast
-#endif
-#if (OWT_READLINE<1)
-#error Read timing is broken, your clock is too slow
-#endif
-
-#define EN_OWINT() do {IMSK|=(1<<INT0);IFR|=(1<<INTF0);}while(0)  //enable interrupt 
-#define DIS_OWINT() do {IMSK&=~(1<<INT0);} while(0)  //disable interrupt
-#define SET_RISING() do {EICRA|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
-#define SET_FALLING() do {EICRA|=(1<<ISC01);EICRA&=~(1<<ISC00);} while(0) //set interrupt at falling edge
-#define CHK_INT_EN() (IMSK&(1<<INT0)) //test if pin interrupt enabled
-#define PIN_INT INT0_vect  // the interrupt service routine
-//Timer Interrupt
-#define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);}while(0) //enable timer interrupt
-#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
-
-// always use timer 0
-#define TCNT_REG TCNT0  //register of timer-counter
-#define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
-
-#define BAUDRATE 38400
-
-// stupidity
-#ifndef TIMER0_OVF_vect
-#  define TIMER0_OVF_vect TIM0_OVF_vect
-#endif
-
-#define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
-#define CLEAR_LOW() do {OWDDR&=~(1<<ONEWIREPIN);} while(0) //set 1-Wire pin as input
-
-static void do_select(uint8_t cmd);
-
 // Initialise the hardware
-void
-onewire_init(void)
-{
-#ifdef __AVR_ATtiny13__
-	TCCR0A = 0;
-	TCCR0B = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined(__AVR_ATtiny25__)
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined(__AVR_ATtiny84__)
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined (__AVR_ATmega8__)
-	// Clock is set via fuse
-	// CKSEL = 0100;   Fuse Low Byte Bits 3:0
-
-	TCCR0 = 0x03;	// Prescaler 1/64
-
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
-#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
-	// Clock is set via fuse
-
-	TCCR0A = 0;
-	TCCR0B = 0x03;	// Prescaler 1/64
-
-	EICRA = (1<<ISC00); // interrupt of INT0 (pin D2) on both level changes
-
-#else
-#error "Timer/IRQ setup for your CPU undefined"
-#endif
-
-	OWPORT &= ~(1 << ONEWIREPIN);
-	OWDDR &= ~(1 << ONEWIREPIN);
-
-	cfg_read(owid, ow_addr.ow_addr);
-
-	// init application-specific code
-	init_state();
-
-	IFR |= (1 << INTF0);
-	IMSK |= (1 << INT0);
-}
-
-//States / Modes
-typedef enum {
-	OWM_SLEEP,  //Waiting for next reset pulse
-	OWM_IN_RESET,  //waiting of rising edge from reset pulse
-	OWM_AFTER_RESET,  //Reset pulse received 
-	OWM_PRESENCE,  //sending presence pulse
-	OWM_SEARCH_ZERO,  //SEARCH_ROM algorithm
-	OWM_SEARCH_ONE,
-	OWM_SEARCH_READ,
-
-	OWM_IDLE, // non-IRQ mode starts here (mostly)
-	OWM_READ, // reading some bits
-	OWM_WRITE, // writing some bits
-} mode_t;
-volatile mode_t mode; //state
-
-//next high-level state
-typedef enum {
-	OWX_IDLE, // nothing is happening
-	OWX_SELECT, // will read a selector
-	OWX_COMMAND, // will read a command
-	OWX_RUNNING, // in user code
-} xmode_t;
-volatile xmode_t xmode;
-
-// Write this bit at next falling edge from master.
-// We use a whole byte for this for assembly speed reasons.
-typedef enum {
-	OWW_WRITE_0, // used in assembly
-	OWW_WRITE_1,
-	OWW_NO_WRITE,
-} wmode_t;
-volatile wmode_t wmode;
-volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
-
-static inline void clear_timer(void)
-{
-	//DBG_C('t');
-	//TCNT0 = 0;
-	TIMSK &= ~(1 << TOIE0);	   // turn off the timer IRQ
-}
-
-void next_idle(void) __attribute__((noreturn));
-void next_idle(void)
-{
-	if(mode > OWM_PRESENCE)
-		set_idle();
-	//DBGS_P(".e1");
-	go_out();
-}
-
-static inline void start_reading(uint8_t bits) {
-	mode = OWM_READ;
-	cbuf=0;
-	bitp=1<<(8-bits);
-}
-// same thing for within the timer interrupt
-#define START_READING(bits) do { \
-	lmode = OWM_READ; \
-	cbuf=0; \
-	lbitp=1<<(8-bits); \
-} while(0)
-
-#define wait_complete(c) _wait_complete()
-//static inline void wait_complete(char c)
-static inline void _wait_complete(void)
-{
-//	if(bitp || (wmode != OWW_NO_WRITE))
-//		DBG_C(c);
-	while(1) {
-		if (mode < OWM_IDLE) {
-//			DBGS_P("s5");
-			next_idle();
-		}
-		if(!bitp && (wmode == OWW_NO_WRITE)) {
-			DBG_OFF();
-			return;
-		}
-#ifdef HAVE_UART
-		uart_poll();
-#endif
-		update_idle(1); // actbit
-	}
-}
-
-void next_command(void) __attribute__((noreturn));
-void next_command(void)
-{
-	wait_complete('n');
-	start_reading(8);
-	//DBGS_P(".e4");
-
-	xmode = OWX_COMMAND;
-	go_out();
-}
-
 static inline void
-xmit_any(uint8_t val, uint8_t len)
+setup(void)
 {
-	wait_complete('w');
-	cli();
-	if(mode == OWM_READ || mode == OWM_IDLE)
-		mode = OWM_WRITE;
-	if (mode != OWM_WRITE || xmode < OWX_RUNNING) {
-		// DBGS_P("\nErr xmit ");
-		next_idle();
-	}
+	mcu_init();
+	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
+	onewire_init();
+}
 
-	bitp = 1 << (8-len);
-	cbuf = val;
-	if(CHK_INT_EN()) {
-		// next is pin interrupt
-		wmode = (cbuf & bitp) ? OWW_WRITE_1 : OWW_WRITE_0;
-		bitp <<= 1;
-	}
-	// otherwise the timer interrupt will do this
-	// can't simply switch off the timer here because we might still be
-	// writing a zero
+// Main program
+int
+main(void)
+{
+#ifdef DBGPIN
+	OWPORT &= ~(1 << DBGPIN);
+	OWDDR |= (1 << DBGPIN);
+#endif
+	OWDDR &= ~(1<<ONEWIREPIN);
+	OWPORT &= ~(1<<ONEWIREPIN);
 
+	DBG_IN();
+
+#ifdef HAVE_TIMESTAMP
+	tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
+	uint16_t last_tb = 0;
+#endif
+
+	setup();
+
+	set_idle();
+
+	// now go
 	sei();
-	DBG_OFF();
-}
-
-#ifdef NEED_BITS
-void xmit_bit(uint8_t val)
-{
-	xmit_any(!!val,1);
-}
-#endif
-
-// It is a net space win not to inline this.
-void xmit_byte(uint8_t val)
-{
-	xmit_any(val,8);
-}
-
-#if 0
-uint8_t rx_ready(void)
-{
-	if (mode <= OWM_IDLE)
-		return 1;
-	return !bitp;
-}
-#endif
-
-static inline void
-recv_any(uint8_t len)
-{
-	wait_complete('j');
-	cli();
-	if(mode == OWM_WRITE || mode == OWM_IDLE)
-		mode = OWM_READ;
-	if (mode != OWM_READ || xmode < OWX_RUNNING) {
-		DBG_P("\nState error recv! ");
-		DBG_X(mode);
-		DBG_C('\n');
-		next_idle();
-	}
-	bitp = 1 << (8-len);
-	cbuf = 0;
-	sei();
-	DBG_OFF();
-}
-
-
-uint8_t
-recv_any_in(void)
-{
-	wait_complete('i');
-	if (mode != OWM_READ) {
-		DBGS_P(".e2");
-		go_out();
-	}
-	mode = OWM_IDLE;
-	return cbuf;
-}
-#ifdef NEED_BIT
-void
-recv_bit(void)
-{
-	recv_any(1);
-	DBG_C('_');
-}
-#endif
-
-void
-recv_byte(void)
-{
-	recv_any(8);
-}
-
-// this code is from owfs
-static uint8_t parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
-
-uint16_t
-crc16(uint16_t r, uint8_t x)
-{
-	uint16_t c = (x ^ (r & 0xFF));
-	r >>= 8;
-	if (parity_table[c & 0x0F] ^ parity_table[(c >> 4) & 0x0F])
-		r ^= 0xC001;
-	r ^= (c <<= 6);
-	r ^= (c << 1);
-        return r;
+	DBGS_P("\nInit done!\n");
+	while(1) mainloop();
 }
 
 void onewire_poll(void) {
