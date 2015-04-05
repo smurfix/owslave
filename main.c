@@ -25,20 +25,54 @@
 #include "uart.h"
 #include "dev_data.h"
 #include "debug.h"
+#include "moat.h"
 
 // Initialise the hardware
 static inline void
-setup(void)
+init_mcu(void)
 {
-	mcu_init();
+#ifdef __AVR_ATtiny13__
+       CLKPR = 0x80;    // Prepare to ...
+       CLKPR = 0x00;    // ... set to 9.6 MHz
+
+#elif defined(__AVR_ATtiny25__)
+       CLKPR = 0x80;    // Prepare to ...
+       CLKPR = 0x00;    // ... set to 8.0 MHz
+
+#elif defined(__AVR_ATtiny84__)
+       CLKPR = 0x80;    // Prepare to ...
+       CLKPR = 0x00;    // ... set to 8.0 MHz
+
+#elif defined (__AVR_ATmega8__)
+       // Clock is set via fuse
+#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
+       // Clock is set via fuse
+
+#else
+#error Basic config for your CPU undefined
+#endif
+}
+ 
+static inline void
+init_all(void)
+{
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
 	onewire_init();
+}
+
+inline void
+poll_all(void)
+{
+	uart_poll();
+	onewire_poll();
 }
 
 // Main program
 int
 main(void)
 {
+	init_mcu();
+
 #ifdef DBGPIN
 	OWPORT &= ~(1 << DBGPIN);
 	OWDDR |= (1 << DBGPIN);
@@ -53,13 +87,14 @@ main(void)
 	uint16_t last_tb = 0;
 #endif
 
-	setup();
-
-	set_idle();
+	init_all();
 
 	// now go
 	sei();
 	DBGS_P("\nInit done!\n");
-	while(1) mainloop();
+	while(1) {
+		poll_all();
+		mainloop();
+	}
 }
 

@@ -77,40 +77,6 @@ void onewire_poll(void);
  */
 uint16_t crc16(uint16_t crc, uint8_t x);
 
-
-/************** Your code's Prototypes ****************/
-
-/* Setup */
-/* Called before enabling 1wire interrupts */
-void init_state(void);
-
-/* Your main loop. You need to onewire_poll(). */
-void mainloop(void);
-
-/* Called to process commands. You implement this! */
-void do_command(uint8_t cmd);
-/*
-   Your code can do any one of:
-   * call xmit|recv_bit|byte, as required
-   * call next_command() (wait for next bus command, will not return)
-   * call next_idle() (wait for RESET pulse; will not return)
-
-   If you need to run any expensive computations, do it in update_idle().
-   Your steps need to be short enough to observe the timing requirements
-   of the state you're currently in.
-
-   Do not return.
- */
-
-/* Ditto, but called from idle / bit-wait context. You implement this! */
-/* 'bits' says how many 1wire bit times are left. */
-void update_idle(uint8_t bits);
-
-/* Implement if you need it. */
-#ifdef CONDITIONAL_SEARCH
-uint8_t condition_met(void);
-#endif
-
 #else /* !HAVE_ONEWIRE */
 #define onewire_init() do {} while(0)
 #define onewire_poll() do {} while(0)

@@ -142,11 +142,10 @@ onewire_init(void)
 
 	cfg_read(owid, ow_addr.ow_addr);
 
-	// init application-specific code
-	init_state();
-
 	IFR |= (1 << INTF0);
 	IMSK |= (1 << INT0);
+
+	set_idle();
 }
 
 //States / Modes
