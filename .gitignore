@@ -9,3 +9,4 @@
 /device
 /__pycache__
 .*.swp
+# Note that there's no .pyc/.pyo here, as this is Python3
