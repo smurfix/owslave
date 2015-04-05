@@ -82,11 +82,11 @@ device/${DEV}/eprom.bin: ${CFG}
 			if ./cfg ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
 				test $$(./cfg ${CFG} devices.${DEV}.onewire_id) -eq $$SER ; \
 			else \
-				./cfgw ${CFG} devices.${DEV}.onewire_id $$SER; \
+				./cfg_write ${CFG} devices.${DEV}.onewire_id $$SER; \
 			fi; \
 		else \
 			./gen_eeprom $@ owid type 0x$$(./cfg ${CFG} codes.onewire.${OW_TYPE}) serial random; \
-			./cfgw ${CFG} devices.${DEV}.onewire_id $$(./gen_eeprom $@ owid serial); \
+			./cfg_write ${CFG} devices.${DEV}.onewire_id $$(./gen_eeprom $@ owid serial); \
 		fi; \
 	fi
 
