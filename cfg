@@ -15,7 +15,10 @@ def main(f,*kk):
         for k in kk:
             if mode == "":
                 if k[0] == '.':
-                    mode = k[1:]
+                    if k == '.devs':
+                        print(" ".join(sorted(k for k in s.subtree("devices") if not k.startswith('_'))))
+                    else:
+                        mode = k[1:]
                 else:
                     did=[]
                     ks = k.split('.')

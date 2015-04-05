@@ -8,6 +8,9 @@ CFG?=moat.cfg
 ifeq ($(DEV),)
 
 TARGET?=$(shell ./cfg ${CFG} targets)
+help: 
+	@echo "Usage: make all | DEV | burn_DEV"
+	@echo "Known devices: $$(./cfg ${CFG} .devs)"
 all: setup $(addprefix run/,${TARGET})
 setup: device
 device:
@@ -24,6 +27,9 @@ burn_%:
 %:
 	@make DEV=$@ all
 	
+clean:
+	rm -r device
+
 .PHONY: all setup targets
 
 
@@ -52,11 +58,13 @@ else
 EEP:=
 endif
 burn: all
-	sudo avrdude -c $(PROG) -p $(MCU_PROG) -s \
+	TF=$$(tempfile); echo "default_safemode = no;" >$$TF; \
+	sudo avrdude -c $(PROG) -p $(MCU_PROG) -C +$$TF \
+		-U flash:w:device/${DEV}/image.hex:i ${EEP} \
 		-U lfuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.l):m \
 		-U hfuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.h):m \
 		-U efuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.e):m \
-		-U flash:w:device/${DEV}/image.hex:i ${EEP}
+	; X=$$?; rm $$TF; exit $$X
 endif
 
 all: device/${DEV} device/${DEV}/image.hex device/${DEV}/eprom.bin device/${DEV}/image.lss
@@ -100,75 +108,7 @@ device/${DEV}/config.o: device/${DEV}/eprom.bin
 device/${DEV}/%.o: %.c device/${DEV}/dev_config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-	
-
-#MCU=atmega8
-#MCU=attiny13
-#MCU=attiny84
-#MCU=atmega168
-MCU?=atmega88
-#MCU=attiny25
-MCU_PROG?=m88
-#MCU_PROG=m168
-#MCU_PROG=t84
-
-
-#-------------------
-help: 
-	@echo "Usage: make TYPE | TYPE_burn"
-	@echo "Known Types: ds2408 ds2423"
-
-#-------------------
-
-# device codes
-ds2408_CODE=29
-ds2423_CODE=1D
-
-DEVNAME?=ds2408
-dev: $(DEVNAME).hex $(DEVNAME).lss $(DEVNAME).bin
-
-ds2408 ds2423:
-	 @make $@_dev
-
-%_burn: device/%
-	@make DEVNAME=$(subst _burn,,$@) DEVCODE=$($(subst _burn,,$@)_CODE) burn
-
-%_dev:
-	@make DEVNAME=$(subst _dev,,$@) all
-
-# optimize for size:
-
-#  -I/usr/local/avr/include -B/usr/local/avr/lib
-#-------------------
-%.o : %.c Makefile $(wildcard *.h)
-	$(CC) $(CFLAGS) -Os -c $<
-$(DEVNAME).elf : onewire.o uart.o $(DEVNAME).o irq_catcher.o
-	$(CC) $(CFLAGS) -o $@ -Wl,-Map,$(DEVNAME).map,--cref $^
-$(DEVNAME).hex : $(DEVNAME).elf
-	$(OBJCOPY) -R .eeprom -O ihex $< $@
-$(DEVNAME).lss : $(DEVNAME).elf
-	$(OBJDUMP) -h -S $< > $@
-$(DEVNAME).bin : $(DEVNAME).elf
-	$(OBJCOPY) -O binary $< $@
-
-$(DEVNAME).eeprom:
-	python gen_eeprom.py $(DEVCODE) > $@
-#------------------
-_burn: $(DEVNAME).hex $(DEVNAME).eeprom
-	#sudo avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i -U eeprom:w:$(DEVNAME).eeprom:i 
-	sudo avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:$(DEVNAME).hex:i
-	#avrdude -V -c $(PROG) -p $(MCU_PROG) -U $(PRG).bin
-#-------------------
 clean:
-	rm -f *.o *.map *.elf *t.hex
-#-------------------
+	rm -r device/${DEV}
 
-fs: fastslave.hex
-fastslave.hex: fastslave.c
-	avr-gcc $(CFLAGS) -c fastslave.c -o fastslave.o
-	avr-gcc $(CFLAGS) fastslave.o -o fastslave.elf
-	avr-objdump -h -S fastslave.elf > fastslave.lss
-	avr-objcopy -O ihex  fastslave.elf fastslave.hex
-fsb: fastslave.hex
-	sudo avrdude -c $(PROG) -p $(MCU_PROG) -U flash:w:fastslave.hex:i
 endif
