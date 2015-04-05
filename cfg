@@ -112,6 +112,8 @@ def main(f,*kk):
                     sys.exit(2)
                 if not s.subtree('devices',k,'defs','use_eeprom'):
                     files.append('config.o')
+                for f in s.subtree('devices',k,'code'):
+                    files.append(f+'.c')
 
                 print(" ".join(files))
             else:
