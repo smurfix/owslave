@@ -211,6 +211,8 @@ class TypeBlock(Block):
     def pack(self):
         r = []
         m = self.maxi
+        if m < 0:
+            return bytes((0,))
         i = 0
         while i <= m:
             b = 0
@@ -398,6 +400,7 @@ class MainBlock(object):
         res = b"DevC"
         for b in self.blocks:
             bp = b.pack()
+            assert len(bp),"%s is empty"%b.__class__.__name__
             res += bytes((len(bp), b.id)) + bp
         res += b'\0'
         crc = crc16(res)
