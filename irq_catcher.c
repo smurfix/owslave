@@ -20,6 +20,7 @@
  */
 #include "onewire.h"
 #include "features.h"
+#include "debug.h"
 
 #ifdef HAVE_IRQ_CATCHER
 
@@ -33,10 +34,10 @@ void ping_me(uint8_t c) {
     extern void __ctors_end(void); __ctors_end();
 }
 
-void __vector_1(void) __attribute__((signal,weak));
+void __vector_1(void) __attribute__((signal));
 void __vector_2(void) __attribute__((signal));
 void __vector_3(void) __attribute__((signal));
-void __vector_4(void) __attribute__((signal,weak));
+void __vector_4(void) __attribute__((signal));
 void __vector_5(void) __attribute__((signal));
 void __vector_6(void) __attribute__((signal));
 void __vector_7(void) __attribute__((signal));
@@ -48,10 +49,10 @@ void __vector_12(void) __attribute__((signal));
 void __vector_13(void) __attribute__((signal));
 void __vector_14(void) __attribute__((signal));
 void __vector_15(void) __attribute__((signal));
-void __vector_16(void) __attribute__((signal,weak));
+void __vector_16(void) __attribute__((signal));
 void __vector_17(void) __attribute__((signal));
-void __vector_18(void) __attribute__((signal,weak));
-void __vector_19(void) __attribute__((signal,weak));
+void __vector_18(void) __attribute__((signal));
+void __vector_19(void) __attribute__((signal));
 void __vector_20(void) __attribute__((signal));
 void __vector_21(void) __attribute__((signal));
 void __vector_22(void) __attribute__((signal));
