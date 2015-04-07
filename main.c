@@ -58,6 +58,7 @@ init_all(void)
 {
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
 	onewire_init();
+	init_state();
 }
 
 inline void
@@ -71,16 +72,23 @@ poll_all(void)
 int
 main(void)
 {
-	init_mcu();
 
 #ifdef DBGPIN
-	OWPORT &= ~(1 << DBGPIN);
-	OWDDR |= (1 << DBGPIN);
+	DBGPORT &= ~(1 << DBGPIN);
+	DBGDDR |= (1 << DBGPIN);
 #endif
+#ifdef HAVE_ONEWIRE
 	OWDDR &= ~(1<<ONEWIREPIN);
 	OWPORT &= ~(1<<ONEWIREPIN);
-
+#endif
 	DBG_IN();
+	DBG_ON();
+	DBG_OFF();
+
+	init_mcu();
+	DBG_ON();
+	DBG_OFF();
+
 
 #ifdef HAVE_TIMESTAMP
 	tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
@@ -88,9 +96,14 @@ main(void)
 #endif
 
 	init_all();
+	DBG_ON();
+	DBG_OFF();
 
 	// now go
 	sei();
+	DBG_ON();
+	DBG_OFF();
+
 	DBGS_P("\nInit done!\n");
 	while(1) {
 		poll_all();

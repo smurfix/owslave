@@ -25,14 +25,19 @@
 #include "debug.h"
 
 static unsigned long long x = 0;
-void setup(void) {
-	DBG_OUT();
+void init_state(void) {
+	DBG_ON();
+	DBG_OFF();
+	DBG_ON();
+	DBG_OFF();
+	DBG_ON();
 	DBG_OFF();
 }
 
 void mainloop(void) {
-	if(++x<100000ULL) return;
-	x = 0;
 	DBG_ON();
 	DBG_OFF();
+	if(++x<100000ULL) return;
+	x = 0;
+        DBG_C('/');
 }

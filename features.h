@@ -63,6 +63,8 @@
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
+#define DBGPORT PORTB
+#define DBGDDR PINB
 #define ONEWIREPIN 2		// INT0
 
 #define IMSK GIMSK
@@ -94,17 +96,16 @@
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
 
+#define DBGPORT PORTB
+#define DBGDDR DDRB
+#define DBGIN PINB
+
 #define IMSK EIMSK
 #define IFR EIFR
 #define ADPIN PINC
 #define ADPIN_vect PCINT1_vect
 #define ADMSK PCMSK1
 #define ADIRQ
-// #define HAVE_UART
-// #define HAVE_UART_IRQ
-// #define HAVE_UART_SYNC // no output buffering
-#define DBGPIN 3 /* debug toggle */
-//#define HAVE_IRQ_CATCHER
 
 #endif
 
