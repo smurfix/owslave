@@ -37,9 +37,10 @@ import struct
 import errno
 from random import SystemRandom
 from Cfg import Cfg
+import os
 R=SystemRandom()
 
-cfg = Cfg("moat.cfg")
+cfg = Cfg(os.environ.get('CFG',"moat.cfg"))
 
 #
 # CRC-16, as used by a couple of 1wire devices

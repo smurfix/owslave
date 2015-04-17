@@ -3,7 +3,8 @@
 # initially written by guido socher
 # extended by Matthias Urlichs
 
-CFG?=moat.cfg
+CFG?=world.cfg
+export CFG
 
 ifeq ($(DEV),)
 
