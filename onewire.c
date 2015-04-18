@@ -419,6 +419,8 @@ void onewire_poll(void) {
 			tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
 		}
 #endif
+		if (mode == OWM_IDLE)
+			set_idle();
 		if (mode == OWM_SLEEP)
 			return;
 	}
@@ -430,7 +432,7 @@ void set_idle(void)
 	   Should happen rarely enough not to matter. */
 	cli();
 #ifdef HAVE_UART // mode is volatile
-	if(mode != OWM_SLEEP) {
+	if(mode != OWM_SLEEP && mode != OWM_IDLE) {
 		DBGS_P(">idle:");
 		DBGS_X(mode);
 		DBGS_C(' ');
@@ -502,19 +504,12 @@ static inline void do_select(uint8_t cmd)
 
 TIMER_INT {
 	//Read input line state first
+	//and copy a few globals to registers
 	uint8_t p = !!(OWPIN&(1<<ONEWIREPIN));
 	mode_t lmode=mode;
-//	if(lmode == OWM_READ || lmode == OWM_SEARCH_READ)
-//		DBG_T(p+1);
-//	if (lmode > OWM_PRESENCE && lmode != OWM_WRITE)
-//	if(DBG_PIN())
-//		DBG_OFF();
-//	else
-//		DBG_ON();
-	wmode_t lwmode=wmode; // wmode; //let these variables be in registers
+	wmode_t lwmode=wmode;
 	uint8_t lbitp=bitp;
 	uint8_t lactbit=actbit;
-	DBG_ON();DBG_OFF();DBG_OUT();
 
 	if (CHK_INT_EN()) {
 		// reset pulse?
@@ -527,15 +522,15 @@ TIMER_INT {
 			}
 #endif
 			lmode=OWM_IN_RESET;  //wait for rising edge
+			lwmode=OWW_NO_WRITE;
 			SET_RISING(); 
+			CLEAR_LOW();
 			//DBG_C('R');
 		}
 		DIS_TIMER();
 	} else
 	switch (lmode) {
 	case OWM_IDLE:
-		DBGS_P("\nChk Idle!\n");
-		lmode = OWM_SLEEP;  // time overrun, nothing can be done
 		break;
 	case OWM_SLEEP: // should have been caught by CHK_INT_EN() above
 		DBGS_P("\nChk Sleep!\n");
@@ -573,9 +568,8 @@ TIMER_INT {
 			lwmode = (cbuf & lbitp) ? OWW_WRITE_1 : OWW_WRITE_0;
 			lbitp <<= 1;
 		} else {
-			// Overrun!
-			DBGS_P("\nWrite OVR!\n");
-			lmode = OWM_SLEEP;
+			lmode = OWM_IDLE;
+			lwmode = OWW_NO_WRITE;
 		}
 		break;
 	case OWM_SEARCH_ZERO:
@@ -679,7 +673,8 @@ void real_PIN_INT(void) {
 		break;
 	case OWM_IDLE:
 		DBGS_P("\nChk Idle!\n");
-		break;
+		set_idle();
+		/* fall thru */
 	case OWM_SLEEP:
 		TCNT_REG=~(OWT_MIN_RESET);
 		EN_OWINT(); //any earlier edges will simply reset the timer
