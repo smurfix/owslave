@@ -511,7 +511,7 @@ TIMER_INT {
 		DBG_OFF();
 	else
 		DBG_ON();
-	wmode_t lwmode=OWW_NO_WRITE; // wmode; //let these variables be in registers
+	wmode_t lwmode=wmode; // wmode; //let these variables be in registers
 	uint8_t lbitp=bitp;
 	uint8_t lactbit=actbit;
 
