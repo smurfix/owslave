@@ -39,5 +39,5 @@ void mainloop(void) {
 	DBG_OFF();
 	if(++x<100000ULL) return;
 	x = 0;
-        DBG_C('/');
+        DBGS_C('/');
 }
