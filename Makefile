@@ -59,6 +59,15 @@ else
 EEP:=
 endif
 burn: all
+	@echo -n LFUSE:
+	@./cfg ${CFG} devices.${DEV}.fuse.l
+	@echo -n HFUSE:
+	@./cfg ${CFG} devices.${DEV}.fuse.h
+	@echo -n EFUSE:
+	@./cfg ${CFG} devices.${DEV}.fuse.e
+	@echo -n EEPROM:
+	./cfg ${CFG} devices.${DEV}.defs.use_eeprom
+
 	TF=$$(tempfile); echo "default_safemode = no;" >$$TF; \
 	sudo avrdude -c $(PROG) -p $(MCU_PROG) -C +$$TF \
 		-U flash:w:device/${DEV}/image.hex:i ${EEP} \
@@ -68,7 +77,18 @@ burn: all
 	; X=$$?; rm $$TF; exit $$X
 endif
 
-all: device/${DEV} device/${DEV}/image.hex device/${DEV}/eprom.bin device/${DEV}/image.lss
+all: cfg device/${DEV} device/${DEV}/image.hex device/${DEV}/eprom.bin device/${DEV}/image.lss
+cfg:
+	@echo -n MCU:
+	@./cfg ${CFG} devices.${DEV}.mcu
+	@echo -n MCU_PROG:
+	@./cfg ${CFG} devices.${DEV}.prog
+	@echo -n PROG:
+	@./cfg ${CFG} env.prog
+	@echo -n CFILES:
+	@./cfg ${CFG} .cfiles ${DEV}
+	@echo -n TYPE:
+	@./cfg ${CFG} .type ${DEV}
 device/${DEV}: 
 	mkdir $@
 device/${DEV}/image.hex: device/${DEV}/image.elf
@@ -78,7 +98,7 @@ device/${DEV}/image.elf: ${OBJS}
 device/${DEV}/image.lss: device/${DEV}/image.elf
 	$(OBJDUMP) -h -S $< > $@
 
-device/${DEV}/dev_config.h: ${CFG}
+device/${DEV}/dev_config.h: ${CFG} cfg
 	./cfg ${CFG} .hdr ${DEV}
 
 $(DEVNAME).hex : $(DEVNAME).elf
@@ -112,4 +132,5 @@ device/${DEV}/%.o: %.c device/${DEV}/dev_config.h
 clean:
 	rm -r device/${DEV}
 
+.PHONY: cfg
 endif
