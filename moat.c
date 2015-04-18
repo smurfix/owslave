@@ -143,11 +143,11 @@ uint8_t condition_met(void) {
 }
 #endif
 
-#ifdef CONFIG_UART
+#ifdef HAVE_UART
 static unsigned long long x = 0;
 #endif
 void mainloop(void) {
-#ifdef CONFIG_UART
+#ifdef HAVE_UART
 	if(++x<100000ULL) return;
 	x = 0;
 	DBGS_C('/');

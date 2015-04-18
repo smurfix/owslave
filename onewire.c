@@ -218,6 +218,9 @@ static inline void _wait_complete(void)
 {
 //	if(bitp || (wmode != OWW_NO_WRITE))
 //		DBG_C(c);
+#ifdef HAVE_UART
+	volatile unsigned long long int x=0;
+#endif
 	while(1) {
 		if (mode < OWM_IDLE) {
 //			DBGS_P("s5");
@@ -231,6 +234,12 @@ static inline void _wait_complete(void)
 		uart_poll();
 #endif
 		update_idle(1); // actbit
+#ifdef HAVE_UART
+		if(++x>=100000ULL) {
+			x=0;
+			DBGS_C('|');
+		}
+#endif
 	}
 }
 
@@ -363,9 +372,10 @@ void onewire_poll(void) {
 	setjmp(end_out);
 	while (1) {
 #ifdef HAVE_UART
-		if(++x == 100000ULL) {
+		if(++x>=100000ULL) {
 			x=0;
-			DBGS_C('/');
+			DBGS_C('\\');
+			DBGS_Y(mode);
 		}
 #endif
 		uart_poll();
