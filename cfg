@@ -81,6 +81,10 @@ def main(f,*kk):
 
                         print("#define {} {}".format(a.upper(),v), file=f)
 
+                    ow = s.subtree('devices',k,'defs','is_onewire')
+                    if ow:
+                        print("#define HAVE_ONEWIRE 1", file=f)
+
                     max_t = -1
                     for a,v in s.keyval('devices',k,'types'):
                         v = int(v)
