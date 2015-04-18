@@ -66,7 +66,7 @@ void do_read(void)
 	crc = crc16(crc,_1W_READ_GENERIC);
 	dtype = recv_byte_in();
 	recv_byte();
-	if (dtype == M_NAME) {
+	if (dtype == TC_NAME) {
 		uint8_t off,len;
 		cfg_addr(&off, &len, CfgID_name);
 		if (!off) return;
