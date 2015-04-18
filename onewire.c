@@ -638,6 +638,7 @@ void INT0_vect(void) {
 
 // This generates a spurious warning
 // which unfortunately cannot be turned off with GCC <4.8.2
+#warning "Ignore the 'appears to be a misspelled signal handler' warning"
 void real_PIN_INT(void) {
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
 #ifdef DBGPIN // modes are volatile
