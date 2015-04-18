@@ -129,6 +129,12 @@ void update_idle(uint8_t bits)
 
 void init_state(void)
 {
+	DBG_ON();
+	DBG_OFF();
+	DBG_ON();
+	DBG_OFF();
+	DBG_ON();
+	DBG_OFF();
 }
 
 #ifdef CONDITIONAL_SEARCH
@@ -137,6 +143,13 @@ uint8_t condition_met(void) {
 }
 #endif
 
+#ifdef CONFIG_UART
+static unsigned long long x = 0;
+#endif
 void mainloop(void) {
-	while(1) onewire_poll();
+#ifdef CONFIG_UART
+	if(++x<100000ULL) return;
+	x = 0;
+	DBGS_C('/');
+#endif
 }
