@@ -56,7 +56,7 @@ static void go_out(void) {
 #endif
 
 // Frequency-dependent timing macros
-#ifdef DBGPIN // additional overhead for playing with the trace pin
+#if 0 // def DBGPIN // additional overhead for playing with the trace pin
 #define _ADD_T 1
 #else
 #define _ADD_T 0
@@ -227,7 +227,7 @@ static inline void _wait_complete(void)
 			next_idle();
 		}
 		if(!bitp && (wmode == OWW_NO_WRITE)) {
-			DBG_OFF();
+			//DBG_OFF();
 			return;
 		}
 #ifdef HAVE_UART
@@ -278,7 +278,6 @@ xmit_any(uint8_t val, uint8_t len)
 	// writing a zero
 
 	sei();
-	DBG_OFF();
 }
 
 #ifdef NEED_BITS
@@ -319,7 +318,7 @@ recv_any(uint8_t len)
 	bitp = 1 << (8-len);
 	cbuf = 0;
 	sei();
-	DBG_OFF();
+	//DBG_OFF();
 }
 
 
@@ -379,7 +378,7 @@ void onewire_poll(void) {
 		}
 #endif
 		uart_poll();
-		DBG_OFF();
+		//DBG_OFF();
 		if(!bitp) {
 			xmode_t lxmode = xmode;
 			if(lxmode == OWX_SELECT) {
@@ -441,7 +440,7 @@ void set_idle(void)
 		DBGS_NL();
 	}
 #endif
-	DBG_OFF();
+	//DBG_OFF();
 	//DBG_OUT();
 
 	mode = OWM_SLEEP;
@@ -483,6 +482,7 @@ static inline void do_select(uint8_t cmd)
 			else
 				break;
 		}
+		//DBG_C('m');
 		next_command();
 #ifdef SINGLE_DEVICE
 	case 0xCC: // SKIP_ROM
@@ -507,13 +507,14 @@ TIMER_INT {
 //	if(lmode == OWM_READ || lmode == OWM_SEARCH_READ)
 //		DBG_T(p+1);
 //	if (lmode > OWM_PRESENCE && lmode != OWM_WRITE)
-	if(DBG_PIN())
-		DBG_OFF();
-	else
-		DBG_ON();
+//	if(DBG_PIN())
+//		DBG_OFF();
+//	else
+//		DBG_ON();
 	wmode_t lwmode=wmode; // wmode; //let these variables be in registers
 	uint8_t lbitp=bitp;
 	uint8_t lactbit=actbit;
+	DBG_ON();DBG_OFF();DBG_OUT();
 
 	if (CHK_INT_EN()) {
 		// reset pulse?
@@ -623,8 +624,10 @@ TIMER_INT {
 	wmode=lwmode;
 	bitp=lbitp;
 	actbit=lactbit;
+#if 0
 	DBG_OFF();
 	DBG_ON();
+#endif
 }
 
 // 1wire level change.
@@ -651,7 +654,7 @@ void INT0_vect(void) {
 #warning "Ignore the 'appears to be a misspelled signal handler' warning"
 void real_PIN_INT(void) {
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
-#ifdef DBGPIN // modes are volatile
+#if 0 // def DBGPIN // modes are volatile
 	if (mode > OWM_PRESENCE) {
 		DBG_ON();
 		if (wmode == OWW_NO_WRITE)
