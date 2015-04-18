@@ -24,6 +24,7 @@
 #include "uart.h"
 #include "dev_data.h"
 #include "debug.h"
+#include "moat.h"
 
 #define PRESCALE 64
 
