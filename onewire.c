@@ -679,7 +679,7 @@ void real_PIN_INT(void) {
 		break;
 	case OWM_SLEEP:
 		TCNT_REG=~(OWT_MIN_RESET);
-		EN_OWINT(); //any other edges will simply reset the timer
+		EN_OWINT(); //any earlier edges will simply reset the timer
 		break;
 	//start of reading with falling edge from master, reading closed in timer isr
 	case OWM_READ:
