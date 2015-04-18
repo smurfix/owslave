@@ -16,14 +16,6 @@
  *  for more details.
  */
 
-#ifdef MAIN
-#define EXTERN
-#define INIT(x) = x
-#else
-#define EXTERN extern
-#define INIT(x)
-#endif
-
 #include <stdint.h>
 #include "features.h"
 

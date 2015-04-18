@@ -21,6 +21,15 @@
 
 #include "dev_config.h"
 
+#ifdef MAIN
+#define EXTERN
+#define INIT(x) = x
+#else
+#define EXTERN extern
+#define INIT(x)
+#endif
+
+
 #ifndef BAUDRATE
 #define BAUDRATE 38400
 #endif
