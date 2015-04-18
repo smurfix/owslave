@@ -440,8 +440,6 @@ void set_idle(void)
 	DIS_TIMER();
 	SET_FALLING();
 	EN_OWINT();
-	DBG_C('s');
-	sei();
 }
 
 static inline void do_select(uint8_t cmd)
