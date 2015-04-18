@@ -4,6 +4,7 @@
 #include <util/crc16.h>
 
 #include "dev_data.h"
+#include "debug.h"
 
 #define CRC 0  // needs 300 bytes
 #define DEFAULT 1 // needs 30 bytes, plus _config data (built by gen_eprom)
@@ -21,24 +22,30 @@
  *  Struct sizes must match exactly.
  */
 
+inline uint8_t cfg_byte(uint8_t addr) {
+#ifdef USE_EEPROM
+    return eeprom_read_byte(EEPROM_POS+addr);
+#else
+    return pgm_read_byte(_config_start+addr);
+#endif
+}
+#define read_byte(x) cfg_byte(x)
+
 #if CRC
-static uint8_t read_byte(uint16_t &crc, uint8_t pos) {
-	uint8_t b = eeprom_read_byte((uint8_t *)EEPROM_POS + pos);
+static uint8_t read_crc_byte(uint16_t &crc, uint8_t pos) {
+	uint8_t b = read_byte((uint8_t *)EEPROM_POS + pos);
 	crc = _crc16_update(crc, b);
 	return b;
 }
-#define read_crc_byte(x,y) read_byte(x,y)
 #else
 #define read_crc_byte(x,y) read_byte(y)
 #endif
 
-static inline uint8_t read_byte(uint8_t pos) {
-	return eeprom_read_byte((uint8_t *)EEPROM_POS + pos);
-}
-
+#ifdef USE_EEPROM
 static inline void write_byte(uint8_t b, uint8_t pos) {
 	eeprom_write_byte((uint8_t *)EEPROM_POS + pos, b);
 }
+#endif
 
 #if !USE_EEPROM
 extern const uint8_t _config_start[] __attribute__ ((progmem));
@@ -58,8 +65,8 @@ char _do_crc(bool update) // from eeprom; True if CRC matches
 	uint8_t b, i=0, j;
 
 	for(j=0;j<4;j++) {
-		if(read_crc_byte(crc, i++) != pgm_read_byte(_config_start+j)) {
-			break;
+		if(read_crc_byte(crc, i++) != read_byte(j)) {
+			return false;
 		}
 	}
 
@@ -117,13 +124,5 @@ void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id) {
 		}
 	}
 	*addr = 0;
-}
-
-uint8_t cfg_byte(uint8_t addr) {
-#ifdef CFG_EEPROM
-    return eeprom_read_byte(addr);
-#else
-    return pgm_read_byte(_config_start+addr);
-#endif
 }
 
