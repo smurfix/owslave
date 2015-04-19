@@ -106,7 +106,7 @@ def main(f,*kk):
                 maxtype = max(())
                 print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in s.keyval('devices',k,'defs')) + " " + " ".join("-DN_{}={}".format(a.upper(),v) for a,v in s.keyval('devices',k,'types') if int(v) > 0))
             elif mode == "cfiles":
-                files = ['dev_data.c','main.c']
+                files = ['dev_data.c','main.c','jmp.S']
                 if s.subtree('devices',k,'defs','have_uart'):
                     files.append('uart.c')
                 ow = s.subtree('devices',k,'defs','is_onewire')

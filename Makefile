@@ -130,6 +130,8 @@ device/${DEV}/config.o: device/${DEV}/eprom.bin
 
 device/${DEV}/%.o: %.c device/${DEV}/dev_config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
+device/${DEV}/%.o: %.S device/${DEV}/dev_config.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -r device/${DEV}
