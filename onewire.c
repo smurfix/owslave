@@ -17,7 +17,6 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <setjmp.h>
 
 #include "features.h"
 #include "onewire.h"
@@ -33,16 +32,13 @@ union {
 	uint8_t addr[8];
 } ow_addr;
 
-volatile uint8_t bitp;  // mask of current bit
-volatile uint8_t bytep; // position of current byte
-volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
-
-static jmp_buf end_out;
-static void go_out(void) __attribute__((noreturn));
-static void go_out(void) {
-	longjmp(end_out,1); // saves bytes
-}
-
+volatile uint8_t bitp;   // mask of current bit
+volatile uint8_t bytep;  // position of current byte
+volatile uint8_t cbuf;   // char buffer, current byte to be (dis)assembled
+volatile uint8_t cmdbuf; // current command to run
+volatile uint8_t pin_poll;  // flag set by the wire interrupt
+volatile uint8_t timer_poll;  // flag set by the timer interrupt
+volatile uint8_t bitbuf; // bit input read by the timer IRQ
 
 
 #ifndef TIMSK
@@ -68,8 +64,8 @@ static void go_out(void) {
 #define OWT_MIN_RESET T_(410)
 #define OWT_RESET_PRESENCE (T_(40)-1)
 #define OWT_PRESENCE (T_(160)-1)
-#define OWT_READLINE (T_(30)-2)
-#define OWT_LOWTIME (T_(60)-3)
+#define OWT_READLINE (T_(30)-1)
+#define OWT_LOWTIME (T_(60)-2)
 
 #if (OWT_MIN_RESET>240)
 #error Reset timing is broken, your clock is too fast
@@ -78,15 +74,18 @@ static void go_out(void) {
 #error Read timing is broken, your clock is too slow
 #endif
 
-#define EN_OWINT() do {IMSK|=(1<<INT0);IFR|=(1<<INTF0);}while(0)  //enable interrupt 
+#define EN_OWINT() do {IFR|=(1<<INTF0);IMSK|=(1<<INT0);} while(0)  //enable interrupt 
 #define DIS_OWINT() do {IMSK&=~(1<<INT0);} while(0)  //disable interrupt
 #define SET_RISING() do {EICRA|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
 #define SET_FALLING() do {EICRA|=(1<<ISC01);EICRA&=~(1<<ISC00);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN() (IMSK&(1<<INT0)) //test if pin interrupt enabled
 #define PIN_INT INT0_vect  // the interrupt service routine
 //Timer Interrupt
-#define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);}while(0) //enable timer interrupt
-#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
+#define EN_TIMER() do {DBG_ON();TIFR|=(1<<TOV0); TIMSK|=(1<<TOIE0);}while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);DBG_OFF();} while(0) // disable timer interrupt
+//#define HAS_TIMER() (TIFR & (1<<TOV0)) // check for pending timer interrupt
+#define HAS_TIMER() (TIMSK & (1<<TOIE0)) // check for pending timer interrupt
+#define SET_TIMER(x) do { GTCCR = (1<<PSRSYNC); TCNT_REG=~(x); } while(0) // reset prescaler
 
 // always use timer 0
 #define TCNT_REG TCNT0  //register of timer-counter
@@ -100,7 +99,10 @@ static void go_out(void) {
 #define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
 #define CLEAR_LOW() do {OWDDR&=~(1<<ONEWIREPIN);} while(0) //set 1-Wire pin as input
 
-static void do_select(uint8_t cmd);
+static void do_select(void);
+
+static void real_PIN_INT(void);
+static void real_TIMER_INT(void);
 
 // Initialise the hardware
 void
@@ -153,15 +155,17 @@ onewire_init(void)
 typedef enum {
 	OWM_SLEEP,  //Waiting for next reset pulse
 	OWM_IN_RESET,  //waiting of rising edge from reset pulse
-	OWM_AFTER_RESET,  //Reset pulse received 
-	OWM_PRESENCE,  //sending presence pulse
+	OWM_AFTER_RESET,  //Reset pulse received, before sending presence
+	OWM_PRESENCE,  //during send of presence pulse
 	OWM_SEARCH_ZERO,  //SEARCH_ROM algorithm
 	OWM_SEARCH_ONE,
 	OWM_SEARCH_READ,
 
 	OWM_IDLE, // non-IRQ mode starts here (mostly)
-	OWM_READ, // reading some bits
 	OWM_WRITE, // writing some bits
+	OWM_READ, // reading some bits
+	OWM_READ_SELECT, // reading some bits
+	OWM_READ_COMMAND, // reading some bits
 } mode_t;
 volatile mode_t mode; //state
 
@@ -180,34 +184,32 @@ typedef enum {
 	OWW_WRITE_0, // used in assembly
 	OWW_WRITE_1,
 	OWW_NO_WRITE,
+	OWW_READ,
 } wmode_t;
 volatile wmode_t wmode;
 volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
-static inline void clear_timer(void)
-{
-	//DBG_C('t');
-	//TCNT0 = 0;
-	TIMSK &= ~(1 << TOIE0);	   // turn off the timer IRQ
-}
-
 void next_idle(void) __attribute__((noreturn));
 void next_idle(void)
 {
-	if(mode > OWM_PRESENCE)
+	if(mode > OWM_PRESENCE) {
 		set_idle();
+		sei();
+	}
 	//DBGS_P(".e1");
 	go_out();
 }
 
-static inline void start_reading(uint8_t bits) {
-	mode = OWM_READ;
+static inline void start_reading(mode_t _mode,uint8_t bits) {
+	mode = _mode;
+	wmode = OWW_READ;
 	cbuf=0;
 	bitp=1<<(8-bits);
 }
 // same thing for within the timer interrupt
-#define START_READING(bits) do { \
-	lmode = OWM_READ; \
+#define START_READING(_mode,bits) do { \
+	lmode = _mode; \
+	lwmode = OWW_READ; \
 	cbuf=0; \
 	lbitp=1<<(8-bits); \
 } while(0)
@@ -218,23 +220,23 @@ static inline void _wait_complete(void)
 {
 //	if(bitp || (wmode != OWW_NO_WRITE))
 //		DBG_C(c);
-#ifdef HAVE_UART
+#if 0 // def HAVE_UART
 	volatile unsigned long long int x=0;
 #endif
 	while(1) {
 		if (mode < OWM_IDLE) {
-//			DBGS_P("s5");
+			//DBGS_P("s5.");
+			//DBGS_Y(mode);
 			next_idle();
 		}
-		if(!bitp && (wmode == OWW_NO_WRITE)) {
-			//DBG_OFF();
+		if(!bitp && (mode != OWM_WRITE || wmode == OWW_NO_WRITE)) {
 			return;
 		}
-#ifdef HAVE_UART
+#if 0 // def HAVE_UART
 		uart_poll();
 #endif
 		update_idle(1); // actbit
-#ifdef HAVE_UART
+#if 0 // def HAVE_UART
 		if(++x>=100000ULL) {
 			x=0;
 			DBGS_C('|');
@@ -247,10 +249,8 @@ void next_command(void) __attribute__((noreturn));
 void next_command(void)
 {
 	wait_complete('n');
-	start_reading(8);
+	start_reading(OWM_READ_COMMAND,8);
 	//DBGS_P(".e4");
-
-	xmode = OWX_COMMAND;
 	go_out();
 }
 
@@ -262,7 +262,7 @@ xmit_any(uint8_t val, uint8_t len)
 	if(mode == OWM_READ || mode == OWM_IDLE)
 		mode = OWM_WRITE;
 	if (mode != OWM_WRITE || xmode < OWX_RUNNING) {
-		// DBGS_P("\nErr xmit ");
+		DBGS_P("\nErr xmit ");
 		next_idle();
 	}
 
@@ -279,6 +279,13 @@ xmit_any(uint8_t val, uint8_t len)
 
 	sei();
 }
+
+#define XMIT_BYTE(val) do { \
+	lmode = OWM_WRITE; \
+	cbuf = val; \
+	lwmode = (cbuf & 1) ? OWW_WRITE_1 : OWW_WRITE_0; \
+	lbitp = 2; \
+} while(0)
 
 #ifdef NEED_BITS
 void xmit_bit(uint8_t val)
@@ -309,16 +316,17 @@ recv_any(uint8_t len)
 	cli();
 	if(mode == OWM_WRITE || mode == OWM_IDLE)
 		mode = OWM_READ;
+#if 0
 	if (mode != OWM_READ || xmode < OWX_RUNNING) {
 		DBG_P("\nState error recv! ");
 		DBG_X(mode);
 		DBG_C('\n');
 		next_idle();
 	}
+#endif
 	bitp = 1 << (8-len);
 	cbuf = 0;
 	sei();
-	//DBG_OFF();
 }
 
 
@@ -363,75 +371,100 @@ crc16(uint16_t r, uint8_t x)
         return r;
 }
 
-void onewire_poll(void) {
-#ifdef HAVE_UART
-	volatile unsigned long long int x=0;
-#endif
+char _onewire_poll(void) __attribute__((OS_task));
+char _onewire_poll(void) {
+	DBG(0x3A);
+	real_PIN_INT();
+	real_TIMER_INT();
 
-	setjmp(end_out);
-	while (1) {
-#ifdef HAVE_UART
-		if(++x>=100000ULL) {
-			x=0;
-			DBGS_C('\\');
-			DBGS_Y(mode);
+#if 0 // def HAVE_UART
+	if(++x>=100000ULL) {
+		x=0;
+		DBGS_C('\\');
+		DBGS_Y(mode);
+	}
+#endif
+	{
+#if 0
+		cli();
+		if(!HAS_TIMER()) {
+			DBG(0x38);
+			DBG_OFF();
+		} else if(TIFR&(1<<TOV0)) {
+			DBG(0x32);
+			DBG_OFF();
+		} else {
+			DBG(0x33);
+			DBG_ON();
+			DBG(TCNT_REG);
 		}
+		sei();
 #endif
 		uart_poll();
-		//DBG_OFF();
+
 		if(!bitp) {
+			DBG(0x37);
 			xmode_t lxmode = xmode;
 			if(lxmode == OWX_SELECT) {
+				DBG(0x32);
 				//DBG_C('S');
 				//DBG_X(cbuf);
 				xmode = OWX_RUNNING;
-				do_select(cbuf);
-			}
-			else if(lxmode == OWX_COMMAND) {
+				do_select();
+			} else if(lxmode == OWX_COMMAND) {
+				DBG(0x23);
 				//DBG_C('C');
 				//DBG_X(cbuf);
 				xmode = OWX_RUNNING;
-				do_command(cbuf);
-			}
-			else
+				do_command(cmdbuf);
+				wait_complete('d');
+				set_idle();
+				sei();
+			} else {
+				DBG(0x34);
 				update_idle(2);
-		} else
+				DBG(0x35);
+			}
+		} else {
+			DBG(0x36);
 			update_idle(1);
+		}
 
 		// RESET processing takes longer.
 		// update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_AFTER_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
 
-#ifdef HAVE_TIMESTAMP
-		unsigned char n = sizeof(tsbuf)/sizeof(tsbuf[0]);
-		while(tbpos < n && n > 0) {
-			uint16_t this_tb = tsbuf[--n];
-			DBG_Y(this_tb-last_tb);
-			last_tb=this_tb;
-
-			DBG_C(lev ? '^' : '_');
-			lev = 1-lev;
-			cli();
-			if(tbpos == n) tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
+		if (mode == OWM_IDLE) {
+			DBG(0x2b);
+			set_idle();
 			sei();
 		}
-		if (n == 0) {
-			DBG_P("<?>");
-			tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
+		if (mode == OWM_SLEEP) {
+			DBG(0x2a);
+			return 1;
 		}
-#endif
-		if (mode == OWM_IDLE)
-			set_idle();
-		if (mode == OWM_SLEEP)
-			return;
 	}
+	DBG(0x25);
+	return 0;
+}
+
+void onewire_poll(void) __attribute__((OS_task));
+void onewire_poll(void) {
+#if 0 // def HAVE_UART
+	volatile unsigned long long int x=0;
+#endif
+
+	DBG(0x2B);
+	while (1) if (_onewire_poll()) break;
+	DBG(0x2C);
 }
 
 void set_idle(void)
 {
 	/* This code will fail to recognize a reset if we're already in one.
 	   Should happen rarely enough not to matter. */
+	DBG(0x22);
 	cli();
-#ifdef HAVE_UART // mode is volatile
+#if 0 // def HAVE_UART // mode is volatile
 	if(mode != OWM_SLEEP && mode != OWM_IDLE) {
 		DBGS_P(">idle:");
 		DBGS_X(mode);
@@ -442,264 +475,470 @@ void set_idle(void)
 		DBGS_NL();
 	}
 #endif
-	//DBG_OFF();
-	//DBG_OUT();
-
-	mode = OWM_SLEEP;
-	xmode = OWX_IDLE;
-	wmode = OWW_NO_WRITE;
 	CLEAR_LOW();
 	DIS_TIMER();
 	SET_FALLING();
 	EN_OWINT();
+
+	mode = OWM_SLEEP;
+	xmode = OWX_IDLE;
+	wmode = OWW_NO_WRITE;
+	pin_poll = 0;
+	timer_poll = 0;
 }
 
-static inline void do_select(uint8_t cmd)
+
+static inline void do_select(void)
 {
 	uint8_t i;
 
-	switch(cmd) {
+	switch(cmdbuf) {
 	case 0xF0: // SEARCH_ROM; handled in interrupt
-		mode = OWM_SEARCH_ZERO;
-		bytep = 0;
-		bitp = 1;
-		cbuf = ow_addr.addr[0];
-		actbit = cbuf&1;
-		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
 		return;
 #ifdef CONDITIONAL_SEARCH
 	case 0xEC: // CONDITIONAL SEARCH
 		if (!condition_met())
 			next_idle();
-		/* FALL THRU */
+		break;
 #endif
 	case 0x55: // MATCH_ROM
-		recv_byte();
+		DBG_C('m');
 		for (i=0;;i++) {
 			uint8_t b = recv_byte_in();
-			if (b != ow_addr.addr[i])
+			if (b != ow_addr.addr[i]) {
+				DBG_C('q');
+				DBG_X(b);
 				next_idle();
+			}
 			if (i < 7)
 				recv_byte();
 			else
 				break;
 		}
-		//DBG_C('m');
+		DBG_C('n');
 		next_command();
 #ifdef SINGLE_DEVICE
 	case 0xCC: // SKIP_ROM
 		next_command();
 	case 0x33: // READ_ROM
-		for (i=0;i<8;i++)
+		for (i=1;i<8;i++)
 			xmit_byte(ow_addr.addr[i]);
 		next_idle();
 #endif
 	default:
 		DBGS_P("\n?CS ");
-		DBGS_X(cmd);
+		DBGS_X(cmdbuf);
 		DBGS_C('\n');
 		next_idle();
 	}
 }
 
-TIMER_INT {
+//TIMER_INT {
+
+void TIMER0_OVF_vect(void) __attribute__((naked));
+void TIMER0_OVF_vect(void) {
+	// WARNING: No command in here may change the status register!
+	volatile register uint8_t t asm ("r24");
+	volatile register uint8_t z asm ("r25");
+	DBG_OFF();
+	DBG_ON();
+	DBG_OFF();
+	asm("     push r24");
+	asm("     push r25");
+	DBGA(0x3D,t);
+	t = wmode;
+	// if wmode == OWW_READ
+		z = OWW_READ;
+		asm("     cpse %0,%1" :: "r"(z),"r"(t));
+		asm("     rjmp .Ld");
+
+	// then copy the pin into bit0 of bitbuf
+		asm("     ldi %0,0" : "=r"(z));
+		asm("     sbic %0, %1" :: "i"(((int)&OWPIN)-__SFR_OFFSET),"i"(ONEWIREPIN), "r"(z));
+		asm("     ldi %0,1" : "=r"(z));
+		asm("     sts %0,%1" : "=m" (bitbuf) : "r"(z));
+		DBGA(0x3C,t);
+		asm("     rjmp .Le");
+	// else if wmode == OWW_WRITE_0
+		asm(".Ld:");
+		z = OWW_WRITE_0;
+		asm("     cpse r24,r25" :: "r"(z),"r"(t));
+		asm("     rjmp .Le");
+		CLEAR_LOW();
+		DBGA(0x39,t);
+
+	// end if
+
+	// Now set timer_poll. This code will set it to 1 if it was zero, else 3.
+	// We use "sbrc" (skip if bit0 is clear) to save on comparisons,
+	// which would require saving the condition register.
+	asm(".Le:");
+	t = timer_poll;
+	asm("     ldi %0,1" : "=r"(z));
+	asm("     sbrc %0,0" :: "r"(t), "r"(z));
+	asm("     ldi %0,3" : "=r"(z));
+	timer_poll = z;
+	DBGA(0x38,t);
+
+	asm("     pop r25");
+	asm("     pop r24");
+	if(HAS_TIMER()) DBG_ON();
+	asm("     reti");
+}
+
+void real_TIMER_INT(void) {
 	//Read input line state first
 	//and copy a few globals to registers
-	uint8_t p = !!(OWPIN&(1<<ONEWIREPIN));
+	if(!timer_poll) return;
+	DBG(0x01);
+	if(pin_poll) {
+		DBG(0x02);
+		DBGS_P("\nOVt2 ");
+		DBGS_Y(mode);
+		DBGS_C('\n');
+		set_idle();
+		sei();
+		return;
+	}
 	mode_t lmode=mode;
 	wmode_t lwmode=wmode;
 	uint8_t lbitp=bitp;
 	uint8_t lactbit=actbit;
 
+	DBG(0x03);
+	DIS_TIMER();
 	if (CHK_INT_EN()) {
 		// reset pulse?
+		uint8_t p = !!(OWPIN&(1<<ONEWIREPIN));
 		if (p==0) { 
-#if 0
-			if(lmode != OWM_SLEEP) {
-				DBGS_P("\nReset ");
-				DBGS_X(lmode);
-				DBGS_NL();
-			}
-#endif
+			DBG(0x05);
+			DBG_C('R');
 			lmode=OWM_IN_RESET;  //wait for rising edge
 			lwmode=OWW_NO_WRITE;
 			SET_RISING(); 
 			CLEAR_LOW();
 			//DBG_C('R');
 		}
-		DIS_TIMER();
+		DBG(0x06);
 	} else
 	switch (lmode) {
 	case OWM_IDLE:
+		DBG(0x07);
 		break;
 	case OWM_SLEEP: // should have been caught by CHK_INT_EN() above
+		DBG(0x08);
 		DBGS_P("\nChk Sleep!\n");
 		break;
 	case OWM_IN_RESET: // should not happen here
+		DBG(0x09);
 		DBGS_P("\nChk Reset!\n");
 		break;
 	case OWM_AFTER_RESET:  //Time after reset is finished, now go to presence state
+		DBG(0x0A);
 		lmode=OWM_PRESENCE;
 		SET_LOW();
-		TCNT_REG=~OWT_PRESENCE;
+		SET_TIMER(OWT_PRESENCE);
 		DIS_OWINT();  // wait for presence is done
+		EN_TIMER();
 		break;
 	case OWM_PRESENCE:
+		DBG(0x0B);
 		CLEAR_LOW();  //Presence is done, now wait for a command
-		DIS_TIMER();
-		START_READING(8);
+		START_READING(OWM_READ_SELECT,8);
 		xmode = OWX_SELECT;
 		break;
 	case OWM_READ:
+	case OWM_READ_SELECT:
+	case OWM_READ_COMMAND:
+		DBG(0x0C);
 		if(lbitp) {
+			DBG(0x0D);
 			//DBG_C(p ? 'B' : 'b');
-			if (p)  // Set bit if line high 
+			if (bitbuf) { // Set bit if line high 
 				cbuf |= lbitp;
+			} else {
+				DBG(0x1D);
+			}
 			lbitp <<= 1;
+			if (!lbitp) {
+				DBG(0x0E);
+				switch(lmode) {
+				default:
+					DBG(0x0F);
+					break;
+				case OWM_READ_COMMAND:
+					DBG(0x10);
+					cmdbuf = cbuf;
+					xmode = OWX_COMMAND;
+					START_READING(OWM_READ,8);
+					break;
+				case OWM_READ_SELECT:
+					DBG(0x11);
+					cmdbuf = cbuf;
+					xmode = OWX_SELECT;
+					switch(cbuf) {
+#ifdef CONDITIONAL_SEARCH
+					case 0xEC: // CONDITIONAL SEARCH
+						/* 
+						Prep for conditional search here. If we then terminate early,
+						the bus will recover.
+						*/
+#endif
+					case 0xF0: // SEARCH_ROM; handled in interrupt
+						lmode = OWM_SEARCH_ZERO;
+						bytep = 0;
+						lbitp = 1;
+						cbuf = ow_addr.addr[0];
+						lactbit = cbuf&1;
+						lwmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
+						break;
+					case 0x55: // MATCH_ROM
+						lmode = OWM_READ;
+						lbitp = 1;
+						cbuf = 0;
+						break;
+#ifdef SINGLE_DEVICE
+					case 0xCC: // SKIP_ROM
+						START_READING(OWM_READ_COMMAND,8);
+						break;
+					case 0x33: // READ_ROM
+						XMIT_BYTE(ow_addr.addr[0]);
+						break;
+#endif
+					default:
+						break;
+					}
+					DBG(0x12);
+				}
+			} else
+				lwmode = OWW_READ;
 		} else {
 			// Overrun!
+			DBG(0x13);
 			DBGS_P("\nRead OVR!\n");
 			lmode = OWM_SLEEP;
 		}
 		break;
 	case OWM_WRITE:
-		CLEAR_LOW();
+		DBG(0x14);
 		if (lbitp) {
+			DBG(0x15);
 			lwmode = (cbuf & lbitp) ? OWW_WRITE_1 : OWW_WRITE_0;
 			lbitp <<= 1;
 		} else {
+			DBG(0x16);
 			lmode = OWM_IDLE;
 			lwmode = OWW_NO_WRITE;
 		}
 		break;
 	case OWM_SEARCH_ZERO:
-		CLEAR_LOW();
+		DBG(0x17);
 		lmode = OWM_SEARCH_ONE;
 		lwmode = lactbit ? OWW_WRITE_0 : OWW_WRITE_1;
 		break;
 	case OWM_SEARCH_ONE:
-		CLEAR_LOW();
+		DBG(0x18);
 		lmode = OWM_SEARCH_READ;
+		lwmode = OWW_READ;
 		break;
 	case OWM_SEARCH_READ:
+		DBG(0x19);
 		//DBG_C(p ? 'B' : 'b');
-		if (p != lactbit) {  //check master bit
+		if (bitbuf != lactbit) {  //check master bit
+			DBG(0x1A);
 			//DBG_C('d');
 			lmode = OWM_SLEEP;  //not the same: go to sleep
 			break;
 		}
+		DBG(0x1B);
 
 		lbitp=(lbitp<<1);  //prepare next bit
 		if (!lbitp) {
+			DBG(0x1C);
 			uint8_t lbytep = bytep;
 			lbytep++;
-			bytep=lbytep;
 			if (lbytep>=8) {
-				START_READING(8);
-				//DBG_P("S2");
-				xmode = OWX_COMMAND;
+				DBG(0x1D);
+				START_READING(OWM_READ_COMMAND,8);
 				break;
 			}
+			DBG(0x1E);
+			bytep=lbytep;
 			lbitp=1;
 			cbuf = ow_addr.addr[lbytep];
 		}
+		DBG(0x1F);
 		lmode = OWM_SEARCH_ZERO;
 		lactbit = !!(cbuf&lbitp);
 		lwmode = lactbit ? OWW_WRITE_1 : OWW_WRITE_0;
 		break;
 	}
-	if (lmode == OWM_SLEEP)
+	if (pin_poll) DBG(0x20); else DBG(0x30);
+	if (lmode == OWM_SLEEP) {
+		DBG(0x21);
 		DIS_TIMER();
+	}
+	DBG(0x22);
 	if (lmode != OWM_PRESENCE) { 
-		TCNT_REG=~(OWT_MIN_RESET-OWT_READLINE);  //OWT_READLINE around OWT_LOWTIME
+		DBG(0x23);
+		SET_TIMER(OWT_MIN_RESET-OWT_READLINE);  //OWT_READLINE around OWT_LOWTIME
 		EN_OWINT();
 	}
-	mode=lmode;
-	wmode=lwmode;
-	bitp=lbitp;
-	actbit=lactbit;
-#if 0
-	DBG_OFF();
-	DBG_ON();
-#endif
+	if (pin_poll) DBG(0x24); else DBG(0x34);
+
+	cli();
+	if (pin_poll || (timer_poll != 1)) {
+		DBG(0x25);
+		DBGS_P("\nOVt ");
+		DBGS_Y(timer_poll);
+		DBGS_Y(pin_poll);
+		DBGS_C(' ');
+		DBGS_Y(mode);
+		DBGS_Y(lmode);
+		DBGS_C('\n');
+		set_idle();
+	} else {
+		DBG(0x26);
+		timer_poll = 0;
+		mode=lmode;
+		wmode=lwmode;
+		bitp=lbitp;
+		actbit=lactbit;
+	}
+	sei();
+	DBG(0x2C);
 }
 
 // 1wire level change.
-// Do this in assembler so that writing a zero is _fast_.
-void real_PIN_INT(void) __attribute__((signal));
+// Do this in assembler so that writing a zero is fast enough on 8MHz.
+// The whole thing should take <40 cycles (5µs), and pull down 1wire in
+// 12 cycles (1.5µs) which should be sufficient. TEST ME.
 void INT0_vect(void) __attribute__((naked));
 void INT0_vect(void) {
 	// WARNING: No command in here may change the status register!
+	volatile register uint8_t t asm ("r24");
+	volatile register uint8_t z asm ("r25");
 	asm("     push r24");
 	asm("     push r25");
-	asm("     lds r24,wmode");
-	asm("     ldi r25,0");
-	asm("     cpse r24,r25");
-	asm("     rjmp .Lj");
-	SET_LOW();
-	asm(".Lj: pop r25");
+	DBGA(0x3F,t);
+	t = wmode;
+	// if wmode == OWW_WRITE_0
+		z = OWW_WRITE_0;
+		asm("     cpse %0,%1" :: "r"(z),"r"(t));
+		asm("     rjmp .La");
+		SET_LOW();
+		DBGA(0x3E,t);
+		t = 1;
+		asm("     out %0, %1" :: "i"(((int)&GTCCR)-__SFR_OFFSET), "r"(t));
+		t = ~(OWT_LOWTIME);
+		TCNT_REG=t;
+		asm("     rjmp .Lb");
+
+	// otherwise wait for read. We do that also when writing a 1
+	// because that leaves enough time for the timeout handler.
+	// Otherwise, if the master is searching and another slaves writes 
+	// a 0 but finishes earlier than expected, we'd be screwed.
+		asm(".La:         ");
+		DBGA(0x3D,t);
+		t = 1;
+		asm("     out %0, %1" :: "i"(((int)&GTCCR)-__SFR_OFFSET), "r"(t));
+		t = ~(OWT_READLINE);
+		TCNT_REG=t;
+		asm(".Lb:         ");
+	// end if
+
+	// Now set pin_poll. This code will set it to 1 if it was zero, else 3.
+	// We use "sbrc" (skip if bit0 is clear) to save on comparisons,
+	// which would require saving the condition register.
+	asm(".Lc:");
+	t = pin_poll;
+	asm("     ldi %0,1" : "=r"(z));
+	asm("     sbrc %0,0" :: "r"(t), "r"(z));
+	asm("     ldi %0,3" : "=r"(z));
+	pin_poll = z;
+
+	asm(".Lcx:");
+	DBGA(0x3C,t);
+	asm("     pop r25");
 	asm("     pop r24");
-	asm("     rjmp real_PIN_INT");
-	asm("     nop");
+	asm("     reti");
 }
 
-// This generates a spurious warning
-// which unfortunately cannot be turned off with GCC <4.8.2
-#warning "Ignore the 'appears to be a misspelled signal handler' warning"
-void real_PIN_INT(void) {
+void real_PIN_INT(void)
+{
+	if(!pin_poll) return;
+	DBG(0x10);
+	if(timer_poll) {
+		DBG(0x11);
+		DBGS_P("\nOVp2 ");
+		DBGS_Y(mode);
+		DBGS_C('\n');
+		set_idle();
+		sei();
+		return;
+	}
+	DBG(0x12);
 	DIS_OWINT(); //disable interrupt, only in OWM_SLEEP mode it is active
-#if 0 // def DBGPIN // modes are volatile
-	if (mode > OWM_PRESENCE) {
-		DBG_ON();
-		if (wmode == OWW_NO_WRITE)
-			DBG_OFF();
-	}
-#endif
-#if 0
-	if (mode == OWM_SLEEP) { // don't report anything
-	} else if (wmode != OWW_NO_WRITE) {
-		DBG_C(wmode ? 'P' : 'p');
-	} else {
-		uint8_t p = OWPIN&(1<<ONEWIREPIN);
-		DBG_C(p ? 'Q' : 'q');
-	}
-#endif
-	//if (mode != OWM_SLEEP) DBG_C('a'+mode);
-	wmode = OWW_NO_WRITE;
+	mode_t lmode = mode;
 
-	switch (mode) {
+	switch (lmode) {
 	case OWM_PRESENCE:
+		DBG(0x13);
 		DBGS_P("\nChk Presence!\n");
 		break;
 	case OWM_IDLE:
-		DBGS_P("\nChk Idle!\n");
+		DBG(0x14);
+		DBGS_P("\nChk Idle!");
+		DBGS_X(cbuf);
+		DBGS_C('\n');
 		set_idle();
+		sei();
 		/* fall thru */
 	case OWM_SLEEP:
-		TCNT_REG=~(OWT_MIN_RESET);
-		EN_OWINT(); //any earlier edges will simply reset the timer
+		DBG(0x22);
+		SET_TIMER(OWT_MIN_RESET);
+		EN_OWINT(); //any earlier falling edges will simply reset the timer
+		EN_TIMER();
 		break;
 	//start of reading with falling edge from master, reading closed in timer isr
-	case OWM_READ:
-	case OWM_SEARCH_READ:   //Search algorithm waiting for receive or send
-		TCNT_REG=~(OWT_READLINE); //wait a time for reading
-		break;
-	case OWM_SEARCH_ZERO:   //Search algorithm waiting for receive or send
-	case OWM_SEARCH_ONE:   //Search algorithm waiting for receive or send
-	case OWM_WRITE: //a bit is sending 
-		TCNT_REG=~(OWT_LOWTIME);
-		break;
 	case OWM_IN_RESET:  //rising edge of reset pulse
-		TCNT_REG=~(OWT_RESET_PRESENCE);  //wait before sending presence pulse
+		DBG(0x16);
+		SET_TIMER(OWT_RESET_PRESENCE);  //wait before sending presence pulse
 		mode=OWM_AFTER_RESET;
 		SET_FALLING();
+		EN_OWINT();
+		EN_TIMER();
 		//DBG_C('r');
 		break;
 	case OWM_AFTER_RESET: // some other chip was faster, assert my own presence signal now
-		TCNT_REG=~0;
+		DBG(0x17);
+		cli(); // otherwise the code below will trigger
+		SET_TIMER(0);
+		EN_TIMER();
+		break;
+	default:
+		DBG(0x18);
+		if(wmode != OWW_NO_WRITE)
+			EN_TIMER();
 		break;
 	}
-	EN_TIMER();
+
+	cli();
+	if (timer_poll || (pin_poll != 1)) {
+		DBG(0x29);
+		DBGS_P("\nOVpin ");
+		DBGS_Y(pin_poll);
+		DBGS_Y(timer_poll);
+		DBGS_C(' ');
+		DBGS_Y(lmode);
+		DBGS_Y(mode);
+		DBGS_C('\n');
+		set_idle();
+	} else {
+		DBG(0x1A);
+		pin_poll = 0;
+	}
+	sei();
 //	if (mode > OWM_PRESENCE)
 //		DBG_T(1);
 }
