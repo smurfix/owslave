@@ -17,7 +17,6 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <setjmp.h>
 
 #define MAIN
 #include "features.h"
@@ -26,6 +25,7 @@
 #include "dev_data.h"
 #include "debug.h"
 #include "moat.h"
+#include "jmp.h"
 
 // Initialise the hardware
 static inline void
@@ -64,8 +64,8 @@ init_all(void)
 inline void
 poll_all(void)
 {
-	uart_poll();
-	onewire_poll();
+    uart_poll();
+    onewire_poll();
 }
 
 // Main program
@@ -73,41 +73,35 @@ int
 main(void)
 {
 
-#ifdef DBGPIN
-	DBGPORT &= ~(1 << DBGPIN);
-	DBGDDR |= (1 << DBGPIN);
+#ifdef HAVE_DBG_PIN
+        DBGPINPORT &= ~(1 << DBGPIN);
+        DBGPINDDR |= (1 << DBGPIN);
+#endif
+#ifdef HAVE_DBG_PORT
+	DBGPORT = 0;
+	DBGDDR = 0xFF;
 #endif
 #ifdef HAVE_ONEWIRE
 	OWDDR &= ~(1<<ONEWIREPIN);
 	OWPORT &= ~(1<<ONEWIREPIN);
 #endif
-	DBG_IN();
-	DBG_ON();
-	DBG_OFF();
 
 	init_mcu();
-	DBG_ON();
-	DBG_OFF();
-
-
-#ifdef HAVE_TIMESTAMP
-	tbpos = sizeof(tsbuf)/sizeof(tsbuf[0]);
-	uint16_t last_tb = 0;
-#endif
-
 	init_all();
-	DBG_ON();
-	DBG_OFF();
 
 	// now go
+        DBG(0x01);
 	sei();
-	DBG_ON();
-	DBG_OFF();
+        DBG(0x03);
 
 	DBGS_P("\nInit done!\n");
+        DBG(0x02);
+        setjmp_q(_go_out);
+        DBG(0x22);
+        /* clobbered variables (and constants) beyond this point */
 	while(1) {
-		poll_all();
-		mainloop();
+            poll_all();
+            mainloop();
 	}
 }
 

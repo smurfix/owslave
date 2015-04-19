@@ -62,7 +62,6 @@ void do_read(void)
 	   wide. That may not be enough time to update the CRC.
 	 */
 	
-	recv_byte();
 	crc = crc16(crc,_1W_READ_GENERIC);
 	dtype = recv_byte_in();
 	recv_byte();
@@ -71,6 +70,8 @@ void do_read(void)
 		cfg_addr(&off, &len, CfgID_name);
 		if (!off) return;
 		chan = recv_byte_in();
+		if (chan)
+			len = 0; // no other names, yet
 		xmit_byte(len);
 		crc = crc16(crc,dtype);
 		crc = crc16(crc,chan);
@@ -81,6 +82,7 @@ void do_read(void)
 			xmit_byte(b);
 			crc = crc16(crc,b);
 		}
+		return;
 
 	} else {
 		recv_byte();
@@ -129,12 +131,6 @@ void update_idle(uint8_t bits)
 
 void init_state(void)
 {
-	DBG_ON();
-	DBG_OFF();
-	DBG_ON();
-	DBG_OFF();
-	DBG_ON();
-	DBG_OFF();
 }
 
 #ifdef CONDITIONAL_SEARCH
@@ -143,11 +139,12 @@ uint8_t condition_met(void) {
 }
 #endif
 
-#ifdef HAVE_UART
+#if 0 // def HAVE_UART
 static unsigned long long x = 0;
 #endif
 void mainloop(void) {
-#ifdef HAVE_UART
+	DBG(0x0F);
+#if 0 // def HAVE_UART
 	if(++x<100000ULL) return;
 	x = 0;
 	DBGS_C('/');

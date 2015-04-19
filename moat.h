@@ -16,12 +16,21 @@
  *  for more details.
  */
 
+#include "jmp.h"
+#include "features.h"
+
 /* Setup */
 /* Called before enabling interrupts */
 void init_state(void);
 
 /* Your main loop. You need to poll_all() if you don't return. */
 void mainloop(void);
+
+EXTERN q_jmp_buf _go_out;
+static inline void go_out(void) __attribute__((noreturn));
+static inline void go_out(void) {
+    longjmp_q(_go_out);
+}
 
 /* Called to process commands. You implement this! */
 void do_command(uint8_t cmd);
@@ -35,7 +44,7 @@ void do_command(uint8_t cmd);
    Your steps need to be short enough to observe the timing requirements
    of the state you're currently in.
 
-   Do not return.
+   Returning is equivalent to calling next_idle().
  */
 
 /* Ditto, but called from idle / bit-wait context. You implement this! */
