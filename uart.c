@@ -64,6 +64,7 @@ LICENSE:
 #include <stdlib.h>
 #include <stdio.h>
 #include "uart.h"
+#include "debug.h"
 
 /** Size of the circular receive buffer, must be power of 2 */
 #ifndef UART_RX_BUFFER_SIZE
@@ -215,7 +216,7 @@ unsigned int uart_getc(void)
 #ifdef HAVE_UART_IRQ
 SIGNAL(UART0_RECEIVE_INTERRUPT)
 #else
-void poll_uart0_recv(void)
+static inline void poll_uart0_recv(void)
 #endif
 /*************************************************************************
 Function: UART Receive Complete interrupt
@@ -232,7 +233,7 @@ Purpose:  called when the UART has received a character
         return;
     cli();
 #endif
-
+    DBG(0x38);
     usr  = UART0_STATUS;
     data = UART0_DATA;
     
@@ -248,6 +249,7 @@ Purpose:  called when the UART has received a character
 	lastRxError = UART_BUFFER_OVERFLOW >> 8;
     }
     UART_LastRxError = lastRxError;   
+    DBG(0x37);
 #ifndef HAVE_UART_IRQ
     sei();
 #endif
@@ -257,7 +259,7 @@ Purpose:  called when the UART has received a character
 #ifdef HAVE_UART_IRQ
 SIGNAL(UART0_TRANSMIT_INTERRUPT)
 #else
-void poll_uart0_xmit(void)
+static inline void poll_uart0_xmit(void)
 #endif
 /*************************************************************************
 Function: UART Data Register Empty interrupt
@@ -271,6 +273,10 @@ Purpose:  called when the UART is ready to transmit the next byte
         return;
     cli();
 #endif
+#ifdef DBGPORT
+    uint8_t x = DBGPORT;
+#endif
+    DBG(0x36);
     if ( UART_TxHead != UART_TxTail) {
         /* calculate and store new buffer index */
         tmptail = (UART_TxTail + 1) & UART_TX_BUFFER_MASK;
@@ -283,6 +289,7 @@ Purpose:  called when the UART is ready to transmit the next byte
         UART0_CONTROL &= ~_BV(UART0_UDRIE);
 #endif
     }
+    DBG(x);
 #ifndef HAVE_UART_IRQ
     sei();
 #endif
@@ -381,30 +388,28 @@ void uart_putc(unsigned char data)
     while(!(UCSR0A & _BV(UDRE0))) ;
     UDR0 = data;
 #else
-    unsigned char tmphead;
-
-#if 0
-    if(!(SREG & _BV(SREG_I))) {
-		_uart_putc_now(data);
-		return;
-	}
+    unsigned char sreg = SREG;
+    cli();
+#if 0 // shortcut
+    if((UCSR0A & _BV(UDRE0)) && (UART_TxHead == UART_TxTail)) {
+        UDR0 = data;
+        SREG = sreg;
+        return;
+    }
 #endif
+    unsigned char tmphead = (UART_TxHead + 1) & UART_TX_BUFFER_MASK;
 
-	unsigned char sreg = SREG;
-	cli();
-    	tmphead  = (UART_TxHead + 1) & UART_TX_BUFFER_MASK;
-    
-    	if (tmphead != UART_TxTail) {
-            UART_TxBuf[tmphead] = data;
-            UART_TxHead = tmphead;
+    if (tmphead != UART_TxTail) {
+        UART_TxBuf[tmphead] = data;
+        UART_TxHead = tmphead;
 
-            /* enable UDRE interrupt */
+        /* enable UDRE interrupt */
 #ifdef HAVE_UART_IRQ
-            UART0_CONTROL    |= _BV(UART0_UDRIE);
+        UART0_CONTROL    |= _BV(UART0_UDRIE);
 #endif
-	}
+    }
 
-	SREG = sreg;
+    SREG = sreg;
 #endif /* sync */
 }/* uart_putc */
 
@@ -514,8 +519,11 @@ void uart_puthex_word(const uint16_t b)
 
 #if !defined(HAVE_UART_IRQ) && !defined(HAVE_UART_SYNC)
 void uart_poll(void) {
+    DBG(0x3E);
     poll_uart0_recv();
+    DBG(0x3D);
     poll_uart0_xmit();
+    DBG(0x3C);
 }
 #endif
 
