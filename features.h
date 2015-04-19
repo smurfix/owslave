@@ -105,9 +105,17 @@
 #define OWDDR DDRD
 #define ONEWIREPIN 2		// INT0
 
-#define DBGPORT PORTB
-#define DBGDDR DDRB
-#define DBGIN PINB
+#ifdef HAVE_DBG_PORT
+#define DBGPORT PORTC
+#define DBGDDR DDRC
+#define DBGIN PINC
+#endif
+#ifdef HAVE_DBG_PIN
+#define DBGPINPORT PORTD
+#define DBGPIN PORTD3
+#define DBGPINDDR DDRD
+#define DBGPININ PIND
+#endif
 
 #define IMSK EIMSK
 #define IFR EIFR
@@ -129,5 +137,8 @@
 #if defined(HAVE_UART_SYNC) && defined(HAVE_UART_IRQ)
 #error Poll. Or IRQ. Not both.
 #endif
+
+#define likely(x)       __builtin_expect(!!(x), 1)
+#define unlikely(x)     __builtin_expect(!!(x), 0)
 
 #endif /* FEATURES_H */

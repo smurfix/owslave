@@ -26,9 +26,9 @@
 
 void ping_me(uint8_t c) {
     uint32_t j;
-    DBG_IN();DBG_OFF();
-    for(j=0;j<20;j++) ;
-    DBG_T(c);
+    DBG_OFF();DBG_ON();DBG_OFF();DBG_ON();DBG_OFF();
+    DBG(c);
+    DBG_ON();DBG_OFF(); DBG_ON();DBG_OFF();
     for(j=0;j<1000000;j++) ;
 
     extern void __ctors_end(void); __ctors_end();
@@ -81,10 +81,14 @@ void __vector_12(void) { ping_me(12); }
 void __vector_13(void) { ping_me(13); }
 void __vector_14(void) { ping_me(14); }
 void __vector_15(void) { ping_me(15); }
+#ifndef HAVE_TOV0
 void __vector_16(void) { ping_me(16); }
+#endif
 void __vector_17(void) { ping_me(17); }
+#ifndef HAVE_UART_IRQ
 void __vector_18(void) { ping_me(18); }
 void __vector_19(void) { ping_me(19); }
+#endif
 void __vector_20(void) { ping_me(20); }
 void __vector_21(void) { ping_me(21); }
 void __vector_22(void) { ping_me(22); }
