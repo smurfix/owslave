@@ -24,20 +24,57 @@
 #include "features.h"
 #include "debug.h"
 
+#ifndef TIMSK
+#define TIMSK TIMSK0
+#endif
+#ifndef TIFR
+#define TIFR TIFR0
+#endif
+#ifndef EICRA
+#define EICRA MCUCR
+#endif
+
+#define EN_TIMER() do {TIFR|=(1<<TOV0); TIMSK|=(1<<TOIE0);}while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
+
+ISR(TIMER0_OVF_vect) {
+    DBG(0x10);
+    DIS_TIMER();
+    DBG(0x1E);
+}
+
 static unsigned long long x = 0;
 void init_state(void) {
-	DBG_ON();
-	DBG_OFF();
-	DBG_ON();
-	DBG_OFF();
-	DBG_ON();
-	DBG_OFF();
+    DBG(0x01);
+    DBG_ON();
+    DBG_OFF();
+    DBG_ON();
+
+    TCCR0A = 0;
+    TCCR0B = 0x03;  // Prescaler 1/64
+
+    DBG_OFF();
+    DBG_ON();
+
+    EN_TIMER();
+    TCNT0=0xF0;
+
+    DBG_OFF();
+    DBG(0x03);
 }
 
 void mainloop(void) {
-	DBG_ON();
-	DBG_OFF();
-	if(++x<100000ULL) return;
-	x = 0;
-        DBGS_C('/');
+    DBG(0x02);
+    DBG_ON();
+    DBG_OFF();
+    if(++x<100000ULL) {
+        DBG(0x06);
+        return;
+    }
+    DBG(0x0A);
+    x = 0;
+    DBGS_C('/');
+    TCNT0=0xE0;
+    EN_TIMER();
+    DBG(0x0B);
 }
