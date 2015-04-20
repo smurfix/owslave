@@ -121,7 +121,8 @@ void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id) {
 			*addr = i;
 			*size = len;
 			return;
-		}
+		} else
+			i += len;
 	}
 	*addr = 0;
 }
