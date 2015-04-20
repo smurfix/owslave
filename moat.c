@@ -62,6 +62,7 @@ void do_read(void)
 	   wide. That may not be enough time to update the CRC.
 	 */
 	
+	recv_byte();
 	crc = crc16(crc,_1W_READ_GENERIC);
 	dtype = recv_byte_in();
 	recv_byte();
