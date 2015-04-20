@@ -374,7 +374,9 @@ char _onewire_poll(void) {
 			do_command(cbuf);
 			DBG(0x1C);
 			DBG_C('C');DBG_C('_');
-			wait_complete('d');
+			while(mode == OWM_WRITE)
+				wait_complete('d');
+			DBG(0x1D);
 			set_idle();
 		}
 		else
