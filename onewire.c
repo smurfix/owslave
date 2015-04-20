@@ -381,10 +381,14 @@ char _onewire_poll(void) {
 		}
 		else
 			update_idle(2);
-	} else {
+	} else if(bitp != 0x80) {
+		DBG(0x1E);
 		sei();
 		update_idle(1);
 		uart_poll();
+	} else {
+		DBG(0x1F);
+		sei();
 	}
 
 	// RESET processing takes longer.
