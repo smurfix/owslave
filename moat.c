@@ -65,18 +65,24 @@ void do_read(void)
 	recv_byte();
 	crc = crc16(crc,_1W_READ_GENERIC);
 	dtype = recv_byte_in();
+	DBG_C('T'); DBG_X(dtype);
 	recv_byte();
 	if (dtype == TC_NAME) {
 		uint8_t off,len;
 		cfg_addr(&off, &len, CfgID_name);
 		if (!off) return;
+		DBG(0x10);
 		chan = recv_byte_in();
+		DBG(0x11);
 		if (chan)
 			len = 0; // no other names, yet
+		DBG(0x12);
 		xmit_byte(len);
+		DBG(0x13);
 		crc = crc16(crc,dtype);
 		crc = crc16(crc,chan);
 		crc = crc16(crc,len);
+		DBG(0x14);
 		while(len) {
 			uint8_t b = cfg_byte(off++);
 			len--;
@@ -120,6 +126,7 @@ void do_command(uint8_t cmd)
 		//DBG_P(":I");
 		do_write();
 	} else {
+		DBG(0x0E);
 		DBG_P("?CI ");
 		DBG_X(cmd);
 		set_idle();
@@ -144,7 +151,7 @@ uint8_t condition_met(void) {
 static unsigned long long x = 0;
 #endif
 void mainloop(void) {
-	DBG(0x0F);
+	DBG(0x1E);
 #if 0 // def HAVE_UART
 	if(++x<100000ULL) return;
 	x = 0;
