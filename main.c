@@ -90,14 +90,14 @@ main(void)
 	init_all();
 
 	// now go
-        DBG(0x01);
+        DBG(0x33);
 	sei();
-        DBG(0x03);
+        DBG(0x31);
 
 	DBGS_P("\nInit done!\n");
-        DBG(0x02);
+        DBG(0x21);
         setjmp_q(_go_out);
-        DBG(0x22);
+        DBG(0x23);
         /* clobbered variables (and constants) beyond this point */
 	while(1) {
             poll_all();
