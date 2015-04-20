@@ -107,6 +107,8 @@ $(DEVNAME).hex : $(DEVNAME).elf
 device/${DEV}/eprom.bin: ${CFG}
 	set -e; \
 	./gen_eeprom $@ type $$(./cfg ${CFG} .type ${DEV}); \
+	if ./gen_eeprom $@ name >/dev/null 2>&1 ; then : ; else \
+		./gen_eeprom $@ name ${DEV} ; fi ; \
 	if [ ${OW_TYPE} != 0 ] ; then \
 		if ./gen_eeprom $@ owid serial >/dev/null 2>&1 ; then \
 			SER=$$(./gen_eeprom $@ owid serial); \
