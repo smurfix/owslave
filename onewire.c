@@ -355,9 +355,11 @@ crc16(uint16_t r, uint8_t x)
  */
 char _onewire_poll(void) __attribute__((OS_task));
 char _onewire_poll(void) {
+	cli();
 	if(!bitp) {
 		DBG(0x13);
 		xmode_t lxmode = xmode;
+		sei();
 		if(lxmode == OWX_SELECT) {
 			DBG(cbuf);
 			DBG(0x17);
@@ -378,6 +380,7 @@ char _onewire_poll(void) {
 		else
 			update_idle(2);
 	} else {
+		sei();
 		update_idle(1);
 		uart_poll();
 	}
