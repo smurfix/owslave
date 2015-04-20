@@ -421,7 +421,7 @@ void set_idle(void)
 	if(mode != OWM_SLEEP && mode != OWM_IDLE) {
 #if 1
 		DBGS_C('R');
-		DBGS_Y(mode);
+		DBGS_N(mode);
 #else
 		DBGS_P(">idle:");
 		DBGS_X(mode);
@@ -589,7 +589,7 @@ TIMER_INT {
 		//DBG_C(p ? 'B' : 'b');
 		if (p != lactbit) {  //check master bit
 			DBG_C('x');
-			DBG_Y(bytep);
+			DBG_N(bytep);
 			DBG_X(lbitp);
 			lmode = OWM_SLEEP;  //not the same: go to sleep
 			break;

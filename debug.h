@@ -28,8 +28,8 @@
 #define DBGS_C(x) uart_putc(x)
 #define DBGS_P(x) uart_puts_P(x)
 #define DBGS_N(x) uart_puthex_nibble(x)
+#define DBGS_W(x) uart_puthex_word(x)
 #define DBGS_X(x) uart_puthex_byte_(x)
-#define DBGS_Y(x) uart_puthex_word(x)
 #define DBGS_NL() uart_putc('\n')
 
 #ifndef HAVE_UART_SYNC
@@ -39,8 +39,8 @@
 #define DBG_C(x) DBGS_C(x)
 #define DBG_P(x) DBGS_P(x)
 #define DBG_N(x) DBGS_N(x)
+#define DBG_W(x) DBGS_W(x)
 #define DBG_X(x) DBGS_X(x)
-#define DBG_Y(x) DBGS_Y(x)
 #define DBG_NL() DBGS_NL()
 #endif
 
@@ -50,8 +50,8 @@
 #define DBG_C(x) do { } while(0)
 #define DBG_P(x) do { } while(0)
 #define DBG_N(x) do { } while(0)
+#define DBG_W(x) do { } while(0)
 #define DBG_X(x) do { } while(0)
-#define DBG_Y(x) do { } while(0)
 #define DBG_NL() do { } while(0)
 #endif
 
@@ -59,8 +59,8 @@
 #define DBGS_C(x) do { } while(0)
 #define DBGS_P(x) do { } while(0)
 #define DBGS_N(x) do { } while(0)
+#define DBGS_W(x) do { } while(0)
 #define DBGS_X(x) do { } while(0)
-#define DBGS_Y(x) do { } while(0)
 #define DBGS_NL() do { } while(0)
 #endif
 

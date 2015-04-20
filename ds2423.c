@@ -186,7 +186,7 @@ xmore:
 #endif
 	else {
 		DBG_C('@');
-		DBG_Y(adr);
+		DBG_W(adr);
 		SEND(0xFFFFFFFF);
 	}
 	SEND(0);
@@ -254,7 +254,7 @@ static inline void check_adc(void)
 	res >>= 1;
 #endif
 #ifdef DEBUG
-	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_Y(res); DBG_NL();
+	DBG_P(" ADC"); DBG_X(cur_adc); DBG_C('='); DBG_W(res); DBG_NL();
 #endif
 
 	cur = cur_adc;
@@ -282,7 +282,7 @@ static inline void check_adc(void)
 	}
 #endif // SLOW
 #ifdef DEBUG
-	DBG_P("res="); DBG_Y(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_Y(last[cur]); DBG_P(" hyst="); DBG_Y(hyst[cur]); DBG_NL();
+	DBG_P("res="); DBG_W(res); DBG_P(" bstate="); DBG_X(bstate); DBG_P(" last="); DBG_W(last[cur]); DBG_P(" hyst="); DBG_W(hyst[cur]); DBG_NL();
 #endif
 	if(!(bstate&(1<<cur))) {
 		if (res < last[cur]) {
