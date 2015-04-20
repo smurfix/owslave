@@ -445,9 +445,10 @@ static inline void do_select(uint8_t cmd)
 {
 	uint8_t i;
 
+	DBG_C('S');
 	switch(cmd) {
 	case 0xF0: // SEARCH_ROM; handled in interrupt
-		DBG_C('S'); DBG_C('s');
+		DBG_C('s');
 		mode = OWM_SEARCH_ZERO;
 		bytep = 0;
 		bitp = 1;
@@ -481,17 +482,17 @@ static inline void do_select(uint8_t cmd)
 		next_command();
 #ifdef SINGLE_DEVICE
 	case 0xCC: // SKIP_ROM
-		DBG_C('S'); DBG_C('k');
+		DBG_C('k');
 		next_command();
 	case 0x33: // READ_ROM
-		DBG_C('S'); DBG_C('r');
+		DBG_C('r');
 		for (i=0;i<8;i++)
 			xmit_byte(ow_addr.addr[i]);
 		DBG(0x26);
 		next_idle('r');
 #endif
 	default:
-		DBGS_P("S?");
+		DBGS_C('?');
 		DBGS_X(cmd);
 		DBGS_C(' ');
 		DBG(0x25);
@@ -583,7 +584,9 @@ TIMER_INT {
 	case OWM_SEARCH_READ:
 		//DBG_C(p ? 'B' : 'b');
 		if (p != lactbit) {  //check master bit
-			//DBG_C('d');
+			DBG_C('x');
+			DBG_Y(bytep);
+			DBG_X(lbitp);
 			lmode = OWM_SLEEP;  //not the same: go to sleep
 			break;
 		}
