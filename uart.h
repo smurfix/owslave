@@ -197,12 +197,15 @@ extern void uart_puthex_nibble(const unsigned char b);
  * The upper and lower nibble of the parameter are convertet to 
  * correspondig hex-chars and put in a circular buffer and one 
  * character at a time is transmitted to the UART using interrupts.
+ * The version with an additional underscore will always emit two
+ * characters.
  *
  * @param    value to transfer
  * @return   none
  * @see      uart_puthex_nibble
  */
 extern void uart_puthex_byte(const unsigned char b);
+extern void uart_puthex_byte_(const unsigned char b);
 
 /**
  * @brief    Put two bytes as hex to ringbuffer for transmit via UART.
@@ -245,6 +248,7 @@ extern void uart_poll(void);
 #define uart_putl(i) do {} while(0)
 #define uart_puthex_nibble(b) do {} while(0)
 #define uart_puthex_byte(b) do {} while(0)
+#define uart_puthex_byte_(b) do {} while(0)
 #define uart_puthex_word(b) do {} while(0)
 #define uart_poll() do {} while(0)
 /*@}*/

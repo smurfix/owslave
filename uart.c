@@ -66,7 +66,9 @@ LICENSE:
 #include "uart.h"
 #include "debug.h"
 
+/* Don't clobber the rest of the debug space if not debugging UART */
 #ifndef DEBUG_UART
+#undef HAVE_DBG_PORT
 #undef DBG
 #define DBG(x) do{}while(0)
 #endif

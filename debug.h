@@ -28,7 +28,7 @@
 #define DBGS_C(x) uart_putc(x)
 #define DBGS_P(x) uart_puts_P(x)
 #define DBGS_N(x) uart_puthex_nibble(x)
-#define DBGS_X(x) uart_puthex_byte(x)
+#define DBGS_X(x) uart_puthex_byte_(x)
 #define DBGS_Y(x) uart_puthex_word(x)
 #define DBGS_NL() uart_putc('\n')
 
