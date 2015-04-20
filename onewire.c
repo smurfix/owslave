@@ -60,7 +60,7 @@ volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 #define OWT_RESET_PRESENCE (T_(40)-1)
 #define OWT_PRESENCE (T_(160)-1)
 #define OWT_READLINE (T_(30)-2)
-#define OWT_LOWTIME (T_(60)-3)
+#define OWT_LOWTIME (T_(50)-2)
 
 #if (OWT_MIN_RESET>240)
 #error Reset timing is broken, your clock is too fast
