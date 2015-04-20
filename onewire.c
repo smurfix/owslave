@@ -410,6 +410,10 @@ void set_idle(void)
 	cli();
 #ifdef HAVE_UART // mode is volatile
 	if(mode != OWM_SLEEP && mode != OWM_IDLE) {
+#if 1
+		DBGS_C('R');
+		DBGS_Y(mode);
+#else
 		DBGS_P(">idle:");
 		DBGS_X(mode);
 		DBGS_C(' ');
@@ -417,10 +421,9 @@ void set_idle(void)
 		DBGS_C(' ');
 		DBGS_X(bitp);
 		DBGS_NL();
+#endif
 	}
 #endif
-	//DBG_OFF();
-	//DBG_OUT();
 
 	DBG(0x30);
 	mode = OWM_SLEEP;
