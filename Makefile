@@ -9,7 +9,7 @@ export CFG
 ifeq ($(DEV),)
 
 TARGET?=$(shell ./cfg ${CFG} targets)
-help: 
+help burn: 
 	@echo "Usage: make all | DEV | burn_DEV"
 	@echo "Known devices: $$(./cfg ${CFG} .devs)"
 all: setup $(addprefix run/,${TARGET})
