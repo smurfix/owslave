@@ -66,7 +66,11 @@ void __vector_29(void) __attribute__((signal));
 void __vector_30(void) __attribute__((signal));
 void __vector_31(void) __attribute__((signal));
 
+#ifdef HAVE_ONEWIRE
+#define HAVE_TOV0
+#else
 void __vector_1(void) { ping_me(1); }
+#endif
 void __vector_2(void) { ping_me(2); }
 void __vector_3(void) { ping_me(3); }
 void __vector_4(void) { ping_me(4); }
