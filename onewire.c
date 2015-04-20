@@ -630,7 +630,9 @@ void INT0_vect(void) {
 	asm("     push r24");
 	asm("     push r25");
 	asm("     lds r24,wmode");
+#ifdef DBGPORT
 	asm("     out %0,r24" :: "i"(((int)&DBGPORT)-__SFR_OFFSET));
+#endif
 	asm("     ldi r25,%0" :: "i"(OWW_WRITE_0));
 	asm("     cpse r24,r25");
 	asm("     rjmp .Lj");
