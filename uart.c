@@ -66,6 +66,11 @@ LICENSE:
 #include "uart.h"
 #include "debug.h"
 
+#ifndef DEBUG_UART
+#undef DBG
+#define DBG(x) do{}while(0)
+#endif
+
 /** Size of the circular receive buffer, must be power of 2 */
 #ifndef UART_RX_BUFFER_SIZE
 #define UART_RX_BUFFER_SIZE 32
