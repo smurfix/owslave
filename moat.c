@@ -89,7 +89,6 @@ void do_read(void)
 			xmit_byte(b);
 			crc = crc16(crc,b);
 		}
-		return;
 
 	} else {
 		recv_byte();
@@ -107,9 +106,16 @@ void do_read(void)
 		recv_byte();
 		icrc = recv_byte_in();
 		recv_byte();
-		icrc |= (recv_byte_in() << 8);
-		if (icrc != ~crc)
+		icrc |= recv_byte_in() << 8;
+		if (icrc != ~crc) {
+			DBG_P(" crc=");
+			DBG_W(crc);
+			DBG_P(" icrc=");
+			DBG_W(icrc);
+			DBG_C(' ');
 			return; // ERROR
+		}
+		DBG_P("CRC OK ");
 	}
 	// data received correctly
 }
