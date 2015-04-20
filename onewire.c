@@ -183,7 +183,7 @@ void next_idle(char reason)
 	DBG_C('I');
 	DBG_C(reason);
 	if(mode > OWM_PRESENCE) {
-		set_idle(); sei();
+		set_idle();
 	}
 	DBG(0x2D);
 	go_out();
@@ -373,7 +373,7 @@ char _onewire_poll(void) {
 			DBG(0x1C);
 			DBG_C('C');DBG_C('_');
 			wait_complete('d');
-			set_idle(); sei();
+			set_idle();
 		}
 		else
 			update_idle(2);
@@ -387,7 +387,7 @@ char _onewire_poll(void) {
 
 	if (mode == OWM_IDLE) {
 		DBG(0x10);
-		set_idle(); sei();
+		set_idle();
 	}
 	if (mode == OWM_SLEEP) {
 		DBG(0x2F);
@@ -401,10 +401,12 @@ void onewire_poll(void) {
 	DBG(0x2E);
 }
 
+// NOTE this disables interrupts!
 void set_idle(void)
 {
 	/* This code will fail to recognize a reset if we're already in one.
 	   Should happen rarely enough not to matter. */
+	unsigned char sreg = SREG;
 	cli();
 #ifdef HAVE_UART // mode is volatile
 	if(mode != OWM_SLEEP && mode != OWM_IDLE) {
@@ -428,6 +430,7 @@ void set_idle(void)
 	DIS_TIMER();
 	SET_FALLING();
 	EN_OWINT();
+	SREG = sreg;
 }
 
 static inline void do_select(uint8_t cmd)
