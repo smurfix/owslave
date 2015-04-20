@@ -287,8 +287,10 @@ static inline void
 recv_any(uint8_t len)
 {
 	wait_complete('j');
+	while(mode == OWM_WRITE)
+		wait_complete('J');
 	cli();
-	if(mode == OWM_WRITE || mode == OWM_IDLE)
+	if(mode == OWM_IDLE)
 		mode = OWM_READ;
 	if (mode != OWM_READ || xmode < OWX_RUNNING) {
 		DBG_P("\nState error recv! ");
