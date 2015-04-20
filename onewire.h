@@ -52,7 +52,6 @@ static inline uint8_t recv_byte_in(void)
    received by calling rx_ready() */
 uint8_t rx_ready(void);
 
-void next_idle(void) __attribute__((noreturn));
 void next_command(void) __attribute__((noreturn));
 
 /* Set up onewire-specific hardware */
