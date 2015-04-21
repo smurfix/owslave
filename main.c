@@ -46,7 +46,7 @@ init_mcu(void)
 
 #elif defined (__AVR_ATmega8__)
        // Clock is set via fuse
-#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
+#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__) || defined(__AVR_ATmega328__)
        // Clock is set via fuse
 
 #else

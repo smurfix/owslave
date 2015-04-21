@@ -61,7 +61,7 @@ uint8_t debug_state;
 #elif defined(__AVR_ATtiny25__)
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
-#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)
+#elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)  || defined (__AVR_ATmega328__)
 #define ADLARMUX (1<<ADLAR)
 #define PINCHANGE_vect PCINT1_vect
 #define PCIE PCIE1

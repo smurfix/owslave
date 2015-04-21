@@ -98,7 +98,7 @@
 #define ADMSK PCMSK0
 #endif
 
-#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__)
+#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
 #define F_CPU_                16000000
 #define OWPIN PIND
 #define OWPORT PORTD
