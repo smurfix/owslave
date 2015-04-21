@@ -27,6 +27,7 @@
  */
 #define DBGS_C(x) uart_putc(x)
 #define DBGS_P(x) uart_puts_P(x)
+#define DBGS_P_(x) uart_puts_p(x)
 #define DBGS_N(x) uart_puthex_nibble(x)
 #define DBGS_W(x) uart_puthex_word(x)
 #define DBGS_X(x) uart_puthex_byte_(x)
@@ -38,6 +39,7 @@
  */
 #define DBG_C(x) DBGS_C(x)
 #define DBG_P(x) DBGS_P(x)
+#define DBG_P_(x) DBGS_P_(x)
 #define DBG_N(x) DBGS_N(x)
 #define DBG_W(x) DBGS_W(x)
 #define DBG_X(x) DBGS_X(x)
@@ -48,7 +50,7 @@
 
 #ifndef DBG_C
 #define DBG_C(x) do { } while(0)
-#define DBG_P(x) do { } while(0)
+#define DBG_P_(x) do { } while(0)
 #define DBG_N(x) do { } while(0)
 #define DBG_W(x) do { } while(0)
 #define DBG_X(x) do { } while(0)
@@ -57,7 +59,7 @@
 
 #ifndef DBGS_C
 #define DBGS_C(x) do { } while(0)
-#define DBGS_P(x) do { } while(0)
+#define DBGS_P_(x) do { } while(0)
 #define DBGS_N(x) do { } while(0)
 #define DBGS_W(x) do { } while(0)
 #define DBGS_X(x) do { } while(0)
