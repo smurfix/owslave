@@ -43,61 +43,11 @@
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4
 
-
-void do_read(void)
+/* transmit the CRC, check that its complement is received correctly.
+   If it is not, this will not return to the caller.
+   */
+static void end_transmission(uint16_t crc)
 {
-	uint16_t crc = 0;
-	uint8_t dtype,chan;
-
-	/*
-	 The following code does:
-         * receive address (2 bytes), add them to CRC
-         * send 1..32 bytes (0xFF), add them to CRC
-	 * send counter (4 bytes, CRC)
-	 * send 4 zero bytes
-	 * send inverted CRC
-	   This is all very straightforward, except that the CRC calculation
-	   for the received address is delayed somewhat: the available time
-	   between the second recv_byte_in() and xmit_byte() is less than a bit
-	   wide. That may not be enough time to update the CRC.
-	 */
-	
-	recv_byte();
-	crc = crc16(crc,_1W_READ_GENERIC);
-	dtype = recv_byte_in();
-	DBG_C('T'); DBG_X(dtype);
-	recv_byte();
-	if (dtype == TC_NAME) {
-		uint8_t off,len;
-		cfg_addr(&off, &len, CfgID_name);
-		if (!off) return;
-		DBG(0x10);
-		chan = recv_byte_in();
-		DBG(0x11);
-		if (chan)
-			len = 0; // no other names, yet
-		DBG(0x12);
-		xmit_byte(len);
-		DBG(0x13);
-		crc = crc16(crc,dtype);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,len);
-		DBG(0x14);
-		while(len) {
-			uint8_t b = cfg_byte(off++);
-			len--;
-			xmit_byte(b);
-			crc = crc16(crc,b);
-		}
-
-	} else {
-		recv_byte();
-		crc = crc16(crc,dtype);
-		chan = recv_byte_in();
-		//recv_byte();
-		crc = crc16(crc,chan);
-		//b = recv_byte_in();
-	}
 	crc = ~crc;
 	xmit_byte(crc);
 	xmit_byte(crc >> 8);
@@ -113,11 +63,77 @@ void do_read(void)
 			DBG_P(" icrc=");
 			DBG_W(icrc);
 			DBG_C(' ');
-			return; // ERROR
+			next_idle('c');
 		}
 		DBG_P("CRC OK ");
 	}
-	// data received correctly
+}
+
+static inline void
+do_read_config(uint16_t crc)
+{
+	uint8_t chan;
+	cfg_addr_t off;
+	uint8_t len;
+	chan = recv_byte_in();
+	if (chan) {
+		cfg_addr(&off, &len, chan);
+		DBG_C('c'); DBG_X(chan);
+		if (off == 0) len=0;
+		xmit_byte(len);
+		crc = crc16(crc,chan);
+		crc = crc16(crc,len);
+		while(len) {
+			uint8_t b = cfg_byte(off++);
+			len--;
+			xmit_byte(b);
+			crc = crc16(crc,b);
+		}
+	} else { // list of known types
+		len = cfg_count(&off);
+		xmit_byte(len);
+		crc = crc16(crc,chan);
+		crc = crc16(crc,len);
+		while(len) {
+			uint8_t b = cfg_type(&off);
+			len--;
+			xmit_byte(b);
+			crc = crc16(crc,b);
+		}
+	}
+	end_transmission(crc);
+}
+
+static void do_read(void)
+{
+	uint16_t crc = 0;
+	uint8_t dtype;
+
+	/*
+	 Implement reading data. We read whatever necessary, write the length,
+	 write the data, write the CRC, read the inverted CRC back, and then do
+	 whatever necessary to effect the read (e.g. clear a flag, update a
+	 stored value, whatever).
+
+	 Typically there's some free time between reading, writing the length,
+	 and writing the data respectively. CRC read is immediate, so we
+	 pre-calculate as much as possible and add the rest on the go.
+
+	 Do not forget that bus errors and whatnot can abort this code in any
+	 recv/xmit call.
+	 */
+	
+	recv_byte();
+	crc = crc16(crc,_1W_READ_GENERIC);
+	dtype = recv_byte_in();
+	DBG_C('T'); DBG_X(dtype);
+	recv_byte();
+	crc = crc16(crc,dtype);
+
+	switch(dtype) {
+	case TC_CONFIG: do_read_config(crc); break;
+	default: DBG_C('?'); return;
+	}
 }
 
 void do_write(void) {

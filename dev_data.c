@@ -22,7 +22,7 @@
  *  Struct sizes must match exactly.
  */
 
-inline uint8_t cfg_byte(uint8_t addr) {
+inline uint8_t cfg_byte(cfg_addr_t addr) {
 #ifdef USE_EEPROM
     return eeprom_read_byte(EEPROM_POS+addr);
 #else
@@ -95,7 +95,8 @@ char _do_crc(bool update) // from eeprom; True if CRC matches
 
 
 char _cfg_read(void *data, uint8_t size, ConfigID id) {
-	uint8_t off,len;
+	cfg_addr_t off;
+	uint8_t len;
 	uint8_t *d = data;
 
 	cfg_addr(&off,&len,id);
@@ -113,8 +114,9 @@ char _cfg_write(void *addr, uint8_t size, ConfigID id) {
 }
 #endif
     
-void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id) {
-	uint8_t i=4,len,t;
+void cfg_addr(cfg_addr_t *addr, uint8_t *size, ConfigID id) {
+	cfg_addr_t i=4;
+	uint8_t len,t;
 	while((len = read_byte(i++)) > 0) {
 		t = read_byte(i++);
 		if (t == id) {
@@ -125,5 +127,28 @@ void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id) {
 			i += len;
 	}
 	*addr = 0;
+}
+
+uint8_t cfg_count(cfg_addr_t *addr) {
+	cfg_addr_t pos = *addr = 4;
+	uint8_t res = 0;
+	uint8_t len;
+
+	while((len = read_byte(pos)) > 0) {
+		pos += len+2;
+		res += 1;
+	}
+	return res;
+}
+
+uint8_t cfg_type(cfg_addr_t *addr) {
+	cfg_addr_t pos = *addr;
+	uint8_t len, t;
+
+	len = read_byte(pos++);
+	if (!len) return 0;
+	t = read_byte(pos++);
+	*addr = pos+len;
+	return t;
 }
 

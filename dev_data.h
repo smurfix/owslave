@@ -21,8 +21,18 @@ extern const uint8_t _config_start[] __attribute__ ((progmem));
 extern const uint8_t _config_end[] __attribute__ ((progmem));
 #endif
 
-void cfg_addr(uint8_t *addr, uint8_t *size, ConfigID id);
-uint8_t cfg_byte(uint8_t addr);
+#ifdef SMALL_DEVICE
+typedef uint8_t cfg_addr_t;
+#else
+typedef uint16_t cfg_addr_t;
+#endif
+
+void cfg_addr(cfg_addr_t *addr, uint8_t *size, ConfigID id);
+uint8_t cfg_byte(cfg_addr_t addr);
+
+/* enumerate config entries. Zero == no more. */
+uint8_t cfg_count(cfg_addr_t *addr);
+uint8_t cfg_type(cfg_addr_t *addr);
 
 struct config_rf12 { // for radio devices
 	unsigned int band:2;
