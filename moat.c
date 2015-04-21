@@ -39,14 +39,12 @@
 #include "moat.h"
 #include "dev_data.h"
 #include "debug.h"
+#include "moat_internal.h"
 
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4
 
-/* transmit the CRC, check that its complement is received correctly.
-   If it is not, this will not return to the caller.
-   */
-static void end_transmission(uint16_t crc)
+void end_transmission(uint16_t crc)
 {
 	crc = ~crc;
 	xmit_byte(crc);
@@ -70,7 +68,7 @@ static void end_transmission(uint16_t crc)
 }
 
 static inline void
-do_read_config(uint16_t crc)
+read_config(uint16_t crc)
 {
 	uint8_t chan;
 	cfg_addr_t off;
@@ -104,7 +102,7 @@ do_read_config(uint16_t crc)
 	end_transmission(crc);
 }
 
-static void do_read(void)
+static void moat_read(void)
 {
 	uint16_t crc = 0;
 	uint8_t dtype;
@@ -131,22 +129,23 @@ static void do_read(void)
 	crc = crc16(crc,dtype);
 
 	switch(dtype) {
-	case TC_CONFIG: do_read_config(crc); break;
+	case TC_CONFIG: read_config(crc); break;
+	case TC_CONSOLE: read_console(crc); break;
 	default: DBG_C('?'); return;
 	}
 }
 
-void do_write(void) {
+void moat_write(void) {
 }
 
 void do_command(uint8_t cmd)
 {
 	if(cmd == _1W_READ_GENERIC) {
 		//DBG_P(":I");
-		do_read();
+		moat_read();
 	} else if(cmd == _1W_WRITE_GENERIC) {
 		//DBG_P(":I");
-		do_write();
+		moat_write();
 	} else {
 		DBG(0x0E);
 		DBG_P("?CI ");

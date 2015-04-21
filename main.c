@@ -22,6 +22,7 @@
 #include "features.h"
 #include "onewire.h"
 #include "uart.h"
+#include "console.h"
 #include "dev_data.h"
 #include "debug.h"
 #include "moat.h"
@@ -56,6 +57,7 @@ init_mcu(void)
 static inline void
 init_all(void)
 {
+        console_init();
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
 	onewire_init();
 	init_state();
@@ -64,14 +66,20 @@ init_all(void)
 inline void
 poll_all(void)
 {
+    uint16_t c;
     uart_poll();
     onewire_poll();
+
+    c = uart_getc();
+    if(c <= 0xFF)
+        console_putc(c);
 }
 
 // Main program
 int
 main(void)
 {
+        const char *done_info = P("\nrestarted\n");
 
 #ifdef HAVE_DBG_PIN
         DBGPINPORT &= ~(1 << DBGPIN);
@@ -94,7 +102,8 @@ main(void)
 	sei();
         DBG(0x31);
 
-	DBGS_P("\nInit done!\n");
+	DBGS_P_(done_info);
+	console_puts_p(done_info);
         DBG(0x21);
         setjmp_q(_go_out);
         DBG(0x23);
