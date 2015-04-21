@@ -23,6 +23,9 @@
 /* return to idle state, i.e. wait for the next RESET pulse. */
 void set_idle(void);
 
+/* aborts and return to idle state */
+void next_idle(char reason) __attribute__((noreturn));
+
 /* send something. Will return as soon as transmission is active. */
 void xmit_bit(uint8_t bit);
 void xmit_byte(uint8_t bit);

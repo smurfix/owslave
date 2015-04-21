@@ -176,7 +176,6 @@ typedef enum {
 volatile wmode_t wmode;
 volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
-void next_idle(char reason) __attribute__((noreturn));
 void next_idle(char reason)
 {
 	DBG(0x2D);
