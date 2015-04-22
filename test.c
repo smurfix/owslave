@@ -73,7 +73,7 @@ void mainloop(void) {
     }
     DBG(0x0A);
     x = 0;
-    DBGS_C('/');
+    DBG_C('/');
     TCNT0=0xE0;
     EN_TIMER();
     DBG(0x0B);

@@ -156,8 +156,8 @@ xmore:
 
 	len = 0x1F - (adr & 0x1F);
 	adr++;
-	//DBGS_C('L');
-	//DBGS_X(len);
+	//DBG_C('L');
+	//DBG_X(len);
 
 	while(len) {
 		len--;
@@ -192,7 +192,7 @@ xmore:
 	SEND(0);
 #undef SEND
 
-	//DBGS_P(".c.");
+	//DBG_P(".c.");
 	crc = ~crc;
 	xmit_byte(crc);
 	xmit_byte(crc >> 8);
@@ -320,11 +320,11 @@ static inline void check_adc(void)
 			counter[i]++;
 			changed = 1;
 
-			DBGS_P(".i");
-			DBGS_X(i);
-			DBGS_C('=');
-			DBGS_X(counter[i]);
-			DBGS_C(' ');
+			DBG_P(".i");
+			DBG_X(i);
+			DBG_C('=');
+			DBG_X(counter[i]);
+			DBG_C(' ');
 		}
 		ocbits >>= 1;
 		nbits >>= 1;

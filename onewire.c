@@ -226,7 +226,7 @@ static inline void _wait_complete(void)
 //		DBG_C(c);
 	while(1) {
 		if (mode < OWM_IDLE) {
-//			DBGS_P("s5");
+//			DBG_P("s5");
 			DBG(0x29);
 			next_idle('m');
 		}
@@ -244,7 +244,7 @@ void next_command(void)
 {
 	wait_complete('n');
 	start_reading(8);
-	//DBGS_P(".e4");
+	//DBG_P(".e4");
 
 	xmode = OWX_COMMAND;
 	DBG(0x2B);
@@ -259,7 +259,7 @@ xmit_any(uint8_t val, uint8_t len)
 	if(mode == OWM_READ || mode == OWM_IDLE)
 		mode = OWM_WRITE;
 	if (mode != OWM_WRITE || xmode < OWX_RUNNING) {
-		// DBGS_P("\nErr xmit ");
+		// DBG_P("\nErr xmit ");
 		DBG(0x28);
 		next_idle('x');
 	}
@@ -328,7 +328,7 @@ recv_any_in(void)
 {
 	wait_complete('i');
 	if (mode != OWM_READ) {
-		DBGS_P(".e2");
+		DBG_P(".e2");
 		DBG(0x2A);
 		go_out();
 	}
@@ -439,16 +439,16 @@ void set_idle(void)
 #ifdef HAVE_UART // mode is volatile
 	if(mode != OWM_SLEEP && mode != OWM_IDLE) {
 #if 1
-		DBGS_C('R');
-		DBGS_N(mode);
+		DBG_C('R');
+		DBG_N(mode);
 #else
-		DBGS_P(">idle:");
-		DBGS_X(mode);
-		DBGS_C(' ');
-		DBGS_X(xmode);
-		DBGS_C(' ');
-		DBGS_X(bitp);
-		DBGS_NL();
+		DBG_P(">idle:");
+		DBG_X(mode);
+		DBG_C(' ');
+		DBG_X(xmode);
+		DBG_C(' ');
+		DBG_X(bitp);
+		DBG_NL();
 #endif
 	}
 #endif
@@ -515,9 +515,9 @@ static inline void do_select(uint8_t cmd)
 		next_idle('r');
 #endif
 	default:
-		DBGS_C('?');
-		DBGS_X(cmd);
-		DBGS_C(' ');
+		DBG_C('?');
+		DBG_X(cmd);
+		DBG_C(' ');
 		DBG(0x25);
 		next_idle('u');
 	}
@@ -538,9 +538,9 @@ TIMER_INT {
 		if (p==0) { 
 #if 0
 			if(lmode != OWM_SLEEP) {
-				DBGS_P("\nReset ");
-				DBGS_X(lmode);
-				DBGS_NL();
+				DBG_P("\nReset ");
+				DBG_X(lmode);
+				DBG_NL();
 			}
 #endif
 			lmode=OWM_IN_RESET;  //wait for rising edge
@@ -555,10 +555,10 @@ TIMER_INT {
 	case OWM_IDLE:
 		break;
 	case OWM_SLEEP: // should have been caught by CHK_INT_EN() above
-		DBGS_P("\nChk Sleep!\n");
+		DBG_P("\nChk Sleep!\n");
 		break;
 	case OWM_IN_RESET: // should not happen here
-		DBGS_P("\nChk Reset!\n");
+		DBG_P("\nChk Reset!\n");
 		break;
 	case OWM_AFTER_RESET:  //Time after reset is finished, now go to presence state
 		lmode=OWM_PRESENCE;
@@ -581,7 +581,7 @@ TIMER_INT {
 		} else {
 			// Overrun!
 			DBG(0x0F);
-			DBGS_P("\nRead OVR!\n");
+			DBG_P("\nRead OVR!\n");
 			lmode = OWM_SLEEP;
 		}
 		break;
@@ -695,10 +695,10 @@ void real_PIN_INT(void) {
 
 	switch (mode) {
 	case OWM_PRESENCE:
-		DBGS_P("\nChk Presence!\n");
+		DBG_P("\nChk Presence!\n");
 		break;
 	case OWM_IDLE:
-		DBGS_P("\nChk Idle!\n");
+		DBG_P("\nChk Idle!\n");
 		set_idle();
 		/* fall thru */
 	case OWM_SLEEP:

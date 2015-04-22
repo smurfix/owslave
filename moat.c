@@ -163,6 +163,6 @@ void mainloop(void) {
 #if 0 // def HAVE_UART
 	if(++x<100000ULL) return;
 	x = 0;
-	DBGS_C('/');
+	DBG_C('/');
 #endif
 }

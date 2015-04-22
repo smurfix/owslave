@@ -102,7 +102,7 @@ main(void)
 	sei();
         DBG(0x31);
 
-	DBGS_P_(done_info);
+	DBG_P_(done_info);
 	console_puts_p(done_info);
         DBG(0x21);
         setjmp_q(_go_out);

@@ -18,35 +18,45 @@
 
 #include "dev_config.h"
 
-/* Debugging */
-#if defined(HAVE_UART) && !defined(NO_DEBUG)
+#ifndef NO_DEBUG //
+
+#ifdef UART_DEBUG
+#ifndef HAVE_UART
+#error "Cannot debug using UART without having one"
+#endif
 #include "uart.h"
 
 /* These macros always send something. They should only be used in
  * sync-safe places, i.e. not in interrupt code or whatever.
  */
-#define DBGS_C(x) uart_putc(x)
-#define DBGS_P(x) uart_puts_P(x)
-#define DBGS_P_(x) uart_puts_p(x)
-#define DBGS_N(x) uart_puthex_nibble(x)
-#define DBGS_W(x) uart_puthex_word(x)
-#define DBGS_X(x) uart_puthex_byte_(x)
-#define DBGS_NL() uart_putc('\n')
+#define DBG_C(x) uart_putc(x)
+#define DBG_P(x) uart_puts_P(x)
+#define DBG_P_(x) uart_puts_p(x)
+#define DBG_N(x) uart_puthex_nibble(x)
+#define DBG_W(x) uart_puthex_word(x)
+#define DBG_X(x) uart_puthex_byte_(x)
+#define DBG_NL() uart_putc('\n')
+#endif /* UART_DEBUG */
 
-#ifndef HAVE_UART_SYNC
-/* These macros can be used anywhere. They'll turn into no-ops when
- * synchronous output is tuned on.
- */
-#define DBG_C(x) DBGS_C(x)
-#define DBG_P(x) DBGS_P(x)
-#define DBG_P_(x) DBGS_P_(x)
-#define DBG_N(x) DBGS_N(x)
-#define DBG_W(x) DBGS_W(x)
-#define DBG_X(x) DBGS_X(x)
-#define DBG_NL() DBGS_NL()
+#ifdef CONSOLE_DEBUG
+#ifdef DBG_C
+#error "Cannot use two debug methods concurrently"
 #endif
+#ifndef TC_CONSOLE
+#error "Cannot debug using console without having one"
+#endif
+#include "console.h"
 
-#endif /* UART */
+#define DBG_C(x) console_putc(x)
+#define DBG_P(x) console_puts_P(x)
+#define DBG_P_(x) console_puts_p(x)
+#define DBG_N(x) console_puthex_nibble(x)
+#define DBG_W(x) console_puthex_word(x)
+#define DBG_X(x) console_puthex_byte_(x)
+#define DBG_NL() console_putc('\n')
+#endif // console
+
+#endif // !NO_DEBUG
 
 #ifndef DBG_C
 #define DBG_C(x) do { } while(0)
@@ -58,19 +68,7 @@
 #define DBG_NL() do { } while(0)
 #endif
 
-#ifndef DBGS_C
-#define DBGS_C(x) do { } while(0)
-#define DBGS_P(x) do { } while(0)
-#define DBGS_P_(x) do { } while(0)
-#define DBGS_N(x) do { } while(0)
-#define DBGS_W(x) do { } while(0)
-#define DBGS_X(x) do { } while(0)
-#define DBGS_NL() do { } while(0)
-#endif
-
-#ifndef DBG_TS /* signal timestamps. Code does NOT work -- formatting the numbers takes too long */
-#define DBG_TS() do { } while(0)
-#endif
+//************* second part: debugging via emitting a bit/byte to a port
 
 #if defined(HAVE_DBG_PORT) && !defined(NO_DEBUG)
 #define DBGA(x,v) do { v=(x); asm volatile("out %0,%1" :: "i"(((int)&DBGPORT)-__SFR_OFFSET),"r"(v)); } while(0)
