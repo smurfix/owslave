@@ -63,7 +63,7 @@ read_config(uint16_t crc)
 	chan = recv_byte_in();
 	if (chan) {
 		cfg_addr(&off, &len, chan);
-		DBG_C('c'); DBG_X(chan);
+		//DBG_C('c'); DBG_X(chan);
 		if (off == 0) len=0;
 		xmit_byte(len);
 		crc = crc16(crc,chan);
@@ -111,7 +111,7 @@ static void moat_read(void)
 	recv_byte();
 	crc = crc16(crc,_1W_READ_GENERIC);
 	dtype = recv_byte_in();
-	DBG_C('T'); DBG_X(dtype);
+	//DBG_C('T'); DBG_X(dtype);
 	recv_byte();
 	crc = crc16(crc,dtype);
 
