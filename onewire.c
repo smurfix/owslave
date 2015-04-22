@@ -25,8 +25,6 @@
 #include "debug.h"
 #include "moat.h"
 
-#define PRESCALE 64
-
 union {
 	CFG_DATA(owid) ow_addr;
 	uint8_t addr[8];
@@ -36,14 +34,20 @@ volatile uint8_t bitp;  // mask of current bit
 volatile uint8_t bytep; // position of current byte
 volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 
-#ifndef TIMSK
-#define TIMSK TIMSK0
-#endif
-#ifndef TIFR
-#define TIFR TIFR0
-#endif
 #ifndef EICRA
 #define EICRA MCUCR
+#endif
+
+// use timer 2 (if present), because (a) we reset the prescaler and (b) the
+// scaler from T2 is more accurate: 4 µsec vs. 8 µsec, in 8-MHz mode
+#ifdef ONEWIRE_USE_T2
+#define PRESCALE 32
+#else
+#ifdef ONEWIRE_USE_T0
+#define PRESCALE 64
+#else
+#error "Which timer should we use?"
+#endif
 #endif
 
 // Frequency-dependent timing macros
@@ -76,13 +80,19 @@ volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 #define CHK_INT_EN() (IMSK&(1<<INT0)) //test if pin interrupt enabled
 #define PIN_INT INT0_vect  // the interrupt service routine
 //Timer Interrupt
-#define EN_TIMER() do {TIMSK |= (1<<TOIE0); TIFR|=(1<<TOV0);}while(0) //enable timer interrupt
-#define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
-#define SET_TIMER(x) do { GTCCR = (1<<PSRSYNC); TCNT_REG=~(x); } while(0) // reset prescaler
 
-// always use timer 0
-#define TCNT_REG TCNT0  //register of timer-counter
+#ifdef ONEWIRE_USE_T2
+#define EN_TIMER() do {TIMSK2 |= (1<<TOIE2); TIFR2|=(1<<TOV2);}while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK2 &= ~(1<<TOIE2);} while(0) // disable timer interrupt
+#define SET_TIMER(x) do { GTCCR = (1<<PSRASY); TCNT2=(uint8_t)~(x); } while(0) // reset prescaler
+#define TIMER_INT ISR(TIMER2_OVF_vect) //the timer interrupt service routine
+
+#else
+#define EN_TIMER() do {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);}while(0) //enable timer interrupt
+#define DIS_TIMER() do {TIMSK0 &= ~(1<<TOIE0);} while(0) // disable timer interrupt
+#define SET_TIMER(x) do { GTCCR = (1<<PSRSYNC); TCNT0=(uint8_t)~(x); } while(0) // reset prescaler
 #define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
+#endif
 
 // stupidity
 #ifndef TIMER0_OVF_vect
@@ -120,9 +130,13 @@ onewire_init(void)
 
 #elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__) || defined(__AVR_ATmega328__)
 	// Clock is set via fuse
-
+#ifdef ONEWIRE_USE_T2
+	TCCR2A = 0;
+	TCCR2B = 0x03;	// Prescaler 1/32
+#else
 	TCCR0A = 0;
 	TCCR0B = 0x03;	// Prescaler 1/64
+#endif
 
 	EICRA = (1<<ISC00); // interrupt of INT0 (pin D2) on both level changes
 

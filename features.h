@@ -100,6 +100,7 @@
 
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
 #define F_CPU_                16000000
+#define ONEWIRE_USE_T2
 #define OWPIN PIND
 #define OWPORT PORTD
 #define OWDDR DDRD
@@ -132,6 +133,10 @@
 
 #ifndef F_CPU
 #define F_CPU F_CPU_
+#endif
+
+#ifndef ONEWIRE_USE_T2
+#define ONEWIRE_USE_T0
 #endif
 
 #if defined(HAVE_UART_SYNC) && defined(HAVE_UART_IRQ)

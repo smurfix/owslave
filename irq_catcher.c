@@ -67,7 +67,11 @@ void __vector_30(void) __attribute__((signal));
 void __vector_31(void) __attribute__((signal));
 
 #ifdef HAVE_ONEWIRE
+#if defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__) || defined(__AVR_ATmega328__)
+#define HAVE_TOV2
+#else
 #define HAVE_TOV0
+#endif
 #else
 void __vector_1(void) { ping_me(1); }
 #endif
@@ -78,7 +82,9 @@ void __vector_5(void) { ping_me(5); }
 void __vector_6(void) { ping_me(6); }
 void __vector_7(void) { ping_me(7); }
 void __vector_8(void) { ping_me(8); }
+#ifndef HAVE_TOV2
 void __vector_9(void) { ping_me(9); }
+#endif
 void __vector_10(void) { ping_me(10); }
 void __vector_11(void) { ping_me(11); }
 void __vector_12(void) { ping_me(12); }
