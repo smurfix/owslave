@@ -13,20 +13,7 @@
  *  for more details.
  */
 
-/* This code implements the DS2423 counter (obsolete and no-longer-produced).
- * Only the features necessary for reading the physical counters are
- * implemented; the rest is of no particular interest. Yet.
- */
-
-/* Input pins are PA0 thru PA7, depending on the definition of NCOUNTERS.
-   If ANALOG is defined, these pins are read by the ADC and an adaptive
-   hysteresis is used to trigger the counters, otherwise they are used
-   as straight digital inputs. */
-
-/* if SLOW is defined, a decaying average (factor 2^-SLOW) is used to
-   lowpass-filter the (analog) result. Use this if you want to monitor e.g.
-   a blinking LED, while not being distracted by ambient neon lighting.
-   Note that sample frequency is approx. 8 kHz / NCOUNTERS.
+/* This code implements reading the console buffer via 1wire.
  */
 
 #include "moat_internal.h"
