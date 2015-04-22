@@ -50,7 +50,7 @@ def main(f,*kk):
  *
  * Do not edit. Talk to 'moat.cfg' instead.
  */
-    """.format(k,k), file=f);
+    """.format(k,k), file=f)
                     i = 0
                     typecode = {}
                     for a in s.subtree('codes','types'):
@@ -63,12 +63,12 @@ def main(f,*kk):
                         i += 1
 
                     i = 1
-                    print("typedef enum _ConfigID {", file=f);
+                    print("typedef enum _ConfigID {", file=f)
                     for a in s.subtree('codes','blocks'):
                         typecode[a]=i
                         print("    CfgID_{} = {},".format(a,i), file=f)
                         i += 1
-                    print("} ConfigID;", file=f);
+                    print("} ConfigID;", file=f)
 
                     for a,v in s.keyval('devices',k,'defs'):
                         try:
@@ -98,7 +98,7 @@ def main(f,*kk):
 #define MAX_TC {}
 
 #endif /* device_{}_config_h */
-    """.format(max_t,k,k), file=f);
+    """.format(max_t,k,k), file=f)
             elif mode == "type":
                 print(" ".join("{} {}".format(a,v) for a,v in s.keyval('devices',k,'types')))
             elif mode == "cdefs":
