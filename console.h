@@ -18,6 +18,7 @@ extern void console_putc(unsigned char data);
 
 extern void console_puts(const char *s);
 extern void console_puts_p(const char *s);
+#define console_puts_P(__s) console_puts_p(P(__s))
 extern void console_puti(int i);
 extern void console_putl(long i);
 extern void console_puthex_nibble(const unsigned char b);
@@ -35,6 +36,7 @@ extern void console_buf_done(uint8_t len);
 #define console_putc(x) do{}while(0)
 #define console_puts(x) do{}while(0)
 #define console_puts_p(x) do{}while(0)
+#define console_puts_P(x) do{}while(0)
 #define console_puti(x) do{}while(0)
 #define console_putl(x) do{}while(0)
 #define console_puthex_nibble(x) do{}while(0)
