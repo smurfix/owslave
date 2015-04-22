@@ -17,12 +17,16 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+ 
+#include "dev_data.h"
+#ifndef DEBUG_ONEWIRE
+#define NO_DEBUG
+#endif
+#include "debug.h"
 
+#include "uart.h"
 #include "features.h"
 #include "onewire.h"
-#include "uart.h"
-#include "dev_data.h"
-#include "debug.h"
 #include "moat.h"
 
 union {

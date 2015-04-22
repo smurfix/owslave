@@ -63,15 +63,13 @@ LICENSE:
 #include <avr/pgmspace.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "uart.h"
-#include "debug.h"
 
-/* Don't clobber the rest of the debug space if not debugging UART */
+#include "dev_data.h"
 #ifndef DEBUG_UART
-#undef HAVE_DBG_PORT
-#undef DBG
-#define DBG(x) do{}while(0)
+#define NO_DEBUG
 #endif
+#include "debug.h"
+#include "uart.h"
 
 /** Size of the circular receive buffer, must be power of 2 */
 #ifndef UART_RX_BUFFER_SIZE
