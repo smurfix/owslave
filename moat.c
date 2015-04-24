@@ -126,6 +126,31 @@ static void moat_read(void)
 }
 
 void moat_write(void) {
+	uint16_t crc = 0;
+	uint8_t dtype;
+
+	/*
+	 Implement reading data. We read whatever necessary, read the length,
+	 read the data, write the resulting CRC, read the inverted CRC back,
+	 and then do whatever necessary to effect the write (e.g. clear a flag,
+	 update a stored value, whatever).
+
+	 Do not forget that bus errors and whatnot can abort this code in any
+	 recv/xmit call.
+	 */
+	
+	recv_byte();
+	crc = crc16(crc,_1W_WRITE_GENERIC);
+	dtype = recv_byte_in();
+	//DBG_C('W'); DBG_X(dtype);
+	recv_byte();
+	crc = crc16(crc,dtype);
+
+	switch(dtype) {
+	case TC_CONSOLE: write_console(crc); break;
+	case TC_PORT: write_port(crc); break;
+	default: DBG_C('?'); return;
+	}
 }
 
 void do_command(uint8_t cmd)

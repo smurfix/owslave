@@ -26,13 +26,21 @@ void end_transmission(uint16_t crc);
 #ifdef TC_CONSOLE
 void read_console(uint16_t crc);
 #else
-#define read_console(crc) do{}while(0);
+#define read_console(crc) do{}while(0)
 #endif
 
 #ifdef TC_PORT
 void read_port(uint16_t crc);
+void write_console(uint16_t crc);
 #else
-#define read_port(crc) do{}while(0);
+#define read_port(crc) do{}while(0)
+#define write_port(crc) do{}while(0)
+#endif
+
+#if defined(TC_CONSOLE) && defined(CONSOLE_WRITE)
+void write_console(uint16_t crc);
+#else
+#define write_console(crc) do{}while(0)
 #endif
 
 #endif // moat_internal.h

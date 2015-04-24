@@ -29,13 +29,13 @@ extern t_port ports[];
 		*_reg &=~adr;         \
 	} while(0);
 
-// the first two bits are used for t_port_out, i.e. PO_*
+// the first two bits are used for t_port_out, i.e. PO_* constants. Hardcoded.
 #define PFLG_ALERT   (1<<2)  // alert when port changes externally
 #define PFLG_ALT     (1<<3)  // switch H/Z and L/pull-up; default: H/L and Z/pull-up
 #define PFLG_ALT2    (1<<4)  // switch H/pullup and L/Z
 #define PFLG_POLL    (1<<5)  // change has been reported
 #define PFLG_CHANGED (1<<6)  // pin change
-#define PFLG_CURRENT (1<<7)  // last-seen value
+#define PFLG_CURRENT (1<<7)  // last-seen value. Hardcoded.
 
 typedef enum {
 	PI_OFF=0, PI_ON=1
@@ -61,6 +61,7 @@ static inline void port_set_out(t_port *portp, t_port_out state) {
 	_P_VARS(portp)
 	_P_SET(port, state&1);
 	_P_SET(ddr,!(state&2));
+	portp->flags = (portp->flags&~PFLG_CURRENT) | (state<<7);
 }
 
 // update flags based on current port state

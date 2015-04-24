@@ -69,4 +69,36 @@ void read_console(uint16_t crc)
 		console_buf_done(sent);
 }
 
+#ifdef CONSOLE_WRITE
+void write_console(uint16_t crc)
+{
+	uint8_t chan;
+	uint8_t len, pos=0;
+	uint8_t buf[MAXBUF+1];
+	chan = recv_byte_in();
+	if (chan != 1)
+		next_idle('w');
+	recv_byte();
+	len = recv_byte_in();
+	recv_byte();
+	if ((len==0) || (len>MAXBUF))
+		next_idle('u');
+	crc = crc16(crc,chan);
+	crc = crc16(crc,len);
+	while(1) {
+		uint8_t b = recv_byte_in();
+		buf[pos++] = b;
+		if (pos == len) {
+			crc = crc16(crc,b);
+			break;
+		}
+		recv_byte();
+		crc = crc16(crc,b);
+	}
+	end_transmission(crc);
+	buf[pos] = 0;
+	console_puts((char *)buf);
+}
+#endif // console_write
+
 #endif
