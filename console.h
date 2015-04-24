@@ -48,5 +48,8 @@ extern void console_buf_done(uint8_t len);
 #define console_buf_done(y) do{}while(0)
 
 #endif // !TC_CONSOLE
+
+#define console_alert() (!!console_buf_len())
+
 #endif // CONSOLE_H 
 
