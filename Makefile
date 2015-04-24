@@ -130,7 +130,7 @@ device/${DEV}/config.o: device/${DEV}/eprom.bin
 		--redefine-sym "_binary_device_${DEV}_eprom_bin_end=_config_end" \
 		$^ $@
 
-device/${DEV}/%.o: %.c device/${DEV}/dev_config.h
+device/${DEV}/%.o: %.c device/${DEV}/dev_config.h *.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 device/${DEV}/%.o: %.S device/${DEV}/dev_config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
