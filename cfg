@@ -7,6 +7,16 @@ Its job is simply to extract values from a YAML-formatted config file.
 
 from Cfg import Cfg
 import sys
+import os
+
+### copied from port.h
+PO_OFF=0
+PO_ON=1
+PO_Z=2
+PO_PULLUP=3
+PFLG_ALERT=  (1<<2)
+PFLG_ALT  =  (1<<3)
+PFLG_ALT2 =  (1<<4)
 
 def main(f,*kk):
     s = Cfg(f)
@@ -39,6 +49,37 @@ def main(f,*kk):
                             else:
                                 print(f)
             elif mode == "hdr":
+                with open("device/"+k+"/_port.h","w") as f:
+                    print("""\
+/*
+ * This file is auto-generated. It contains the list of input/output ports for
+ * the device "{}".
+ *
+ * Do not edit. Talk to 'moat.cfg' instead.
+ */
+    """.format(k), file=f)
+                    for i in range(1, int(s.subtree('devices',k,'types','port'))+1):
+                        v = s.subtree('devices',k,'port',str(i))
+                        flg=0
+                        p=0
+                        assert len(v)>=2 and len(v) <=6
+                        for vv in v:
+                            if vv >= 'A' and vv <= 'Z':
+                                assert not p
+                                p |= (ord(vv)-ord("A"))<<3
+                            elif vv >= '0' and vv <= '7':
+                                assert not (p&0x7)
+                                p |= ord(vv)-ord("0")
+                            elif vv == "^": flg|=PO_ON
+                            elif vv == "_": flg|=PO_OFF
+                            elif vv == "+": flg|=PO_PULLUP
+                            elif vv == "~": flg|=PO_Z       ## high-impedance
+                            elif vv == "/": flg|=PFLG_ALT   ## alt switch 1: low vs. pullup
+                            elif vv == "!": flg|=PFLG_ALT2  ## alt switch 2: lw vs. Z
+                            elif vv == "*": flg|=PFLG_ALERT ## participate in alerting
+                            else: assert 0,vv
+                        print('{'+"{},{}".format(p,flg)+'},',file=f)
+
                 with open("device/"+k+"/dev_config.h","w") as f:
                     print("""\
 #ifndef device_{}_config_h
@@ -99,6 +140,7 @@ def main(f,*kk):
 
 #endif /* device_{}_config_h */
     """.format(max_t,k,k), file=f)
+
             elif mode == "type":
                 print(" ".join("{} {}".format(a,v) for a,v in s.keyval('devices',k,'types')))
             elif mode == "cdefs":
@@ -106,7 +148,7 @@ def main(f,*kk):
                 maxtype = max(())
                 print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in s.keyval('devices',k,'defs')) + " " + " ".join("-DN_{}={}".format(a.upper(),v) for a,v in s.keyval('devices',k,'types') if int(v) > 0))
             elif mode == "cfiles":
-                files = ['dev_data.c','main.c','console.c','jmp.S']
+                files = ['dev_data.c','main.c','jmp.S']
                 if s.subtree('devices',k,'defs','have_uart'):
                     files.append('uart.c')
                 ow = s.subtree('devices',k,'defs','is_onewire')
@@ -123,6 +165,8 @@ def main(f,*kk):
                     files.append(f+'.c')
                 for f in s.subtree('devices',k,'types'):
                     files.append('moat_'+f+'.c')
+                    if os.path.exists(f+'.c'):
+                        files.append(f+'.c')
 
                 print(" ".join(files))
             else:

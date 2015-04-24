@@ -27,6 +27,8 @@
 #include "dev_data.h"
 #include "debug.h"
 #include "moat_internal.h"
+#include "port.h"
+#include "console.h"
 
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4
@@ -50,7 +52,7 @@ void end_transmission(uint16_t crc)
 			DBG_C(' ');
 			next_idle('c');
 		}
-		DBG_P("CRC OK ");
+		// DBG_P("CRC OK ");
 	}
 }
 
@@ -118,6 +120,7 @@ static void moat_read(void)
 	switch(dtype) {
 	case TC_CONFIG: read_config(crc); break;
 	case TC_CONSOLE: read_console(crc); break;
+	case TC_PORT: read_port(crc); break;
 	default: DBG_C('?'); return;
 	}
 }
@@ -151,6 +154,8 @@ void init_state(void)
 
 #ifdef CONDITIONAL_SEARCH
 uint8_t condition_met(void) {
+	if(console_alert()) return 1;
+	if(port_alert()) return 1;
 	return 0; // change_seen;
 }
 #endif

@@ -23,6 +23,7 @@
 #include "onewire.h"
 #include "uart.h"
 #include "console.h"
+#include "port.h"
 #include "dev_data.h"
 #include "debug.h"
 #include "moat.h"
@@ -60,19 +61,24 @@ init_all(void)
         console_init();
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
 	onewire_init();
+        port_init();
 	init_state();
 }
 
 inline void
 poll_all(void)
 {
+#if defined(UART_DEBUG) && defined(TC_CONSOLE)
     uint16_t c;
+#endif
     uart_poll();
     onewire_poll();
-
+    port_poll();
+#if defined(UART_DEBUG) && defined(TC_CONSOLE)
     c = uart_getc();
     if(c <= 0xFF)
         console_putc(c);
+#endif
 }
 
 // Main program
@@ -100,6 +106,7 @@ main(void)
 	// now go
         DBG(0x33);
 	sei();
+
         DBG(0x31);
 
 	DBG_P_(done_info);
