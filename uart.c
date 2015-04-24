@@ -278,8 +278,8 @@ Purpose:  called when the UART is ready to transmit the next byte
         return;
     cli();
 #endif
-#ifdef HAVE_DBG_PORT
-    uint8_t x = DBGPORT;
+#ifdef DBGPORT
+    uint8_t x = DBGPORT __attribute__((unused));
 #endif
     DBG(0x36);
     if ( UART_TxHead != UART_TxTail) {
@@ -294,9 +294,7 @@ Purpose:  called when the UART is ready to transmit the next byte
         UART0_CONTROL &= ~_BV(UART0_UDRIE);
 #endif
     }
-#ifdef HAVE_DBG_PORT
     DBG(x);
-#endif
 #ifndef HAVE_UART_IRQ
     sei();
 #endif

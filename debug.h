@@ -76,6 +76,7 @@
 #else
 #define DBG(x) do { } while(0)
 #define DBGA(x,v) do { } while(0)
+#undef DBGPORT
 #endif
 
 #if defined(HAVE_DBG_PIN) && !defined(NO_DEBUG)
@@ -84,6 +85,7 @@
 #else
 #define DBG_ON() do { } while(0)
 #define DBG_OFF() do { } while(0)
+#undef DBGPINPORT
 #endif
 
 #endif // debug_h
