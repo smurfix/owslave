@@ -63,6 +63,9 @@ static inline void port_set_out(t_port *portp, t_port_out state) {
 	_P_SET(ddr,!(state&2));
 }
 
+// update flags based on current port state
+void port_check(t_port *pp);
+
 // Set port to 0/1 according to mode (PFLG_ALT*). This is harder than it seems.
 void port_set(t_port *portp, char val);
 
@@ -105,9 +108,9 @@ static inline void port_post_send (t_port *portp) {
 void poll_clear(void);
 
 void port_init(void);
-#ifdef CONDITIONAL_SEARCH
 void port_poll(void);
 
+#ifdef CONDITIONAL_SEARCH
 static inline char port_alert(void) {
 	if (port_changed_cache)
 		return 1;
@@ -115,7 +118,6 @@ static inline char port_alert(void) {
 }
 
 #else
-#define port_poll() do {} while(0)
 #define port_alert() 0
 #endif
 

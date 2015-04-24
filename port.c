@@ -72,7 +72,6 @@ void port_set(t_port *portp, char val)
 	portp->flags = flg;
 }
 
-#ifdef CONDITIONAL_SEARCH
 /*
  * The idea is to clear the POLL flag if the port has not changed since
  * reporting started. Otherwise, check again.
@@ -80,28 +79,35 @@ void port_set(t_port *portp, char val)
  * The HAS_CHANGED macro sets the POLL flag and clears CHANGED when it sees
  * CHANGED set.
  */
+
+void port_check(t_port *pp) {
+	_P_VARS(pp)
+	char s = _P_GET(pin);
+	if (s != !!(flg & PFLG_CURRENT)) {
+		DBG_C('P');DBG_N(pp-ports);DBG_C('=');DBG_N(s); DBG_C(' ');
+		if(s)
+			flg |= PFLG_CURRENT;
+		else
+			flg &=~PFLG_CURRENT;
+		pp->flags = flg | PFLG_CHANGED;
+	}
+}
+
+static uint16_t x;
 void port_poll(void)
 {
 	t_port *pp = ports;
 	uint8_t i, max_seen=0;
 
 	for(i=1;i<=N_PORT;i++) {
-		_P_VARS(pp)
-		char s = _P_GET(pin);
-		if (s != !!(flg & PFLG_CURRENT)) {
-			if (s)
-				flg |= PFLG_CURRENT;
-			else
-				flg &=~PFLG_CURRENT;
-			flg |= PFLG_CHANGED;
-			max_seen = i;
-		} else if(flg & PFLG_POLL)
+		port_check(pp);
+		if(pp->flags & (PFLG_POLL|PFLG_CHANGED))
 			max_seen = i;
 		pp++;
 	}
 	port_changed_cache = max_seen;
+	if(!++x) DBG_C('_');
 }
-#endif
 
 void port_init(void)
 {
