@@ -31,7 +31,7 @@ void read_console(uint16_t crc);
 
 #ifdef TC_PORT
 void read_port(uint16_t crc);
-void write_console(uint16_t crc);
+void write_port(uint16_t crc);
 #else
 #define read_port(crc) do{}while(0)
 #define write_port(crc) do{}while(0)
