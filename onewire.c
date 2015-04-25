@@ -470,6 +470,14 @@ static inline void do_select(uint8_t cmd)
 
 	DBG_C('S');
 	switch(cmd) {
+#ifdef CONDITIONAL_SEARCH
+	case 0xEC: // CONDITIONAL SEARCH
+		if (!condition_met()) {
+			DBG(0x23);
+			next_idle('c');
+		}
+		/* FALL THRU */
+#endif
 	case 0xF0: // SEARCH_ROM; handled in interrupt
 		DBG_C('s');
 		mode = OWM_SEARCH_ZERO;
@@ -479,14 +487,6 @@ static inline void do_select(uint8_t cmd)
 		actbit = cbuf&1;
 		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
 		return;
-#ifdef CONDITIONAL_SEARCH
-	case 0xEC: // CONDITIONAL SEARCH
-		if (!condition_met()) {
-			DBG(0x23);
-			next_idle('c');
-		}
-		/* FALL THRU */
-#endif
 	case 0x55: // MATCH_ROM
 		DBG_C('S'); DBG_C('m');
 		recv_byte();
