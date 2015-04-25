@@ -85,7 +85,7 @@ poll_all(void)
 int
 main(void)
 {
-        const char *done_info = P("\nrestarted\n");
+        const char *done_info = P("\nrestart\n");
 
 #ifdef HAVE_DBG_PIN
         DBGPINPORT &= ~(1 << DBGPIN);
@@ -109,7 +109,9 @@ main(void)
 
         DBG(0x31);
 
-	DBG_P_(done_info);
+#ifndef CONSOLE_DEBUG
+        DBG_P_(done_info);
+#endif
 	console_puts_p(done_info);
         DBG(0x21);
         setjmp_q(_go_out);
