@@ -70,7 +70,6 @@ void read_port(uint16_t crc)
 	end_transmission(crc);
 	if (chan) {
 		port_post_send(portp);
-		moat_dump_port(chan);
 	}
 }
 
@@ -113,18 +112,6 @@ void write_port(uint16_t crc)
 	} else {
 		port_set(portp,a);
 	}
-}
-
-void moat_dump_port(char chan) {
-	t_port *pp = &ports[chan-1];
-
-	_P_VARS(pp)
-
-	DBG_P("Ch");DBG_X(chan);
-	DBG_C('.') ;DBG_X(pp->adr);
-	DBG_P(" f");DBG_X(pp->flags);
-	DBG_P(" =");DBG_X(*pin);
-	DBG_NL();
 }
 
 #endif
