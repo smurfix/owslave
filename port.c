@@ -93,20 +93,25 @@ void port_check(t_port *pp) {
 	}
 }
 
-static uint16_t x;
+/* Each mainloop pass checks one port. */
+static uint8_t poll_next = 0;
+static uint8_t max_seen = 0;
 void port_poll(void)
 {
-	t_port *pp = ports;
-	uint8_t i, max_seen=0;
-
-	for(i=1;i<=N_PORT;i++) {
-		port_check(pp);
-		if(pp->flags & (PFLG_POLL|PFLG_CHANGED))
-			max_seen = i;
-		pp++;
+	t_port *pp;
+	uint8_t i = poll_next;
+	if (i >= N_PORT)
+		i=0;
+	if (!i) {
+		port_changed_cache = max_seen;
+		max_seen=0;
 	}
-	port_changed_cache = max_seen;
-	if(!++x) DBG_C('_');
+	pp = &ports[i];
+	i++;
+	port_check(pp);
+	if(pp->flags & (PFLG_POLL|PFLG_CHANGED))
+		max_seen = i;
+	poll_next=i;
 }
 
 void port_init(void)
