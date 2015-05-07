@@ -8,7 +8,7 @@
 #define P(s) ({static const char c[] __attribute__ ((progmem)) = s;c;})
 #endif
 
-#ifdef TC_CONSOLE
+#ifdef N_CONSOLE
 #if N_CONSOLE != 1
 #error "I only know how to do a single console"
 #endif

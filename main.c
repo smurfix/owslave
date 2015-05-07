@@ -68,13 +68,13 @@ init_all(void)
 inline void
 poll_all(void)
 {
-#if defined(UART_DEBUG) && defined(TC_CONSOLE)
+#if defined(UART_DEBUG) && defined(N_CONSOLE)
     uint16_t c;
 #endif
     uart_poll();
     onewire_poll();
     port_poll();
-#if defined(UART_DEBUG) && defined(TC_CONSOLE)
+#if defined(UART_DEBUG) && defined(N_CONSOLE)
     c = uart_getc();
     if(c <= 0xFF)
         console_putc(c);

@@ -42,7 +42,7 @@
 #ifdef DBG_C
 #error "Cannot use two debug methods concurrently"
 #endif
-#ifndef TC_CONSOLE
+#ifndef N_CONSOLE
 #error "Cannot debug using console without having one"
 #endif
 #include "console.h"

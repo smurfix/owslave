@@ -23,13 +23,13 @@
    */
 void end_transmission(uint16_t crc);
 
-#ifdef TC_CONSOLE
+#ifdef N_CONSOLE
 void read_console(uint16_t crc);
 #else
 #define read_console(crc) do{}while(0)
 #endif
 
-#ifdef TC_PORT
+#ifdef N_PORT
 void read_port(uint16_t crc);
 void write_port(uint16_t crc);
 #else
@@ -37,7 +37,7 @@ void write_port(uint16_t crc);
 #define write_port(crc) do{}while(0)
 #endif
 
-#if defined(TC_CONSOLE) && defined(CONSOLE_WRITE)
+#if defined(N_CONSOLE) && defined(CONSOLE_WRITE)
 void write_console(uint16_t crc);
 #else
 #define write_console(crc) do{}while(0)

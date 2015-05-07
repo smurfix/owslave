@@ -15,7 +15,7 @@
  */
 
 #include "dev_config.h"
-#ifdef TC_CONSOLE
+#ifdef N_CONSOLE
 
 #include <stdlib.h>
 #include <avr/pgmspace.h>

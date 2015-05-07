@@ -129,8 +129,8 @@ def main(f,*kk):
                     max_t = -1
                     for a,v in s.keyval('devices',k,'types'):
                         v = int(v)
+                        print("#define TC_{} {}".format(a.upper(),typecode[a]), file=f)
                         if v > 0:
-                            print("#define TC_{} {}".format(a.upper(),typecode[a]), file=f)
                             print("#define N_{} {}".format(a.upper(),v), file=f)
 
                             if max_t < typecode[a]:
