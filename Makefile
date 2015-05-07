@@ -113,13 +113,13 @@ device/${DEV}/eprom.bin: ${CFG}
 		if ./gen_eeprom $@ owid serial >/dev/null 2>&1 ; then \
 			SER=$$(./gen_eeprom $@ owid serial); \
 			if ./cfg ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
-				test $$(./cfg ${CFG} devices.${DEV}.onewire_id) -eq $$SER ; \
+				test "$$(./cfg ${CFG} devices.${DEV}.onewire_id)" = "$$SER" ; \
 			else \
-				./cfg_write ${CFG} devices.${DEV}.onewire_id $$SER; \
+				./cfg_write ${CFG} devices.${DEV}.onewire_id x$$SER; \
 			fi; \
 		else \
 			./gen_eeprom $@ owid type 0x$$(./cfg ${CFG} codes.onewire.${OW_TYPE}) serial random; \
-			./cfg_write ${CFG} devices.${DEV}.onewire_id $$(./gen_eeprom $@ owid serial); \
+			./cfg_write ${CFG} devices.${DEV}.onewire_id x$$(./gen_eeprom $@ owid serial); \
 		fi; \
 	fi
 

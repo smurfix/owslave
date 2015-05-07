@@ -35,6 +35,7 @@ A configuration file consists of
 
 import struct
 import errno
+import binascii
 from random import SystemRandom
 from Cfg import Cfg
 import os
@@ -358,30 +359,33 @@ class OwidBlock(Block):
     names = "type serial crc".split(" ")
 
     def pack(self):
-        ser = self.data["serial"]
-        res = []
-        for i in range(6):
-            res.insert(0,ser & 0xff)
-            ser >>= 8
-        res.insert(0,self.data['type'])
+        res = [self.data['type']]
+        ser = self.data['serial']
+        res.extend(binascii.unhexlify(ser.encode('utf-8')))
         res.append(crc8(res))
         return bytes(res)
         
     def unpack(self,data):
         assert crc8(data) == 0,crc8(data)
         self.data['type'] = data[0]
-        ser = 0
-        for x in data[1:7]:
-            ser = (ser<<8) + x
-        self.data['serial'] = ser
+        self.data['serial'] = binascii.hexlify(data[1:7]).decode('utf-8')
         self.data['crc'] = data[7]
         
     def set_data(self,k,v):
         if k == "crc":
             raise SyntaxError("The CRC cannot be set manually.")
-        if k == "serial" and v == "random":
-            v = R.getrandbits(6*8)
-        super().set_data(k,v)
+        if k == "serial":
+            if v == "random":
+                vv = R.getrandbits(6*8)
+                v = []
+                for i in range(6):
+                    v.append(vv & 255)
+                    vv >>= 8
+                v = binascii.hexlify(bytes(v)).decode('utf-8')
+            self.data[k] = v
+
+        else:
+            super().set_data(k,v)
 
     @property
     def display_names(self):
