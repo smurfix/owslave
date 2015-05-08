@@ -28,6 +28,7 @@
 #include "debug.h"
 #include "moat_internal.h"
 #include "port.h"
+#include "pwm.h"
 #include "console.h"
 #include "timer.h"
 
@@ -122,6 +123,7 @@ static void moat_read(void)
 	case TC_CONFIG: read_config(crc); break;
 	case TC_CONSOLE: read_console(crc); break;
 	case TC_PORT: read_port(crc); break;
+	case TC_PWM: read_pwm(crc); break;
 	default: DBG_C('?'); return;
 	}
 }
@@ -150,6 +152,7 @@ void moat_write(void) {
 	switch(dtype) {
 	case TC_CONSOLE: write_console(crc); break;
 	case TC_PORT: write_port(crc); break;
+	case TC_PWM: write_pwm(crc); break;
 	default: DBG_C('?'); return;
 	}
 }

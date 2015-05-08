@@ -37,6 +37,14 @@ void write_port(uint16_t crc);
 #define write_port(crc) do{}while(0)
 #endif
 
+#ifdef N_PWM
+void read_pwm(uint16_t crc);
+void write_pwm(uint16_t crc);
+#else
+#define read_pwm(crc) do{}while(0)
+#define write_pwm(crc) do{}while(0)
+#endif
+
 #if defined(N_CONSOLE) && defined(CONSOLE_WRITE)
 void write_console(uint16_t crc);
 #else
