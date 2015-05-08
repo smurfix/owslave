@@ -54,13 +54,26 @@ static uint8_t nsub = SUB;
 #endif
 
 /* return True every MS milliseconds */
-char every(int16_t sec, timer_t *t)
+char timer_done(timer_t *t)
 {
-	if((current-t->current) >= 0) {
-		t->current += sec;
+	if((current - t->last) >= 0)
 		return 1;
-	}
 	return 0;
+}
+
+int16_t timer_remaining(timer_t *t)
+{
+	return t->last-current;
+}
+
+void timer_start(int16_t sec, timer_t *t)
+{
+	t->last += sec;
+}
+
+void timer_reset(timer_t *t)
+{
+	t->last = current;
 }
 
 void timer_init(void)
