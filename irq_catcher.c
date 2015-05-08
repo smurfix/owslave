@@ -66,6 +66,9 @@ void __vector_29(void) __attribute__((signal));
 void __vector_30(void) __attribute__((signal));
 void __vector_31(void) __attribute__((signal));
 
+#ifdef HAVE_TIMER
+#define HAVE_TOV0
+#endif
 #ifdef HAVE_ONEWIRE
 #if defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__) || defined(__AVR_ATmega328__)
 #define HAVE_TOV2
@@ -91,7 +94,7 @@ void __vector_12(void) { ping_me(12); }
 void __vector_13(void) { ping_me(13); }
 void __vector_14(void) { ping_me(14); }
 void __vector_15(void) { ping_me(15); }
-#ifndef HAVE_TOV0
+#ifndef HAVE_TIMER
 void __vector_16(void) { ping_me(16); }
 #endif
 void __vector_17(void) { ping_me(17); }

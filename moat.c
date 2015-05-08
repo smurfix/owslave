@@ -29,6 +29,7 @@
 #include "moat_internal.h"
 #include "port.h"
 #include "console.h"
+#include "timer.h"
 
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4
@@ -185,14 +186,13 @@ uint8_t condition_met(void) {
 }
 #endif
 
-#if 0 // def HAVE_UART
-static unsigned long long x = 0;
+#if CONSOLE_PING
+timer_t t;
 #endif
 void mainloop(void) {
 	DBG(0x1E);
-#if 0 // def HAVE_UART
-	if(++x<100000ULL) return;
-	x = 0;
-	DBG_C('/');
+#if CONSOLE_PING
+	if(every(CONSOLE_PING,&t))
+		DBG_C('!');
 #endif
 }

@@ -40,7 +40,7 @@ def main(f,*kk):
                         print(" ".join("{}={}".format(a,v) for a,v in s.keyval(*ks)))
                     elif isinstance(res,(list,tuple)):
                         print(" ".join(str(x) for x in res))
-                    elif xstr.match(res):
+                    elif isinstance(res,str) and xstr.match(res):
                         print(res[1:])
                     else:
                         try:
@@ -156,6 +156,8 @@ def main(f,*kk):
                 files = ['dev_data.c','main.c','jmp.S']
                 if s.subtree('devices',k,'defs','have_uart'):
                     files.append('uart.c')
+                if s.subtree('devices',k,'defs','have_timer'):
+                    files.append('timer.c')
                 ow = s.subtree('devices',k,'defs','is_onewire')
                 if not ow: pass
                 elif ow in ('moat','ds2423','ds2408'):

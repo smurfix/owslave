@@ -24,6 +24,7 @@
 #include "uart.h"
 #include "console.h"
 #include "port.h"
+#include "timer.h"
 #include "dev_data.h"
 #include "debug.h"
 #include "moat.h"
@@ -62,6 +63,7 @@ init_all(void)
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
 	onewire_init();
         port_init();
+        timer_init();
 	init_state();
 }
 
@@ -71,6 +73,7 @@ poll_all(void)
 #if defined(UART_DEBUG) && defined(N_CONSOLE)
     uint16_t c;
 #endif
+    timer_poll();
     uart_poll();
     onewire_poll();
     port_poll();
