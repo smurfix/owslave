@@ -29,11 +29,15 @@ void next_idle(char reason) __attribute__((noreturn));
 /* send something. Will return as soon as transmission is active. */
 void xmit_bit(uint8_t bit);
 void xmit_byte(uint8_t bit);
+uint16_t xmit_byte_crc(uint16_t crc, uint8_t val);
+uint16_t xmit_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len);
+
 /* receive something. For concurrency, you need to declare your intention
    to receive as soon as possible. Then call recv_bit() or recv_byte()
    when you really need the data. */
 void recv_bit(void);
 void recv_byte(void);
+uint16_t recv_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len);
 
 uint8_t recv_any_in(void); // don't call directly
 static inline uint8_t recv_bit_in(void)

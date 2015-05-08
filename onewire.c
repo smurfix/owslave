@@ -291,6 +291,20 @@ void xmit_byte(uint8_t val)
 	xmit_any(val,8);
 }
 
+inline uint16_t xmit_byte_crc(uint16_t crc, uint8_t val)
+{
+	xmit_any(val,8);
+	crc = crc16(crc, val);
+	return crc;
+}
+
+uint16_t xmit_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len)
+{
+	while(len--)
+		crc = xmit_byte_crc(crc, *buf++);
+	return crc;
+}
+
 #if 0
 uint8_t rx_ready(void)
 {
@@ -348,6 +362,20 @@ void
 recv_byte(void)
 {
 	recv_any(8);
+}
+
+uint16_t recv_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len)
+{
+	uint8_t val;
+
+	while(len--) {
+		val = recv_byte_in();
+		*buf++ = val;
+		if (len)
+			recv_byte();
+		crc = crc16(crc, val);
+	}
+	return crc;
 }
 
 // this code is from owfs
