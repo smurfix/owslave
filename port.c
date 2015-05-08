@@ -30,15 +30,15 @@
 
 #ifdef N_PORT
 
-t_port ports[] = {
+port_t ports[] = {
 #include "_port.h"
 };
 
-void port_set(t_port *portp, char val)
+void port_set(port_t *portp, char val)
 {
 	/* We could pack each switch{} into a single 8-bit value */
 	uint8_t flg = portp->flags;
-	t_port_out s = port_get_out(portp);
+	port_out_t s = port_get_out(portp);
 
 	// Rather than write a complicated switch statement, we go by bits.
 	if(flg & PFLG_ALT) {
@@ -80,7 +80,7 @@ void port_set(t_port *portp, char val)
  * CHANGED set.
  */
 
-void port_check(t_port *pp) {
+void port_check(port_t *pp) {
 	_P_VARS(pp)
 	char s = _P_GET(pin);
 	if (s != !!(flg & PFLG_CURRENT)) {
@@ -98,7 +98,7 @@ static uint8_t poll_next = 0;
 static uint8_t max_seen = 0;
 void port_poll(void)
 {
-	t_port *pp;
+	port_t *pp;
 	uint8_t i = poll_next;
 	if (i >= N_PORT)
 		i=0;
@@ -116,7 +116,7 @@ void port_poll(void)
 
 void port_init(void)
 {
-	t_port *pp = ports;
+	port_t *pp = ports;
 	uint8_t i;
 
 	for(i=0;i<N_PORT;i++) {

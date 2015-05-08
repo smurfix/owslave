@@ -9,8 +9,8 @@
 typedef struct {
 	uint8_t adr;
 	uint8_t flags;
-} t_port;
-extern t_port ports[];
+} port_t;
+extern port_t ports[];
 
 #define _P_VARS(_port) \
 	uint8_t flg __attribute__((unused)) = _port->flags; \
@@ -29,7 +29,7 @@ extern t_port ports[];
 		*_reg &=~adr;         \
 	} while(0);
 
-// the first two bits are used for t_port_out, i.e. PO_* constants. Hardcoded.
+// the first two bits are used for port_out_t, i.e. PO_* constants. Hardcoded.
 #define PFLG_ALERT   (1<<2)  // alert when port changes externally
 #define PFLG_ALT     (1<<3)  // switch H/Z and L/pull-up; default: H/L and Z/pull-up
 #define PFLG_ALT2    (1<<4)  // switch H/pullup and L/Z
@@ -39,25 +39,25 @@ extern t_port ports[];
 
 typedef enum {
 	PI_OFF=0, PI_ON=1
-} t_port_in;
+} port_in_t;
 typedef enum {
 	PO_OFF=0, PO_ON=1, PO_Z=2, PO_PULLUP=3
-} t_port_out;
+} port_out_t;
 
 // actual port-pin state
-static inline t_port_in port_get_in(t_port *portp) {
+static inline port_in_t port_get_in(port_t *portp) {
 	_P_VARS(portp)
 	return _P_GET(pin);
 }
 
 // read intended port state from registers
-static inline t_port_out port_get_out(t_port *portp) {
+static inline port_out_t port_get_out(port_t *portp) {
 	_P_VARS(portp)
 	return _P_GET(port) | (!_P_GET(ddr)<<1) ;
 }
 
 // set intended port state
-static inline void port_set_out(t_port *portp, t_port_out state) {
+static inline void port_set_out(port_t *portp, port_out_t state) {
 	_P_VARS(portp)
 	_P_SET(port, state&1);
 	_P_SET(ddr,!(state&2));
@@ -65,13 +65,13 @@ static inline void port_set_out(t_port *portp, t_port_out state) {
 }
 
 // update flags based on current port state
-void port_check(t_port *pp);
+void port_check(port_t *pp);
 
 // Set port to 0/1 according to mode (PFLG_ALT*). This is harder than it seems.
-void port_set(t_port *portp, char val);
+void port_set(port_t *portp, char val);
 
 
-static inline char port_changed(t_port *portp) {
+static inline char port_changed(port_t *portp) {
 	return portp->flags & PFLG_CHANGED;
 }
 
@@ -79,7 +79,7 @@ static inline char port_changed(t_port *portp) {
 EXTERN uint8_t port_changed_cache;
 
 /* Note whether a port has changed */
-static inline char port_has_changed(t_port *portp) {
+static inline char port_has_changed(port_t *portp) {
 	uint8_t flg = portp->flags;
 	if (flg & PFLG_CHANGED) {
 		flg |= PFLG_POLL;
@@ -90,11 +90,11 @@ static inline char port_has_changed(t_port *portp) {
 	return 0;
 }
 
-static inline void port_pre_send (t_port *portp) {
+static inline void port_pre_send (port_t *portp) {
 	(void)port_has_changed(portp);
 }
 
-static inline void port_post_send (t_port *portp) {
+static inline void port_post_send (port_t *portp) {
 	uint8_t flg = portp->flags;
 	if(flg & PFLG_POLL) {
 		if (flg & PFLG_CHANGED)

@@ -28,7 +28,7 @@ void read_port(uint16_t crc)
 {
 	uint8_t chan;
 	chan = recv_byte_in();
-	t_port *portp;
+	port_t *portp;
 	if (chan) { // one input: send flags, mark as scanned
 		if (chan > N_PORT)
 			next_idle('p');
@@ -77,7 +77,7 @@ void write_port(uint16_t crc)
 {
 	uint8_t chan;
 	uint8_t len, a,b;
-	t_port *portp;
+	port_t *portp;
 	chan = recv_byte_in();
 	recv_byte();
 
