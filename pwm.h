@@ -25,4 +25,4 @@ void pwm_poll(void);
 #define pwm_poll() do {} while(0)
 
 #endif // any inputs or outputs at all
-#endif // port_h
+#endif // pwm_h
