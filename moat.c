@@ -177,8 +177,14 @@ void update_idle(uint8_t bits)
 {
 }
 
+#if CONSOLE_PING
+timer_t t;
+#endif
 void init_state(void)
 {
+#if CONSOLE_PING
+	timer_start(CONSOLE_PING,&t);
+#endif
 }
 
 #ifdef CONDITIONAL_SEARCH
@@ -189,13 +195,12 @@ uint8_t condition_met(void) {
 }
 #endif
 
-#if CONSOLE_PING
-timer_t t;
-#endif
 void mainloop(void) {
 	DBG(0x1E);
 #if CONSOLE_PING
-	if(every(CONSOLE_PING,&t))
+	if(timer_done(&t)) {
 		DBG_C('!');
+		timer_start(CONSOLE_PING,&t);
+	}
 #endif
 }

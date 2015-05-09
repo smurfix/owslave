@@ -32,12 +32,11 @@ void timer_reset(timer_t *t);
 void timer_init(void);
 void timer_poll(void);
 
-#endif
-
 #else // no timer
 
 #define timer_init() do {} while(0)
 #define timer_poll() do {} while(0)
-#define every(a,b) 0
+
+#endif // !HAVE_TIMER
 
 #endif // timer_h
