@@ -109,7 +109,7 @@ void port_poll(void)
 	pp = &ports[i];
 	i++;
 	port_check(pp);
-	if(pp->flags & (PFLG_POLL|PFLG_CHANGED))
+	if(pp->flags & (PFLG_POLL|PFLG_CHANGED) && pp->flags & PFLG_ALERT)
 		max_seen = i;
 	poll_next=i;
 }
