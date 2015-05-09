@@ -45,6 +45,14 @@ void write_pwm(uint16_t crc);
 #define write_pwm(crc) do{}while(0)
 #endif
 
+#ifdef N_COUNT
+void read_count(uint16_t crc);
+void write_count(uint16_t crc);
+#else
+#define read_count(crc) do{}while(0)
+#define write_count(crc) do{}while(0)
+#endif
+
 #if defined(N_CONSOLE) && defined(CONSOLE_WRITE)
 void write_console(uint16_t crc);
 #else

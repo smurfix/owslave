@@ -106,6 +106,31 @@ def main(f,*kk):
                         seen.add(v)
                         print('{'+"{},".format(v)+'},',file=f)
 
+                with open("device/"+k+"/_count.h","w") as f:
+                    print("""\
+/*
+ * This file is auto-generated. It contains the list of ports to count
+ * transitions of, on the device "{}".
+ *
+ * Do not edit. Talk to 'moat.cfg' instead.
+ */
+    """.format(k), file=f)
+                    seen = set()
+                    for i in range(1, int(s.subtree('devices',k,'types','count'))+1):
+                        v = s.subtree('devices',k,'count',str(i))
+                        flg=0
+                        p=0
+                        if isinstance(v,str):
+                            if v.endswith('*'):
+                                flg |= 1
+                                v = v[:-1]
+                            v = int(v)
+                        if v in seen:
+                            print("Warning: PWM %d is known"%v,file=sys.stderr)
+                            continue
+                        seen.add(v)
+                        print('{'+"{},{}".format(v,flg)+'},',file=f)
+
                 with open("device/"+k+"/dev_config.h","w") as f:
                     print("""\
 #ifndef device_{}_config_h

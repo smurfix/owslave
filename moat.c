@@ -29,6 +29,7 @@
 #include "moat_internal.h"
 #include "port.h"
 #include "pwm.h"
+#include "count.h"
 #include "console.h"
 #include "timer.h"
 
@@ -124,6 +125,7 @@ static void moat_read(void)
 	case TC_CONSOLE: read_console(crc); break;
 	case TC_PORT: read_port(crc); break;
 	case TC_PWM: read_pwm(crc); break;
+	case TC_COUNT: read_count(crc); break;
 	default: DBG_C('?'); return;
 	}
 }
@@ -191,6 +193,7 @@ void init_state(void)
 uint8_t condition_met(void) {
 	if(console_alert()) return 1;
 	if(port_alert()) return 1;
+	if(count_alert()) return 1;
 	return 0; // change_seen;
 }
 #endif
