@@ -43,7 +43,7 @@ void pwm_poll(void)
 	port_t *p;
 
 	for(i=0;i<N_PWM;i++,t++) {
-		uint8_t tx = t->is_on ? t->t_on : t->t_off;
+		uint16_t tx = t->is_on ? t->t_on : t->t_off;
 		if(tx == 0)
 			continue;
 		if(timer_done(&t->timer)) {
