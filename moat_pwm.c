@@ -39,7 +39,7 @@ void read_pwm(uint16_t crc)
 		if (chan > N_PWM)
 			next_idle('p');
 		t = &pwms[chan-1];
-		p = &ports[chan-1];
+		p = &ports[t->port-1];
 
 		xmit_byte(7);
 		crc = crc16(crc,chan);
@@ -59,15 +59,15 @@ void read_pwm(uint16_t crc)
 		uint8_t buf[BLEN],*bp=buf;
 		uint8_t i;
 		t = pwms;
-		p = ports;
 
 		xmit_byte(BLEN);
 		crc = crc16(crc,0);
 		crc = crc16(crc,BLEN);
 
-		for(i=0;i<N_PWM;i++) {
+		for(i=0;i<N_PWM;i++,t++) {
 			uint16_t tm;
 			if(!(i&7)) {
+				p = &ports[t->port-1];
 				uint8_t j,v=0,m=1;
 				for(j=0;j<8;j++) {
 					if (i+j >= N_PWM) break;
@@ -80,8 +80,6 @@ void read_pwm(uint16_t crc)
 			tm=timer_remaining(&t->timer);
 			*bp++ = tm>>8;
 			*bp++ = tm;
-
-			t++; p++;
 		}
 		crc = xmit_bytes_crc(crc, buf,BLEN);
 	}

@@ -8,6 +8,7 @@
 #if defined(N_PWM)
 
 typedef struct {
+	uint8_t port;
 	timer_t timer;
 	uint16_t t_on,t_off;
 	char is_on;

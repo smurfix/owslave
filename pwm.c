@@ -32,42 +32,44 @@
 
 #ifdef N_PWM
 
-pwm_t pwms[N_PWM];
+pwm_t pwms[] = {
+#include "_pwm.h"
+};
 
 void pwm_poll(void)
 {
 	uint8_t i;
 	pwm_t *t = pwms;
-	port_t *p = ports;
+	port_t *p;
 
-	for(i=0;i<N_PWM;i++) {
+	for(i=0;i<N_PWM;i++,t++) {
 		uint8_t tx = t->is_on ? t->t_on : t->t_off;
 		if(tx == 0)
 			continue;
 		if(timer_done(&t->timer)) {
+			p = &ports[t->port-1];
 			t->is_on = !t->is_on;
 			port_set(p,t->is_on);
 			tx = t->is_on ? t->t_on : t->t_off;
 			if (tx)
 				timer_start(tx-timer_remaining(&t->timer),&t->timer);
 		}
-		t++; p++;
 	}
 }
 
 void pwm_init(void)
 {
 	pwm_t *t = pwms;
-	port_t *p = ports;
+	port_t *p;
 	uint8_t i;
 
-	for(i=0;i<N_PWM;i++) {
+	for(i=0;i<N_PWM;i++,t++) {
+		p = &ports[t->port-1];
 		t->is_on = 0;
 		// t->t_on = t->t_off = 0;
 		port_set(p,0);
 		if(t->t_off)
 			timer_start(t->t_off, &t->timer);
-		t++; p++;
 	}
 }
 
