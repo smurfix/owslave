@@ -84,7 +84,7 @@ void port_check(port_t *pp) {
 	_P_VARS(pp)
 	char s = _P_GET(pin);
 	if (s != !!(flg & PFLG_CURRENT)) {
-		DBG_C('P');DBG_N(pp-ports);DBG_C('=');DBG_N(s); DBG_C(' ');
+		// DBG_C('P');DBG_N(pp-ports);DBG_C('=');DBG_N(s); DBG_C(' ');
 		if(s)
 			flg |= PFLG_CURRENT;
 		else
