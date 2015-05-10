@@ -117,7 +117,7 @@ device/${DEV}/eprom.bin: ${CFG}
 			else \
 				./cfg_write ${CFG} devices.${DEV}.onewire_id x$$SER; \
 			fi; \
-		elif ./cfg ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
+		elif ./cfg ${CFG} .nofollow devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
 			SER=$$(./cfg ${CFG} devices.${DEV}.onewire_id); \
 			./gen_eeprom $@ owid type 0x$$(./cfg ${CFG} codes.onewire.${OW_TYPE}) serial $$SER; \
 		else \

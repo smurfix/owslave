@@ -52,53 +52,58 @@ def get1(ak,k):
                     raise KeyError((ak,k))
 
 #@arm
-def getpath(s,ak,k1,*rest):
-    try:
-        try:
-            v1 = get1(ak,k1)
-            if rest:
-                v1 = getpath(s,v1,*rest)
-            return v1
-        except (KeyError,AttributeError) as e:
-            try: v1 = get1(ak,'_default')
-            except KeyError: raise e
-            if rest:
-                v1 = getpath(s,v1,*rest)
-            return v1
-    except (KeyError,AttributeError) as e:
-        try: v = ak['_ref']
-        except KeyError: raise e
-        return getpath(s,s,*(v.split('.')+[k1]+list(rest)))
-
-def _getkeys(lk,s,ak,*rest):
-    if rest:
-        if isinstance(ak,list):
-            _getkeys(lk,s,ak[int(rest[0])],*rest[1:])
-        else:
-            if rest[0] in ak:
-                _getkeys(lk,s,ak[rest[0]],*rest[1:])
-            if '_default' in ak:
-                _getkeys(lk,s,ak['_default'], *rest[1:])
-    else:
-        for k in ak:
-            lk.add(k)
-    if isinstance(ak,dict) and '_ref' in ak:
-        _getkeys(lk,s,s,*(ak['_ref'].split('.')+list(rest)))
-
 class Cfg(object):
     """\
         Encapsultates looking up items in a config tree.
         """
+    follow = True
+
     def __init__(self, f):
         with open(f) as fd:
             self.data = yaml.load(fd)
 
+    def getpath(self,ak,k1,*rest):
+        try:
+            try:
+                v1 = get1(ak,k1)
+                if rest:
+                    v1 = self.getpath(v1,*rest)
+                return v1
+            except (KeyError,AttributeError) as e:
+                if not self.follow: raise
+                try: v1 = get1(ak,'_default')
+                except KeyError: raise e
+                if rest:
+                    v1 = self.getpath(v1,*rest)
+                return v1
+        except (KeyError,AttributeError) as e:
+            if not self.follow: raise
+            try: v = ak['_ref']
+            except KeyError: raise e
+            return self.getpath(self.data,*(v.split('.')+[k1]+list(rest)))
+
+    def getkeys(self,lk,ak,*rest):
+        if rest:
+            if isinstance(ak,list):
+                self.getkeys(lk,ak[int(rest[0])],*rest[1:])
+            else:
+                if rest[0] in ak:
+                    self.getkeys(lk,ak[rest[0]],*rest[1:])
+                if self.follow and '_default' in ak:
+                    self.getkeys(lk,ak['_default'], *rest[1:])
+        else:
+            for k in ak:
+                lk.add(k)
+        if self.follow and isinstance(ak,dict) and '_ref' in ak:
+            self.getkeys(lk,self.data,*(ak['_ref'].split('.')+list(rest)))
+
+
     def subtree(self,*key):
-        return getpath(self.data,self.data, *key)
+        return self.getpath(self.data, *key)
 
     def keyval(self,*key):
         lk = set()
-        _getkeys(lk,self.data,self.data,*key)
+        self.getkeys(lk,self.data,*key)
         for k in lk:
             if k.startswith('_'):
                 continue
