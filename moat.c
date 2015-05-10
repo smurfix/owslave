@@ -36,6 +36,55 @@
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4
 
+const uint8_t moat_sizes[] __attribute__ ((progmem)) = {
+#include "_nums.h"
+};
+
+uint8_t dummy_read_len_fn(uint8_t chan) { next_idle('y'); return 0; }
+void dummy_read_fn(uint8_t chan, uint8_t *buf) { next_idle('y'); }
+void dummy_read_done_fn(uint8_t chan) {}
+void dummy_write_fn(uint16_t crc) { next_idle('y'); }
+char dummy_alert_check_fn(void) { return 0; }
+void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
+
+#define TC_DEFINE(_s) \
+    read_len_fn read_ ## _s ## _len __attribute__((weak,alias("dummy_read_len_fn"))); \
+    read_fn read_ ## _s __attribute__((weak,alias("dummy_read_fn"))); \
+    read_done_fn read_ ## _s ## _done __attribute__((weak,alias("dummy_read_done_fn"))); \
+    write_fn write_ ## _s __attribute__((weak,alias("dummy_write_fn")));  \
+	ALERT_DEF(_s)
+#ifdef CONDITIONAL_SEARCH
+#define ALERT_DEF(_s) \
+    alert_check_fn alert_ ## _s ## _check __attribute__((weak,alias("dummy_alert_check_fn"))); \
+    alert_fill_fn alert_ ## _s ## _fill __attribute__((weak,alias("dummy_alert_fill_fn")));
+#else
+#define ALERT_DEF(x) // nothing
+#endif
+#include "_def.h"
+#undef ALERT_DEF
+#undef TC_DEFINE
+
+#define TC_DEFINE(_s) \
+{ \
+    &read_ ## _s ## _len, \
+    &read_ ## _s, \
+    &read_ ## _s ## _done, \
+    &write_ ## _s, \
+	ALERT_DEF(_s) \
+},
+#ifdef CONDITIONAL_SEARCH
+#define ALERT_DEF(_s) \
+    &alert_ ## _s ## _check, \
+    &alert_ ## _s ## _fill, 
+#else
+#define ALERT_DEF(x) // nothing
+#endif
+const moat_call_t moat_calls[TC_MAX] __attribute__((progmem)) = {
+#include "_def.h"
+};
+#undef ALERT_DEF
+#undef TC_DEFINE
+
 void end_transmission(uint16_t crc)
 {
 	crc = ~crc;
@@ -56,34 +105,6 @@ void end_transmission(uint16_t crc)
 			next_idle('c');
 		}
 		// DBG_P("CRC OK ");
-	}
-}
-
-static inline uint8_t
-read_config_len(uint8_t chan)
-{
-	cfg_addr_t off;
-	uint8_t len;
-	if (chan)
-		cfg_addr(&off, &len, chan);
-	else // list of known types
-		len = cfg_count(&off);
-	return len;
-}
-
-static inline void
-read_config(uint8_t chan, uint8_t *buf)
-{
-	cfg_addr_t off;
-	uint8_t len;
-	if (chan) {
-		cfg_addr(&off, &len, chan);
-		while(len--)
-			*buf++ = cfg_byte(off++);
-	} else { // list of known types
-		len = cfg_count(&off);
-		while(len--)
-			*buf++ = cfg_type(&off);
 	}
 }
 
@@ -122,7 +143,7 @@ static void moat_read(void)
 	case TC_PORT:    len = read_port_len(chan); break;
 	case TC_PWM:     len = read_pwm_len(chan); break;
 	case TC_COUNT:   len = read_count_len(chan); break;
-	default: DBG_C('?'); return;
+	default: DBG_C('?');DBG_C('-'); DBG_X(dtype); next_idle('-');
 	}
 	xmit_byte(len);
 
@@ -135,7 +156,7 @@ static void moat_read(void)
 	case TC_PORT:    read_port(chan, buf); break;
 	case TC_PWM:     read_pwm(chan, buf); break;
 	case TC_COUNT:   read_count(chan, buf); break;
-	default: DBG_C('?'); return;
+	default: break; // cannot happen
 	}
 
 	while(len--) {
@@ -147,7 +168,7 @@ static void moat_read(void)
 	switch(dtype) {
 	case TC_CONSOLE: read_console_done(chan); break;
 	case TC_PORT:    read_port_done(chan); break;
-	default: DBG_C('?'); return;
+	default: break;
 	}
 }
 
@@ -211,16 +232,21 @@ void init_state(void)
 }
 
 #ifdef CONDITIONAL_SEARCH
+char condition_seen;
 uint8_t condition_met(void) {
-	if(console_alert()) return 1;
-	if(port_alert()) return 1;
-	if(count_alert()) return 1;
-	return 0; // change_seen;
+	return condition_seen;
 }
 #endif
 
 void mainloop(void) {
 	DBG(0x1E);
+#ifdef CONDITIONAL_SEARCH
+	condition_seen = (
+		console_alert() ||
+		port_alert() ||
+		count_alert() ||
+		0);
+#endif
 #if CONSOLE_PING
 	if(timer_done(&t)) {
 		console_putc('!');

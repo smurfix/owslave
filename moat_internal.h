@@ -25,49 +25,48 @@
    */
 void end_transmission(uint16_t crc);
 
-#define _NONE ({next_idle(':'); 0})
-#ifdef N_CONSOLE
-uint8_t read_console_len(uint8_t chan);
-void read_console(uint8_t chan, uint8_t *buf);
-void read_console_done(uint8_t chan);
+typedef uint8_t read_len_fn(uint8_t chan);
+typedef void read_fn(uint8_t chan, uint8_t *buf);
+typedef void read_done_fn(uint8_t chan);
+typedef char alert_check_fn(void);
+typedef void alert_fill_fn(uint8_t *buf);
+typedef void write_fn(uint16_t crc);
+
+#define RDEFS(_s) \
+    read_len_fn read_ ## _s ## _len; \
+    read_fn read_ ## _s; \
+    read_done_fn read_ ## _s ## _done;
+
+#define WDEFS(_s) \
+    write_fn write_ ## _s; 
+
+#ifdef CONDITIONAL_SEARCH
+#define ADEFS(_s) \
+    alert_check_fn alert_ ## _s ## _check; \
+    alert_fill_fn alert_ ## _s ## _fill;
 #else
-#define read_console(c,b) _NONE
-#define read_console_done(crc) do{}while(0)
+#define ADEFS(_s) // nothing
 #endif
 
-#ifdef N_PORT
-uint8_t read_port_len(uint8_t chan);
-void read_port(uint8_t chan, uint8_t *buf);
-void read_port_done(uint8_t chan);
-void write_port(uint16_t crc);
-#else
-#define read_port(c,b) _NONE
-#define read_port_done(crc) do{}while(0)
-#define write_port(crc) do{}while(0)
+typedef struct {
+    read_len_fn *read_len;
+    read_fn *read;
+    read_done_fn *read_done;
+    write_fn *write;
+#ifdef CONDITIONAL_SEARCH
+    alert_check_fn *alert_check;
+    alert_fill_fn *alert_fill;
 #endif
+} moat_call_t;
+extern const moat_call_t moat_calls[TC_MAX] __attribute__ ((progmem));
 
-#ifdef N_PWM
-uint8_t read_pwm_len(uint8_t chan);
-void read_pwm(uint8_t chan, uint8_t *buf);
-void write_pwm(uint16_t crc);
-#else
-#define read_pwm(c,b) _NONE
-#define write_pwm(crc) do{}while(0)
-#endif
+extern const uint8_t moat_sizes[TC_MAX] __attribute__ ((progmem));
 
-#ifdef N_COUNT
-uint8_t read_count_len(uint8_t chan);
-void read_count(uint8_t chan, uint8_t *buf);
-void write_count(uint16_t crc);
-#else
-#define read_count(c,b) _NONE
-#define write_count(crc) do{}while(0)
-#endif
-
-#if defined(N_CONSOLE) && defined(CONSOLE_WRITE)
-void write_console(uint16_t crc);
-#else
-#define write_console(crc) do{}while(0)
-#endif
+#define TC_DEFINE(x) \
+    ADEFS(x) \
+    RDEFS(x) \
+    WDEFS(x)
+#include "_def.h"
+#undef TC_DEFINE
 
 #endif // moat_internal.h
