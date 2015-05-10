@@ -84,7 +84,7 @@ On the other hand, they do discontinue ICs like the DS2423 counter
 for which no known substitute exists.
 
 Therefore, code to emulate specific 1wire slave ICs will only be added to
-this project's repository if the ICs are no longer availabler "not
+this project's repository if the ICs are no longer available or "not
 recommended for new design".
 
 Of course, code that does things which doesn't have a silicon equivalent is
@@ -97,8 +97,15 @@ Therefore, if you add your own code, please also submit
 appropriate changes to the owfs project so that other people 
 can actually talk to your stuff.
 
+The OWFS code for MoaT devices is located at
+git@github.com:M-o-a-T/owfs.git .
+
 NB: OWFS supports conditional search even if the "alarm" directory is
 missing. You can still access it.
+
+## HOWTO
+
+See HOWTO.md
 
 ## TODO
 
@@ -114,6 +121,8 @@ missing. You can still access it.
 ### implementations
 
 * secondary 1wire bus
+* store config in EEPROM
+* over-the-wire config changes
 * over-the-wire firmware update
 * /alarm handling
 * some (esp. 1wire) statistics
