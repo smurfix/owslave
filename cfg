@@ -136,6 +136,52 @@ def main(f,*kk):
                         seen.add(v)
                         print('{'+"{},{}".format(v,flg)+'},',file=f)
 
+                i = 0
+                typecode = {}
+                typecodes = []
+                for a in s.subtree('codes','types'):
+                    if a.startswith('_'):
+                        a = a[1:]
+                    else:
+                        typecode[a]=i
+                    typecodes.append(a)
+                    i += 1
+
+                max_t = 2 # config, alert
+                typecount = [0]*i
+                for a,v in s.keyval('devices',k,'types'):
+                    v = int(v)
+                    if v and max_t < typecode[a]:
+                        max_t = typecode[a]
+                    typecount[typecode[a]] = v
+
+                with open("device/"+k+"/_nums.h","w") as f:
+                    print("""\
+/*
+ * This file is auto-generated. It contains the number of devices.
+ *
+ * Do not edit. Talk to 'moat.cfg' instead.
+ */
+    """.format(k), file=f)
+                    typecount[0] = len(s.subtree('codes','blocks'))
+                    typecount[1] = max_t
+                    for i in range(max_t+1):
+                        a = typecodes[i]
+                        print("{}, // {}".format(typecount[i],a), file=f)
+
+                with open("device/"+k+"/_def.h","w") as f:
+                    print("""\
+/*
+ * This file is auto-generated. It contains the device codes.
+ *
+ * Do not edit. Talk to 'moat.cfg' instead.
+ */
+    """.format(k), file=f)
+                    for i in range(max_t+1):
+                        a = typecodes[i]
+                        print("TC_DEFINE({})".format(a), file=f)
+
+
                 with open("device/"+k+"/dev_config.h","w") as f:
                     print("""\
 #ifndef device_{}_config_h
@@ -148,24 +194,19 @@ def main(f,*kk):
  * Do not edit. Talk to 'moat.cfg' instead.
  */
     """.format(k,k), file=f)
-                    i = 0
-                    typecode = {}
-                    for a in s.subtree('codes','types'):
-                        typecode[a]=i
-                        i += 1
-                    i = 0x70
-                    for a in s.subtree('codes','types_x70'):
-                        typecode[a]=i
-                        print("#define TC_{} {}".format(a.upper(),i), file=f)
-                        i += 1
 
-                    i = 1
+                    i = 0
                     print("typedef enum _ConfigID {", file=f)
                     for a in s.subtree('codes','blocks'):
-                        typecode[a]=i
+                        if a.startswith('_'):
+                            a=a[1:]
+                        else:
+                            typecode[a]=i
                         print("    CfgID_{} = {},".format(a,i), file=f)
                         i += 1
-                    print("} ConfigID;", file=f)
+                    print("""    CfgID_MAX
+#define CFG_MAX CfgID_MAX
+} ConfigID;""", file=f)
 
                     for a,v in s.keyval('devices',k,'defs'):
                         try:
@@ -182,20 +223,21 @@ def main(f,*kk):
                     if ow:
                         print("#define HAVE_ONEWIRE 1", file=f)
 
-                    max_t = -1
                     for a,v in s.keyval('devices',k,'types'):
-                        v = int(v)
+                        if a == "config":
+                            v = len(s.subtree('codes','blocks'))
+                        elif a == "alert":
+                            v = max_t
+                        else:
+                            v = int(v)
                         print("#define TC_{} {}".format(a.upper(),typecode[a]), file=f)
                         if v > 0:
                             print("#define N_{} {}".format(a.upper(),v), file=f)
-
-                            if max_t < typecode[a]:
-                                max_t = typecode[a]
                     print("""\
-#define MAX_TC {}
+#define TC_MAX {}
 
 #endif /* device_{}_config_h */
-    """.format(max_t,k,k), file=f)
+    """.format(max_t+1,k,k), file=f)
 
             elif mode == "type":
                 print(" ".join("{} {}".format(a,v) for a,v in s.keyval('devices',k,'types')))
@@ -223,9 +265,16 @@ def main(f,*kk):
                     files.append(f+'.c')
                 for f in s.subtree('devices',k,'types'):
                     if f[0] == '_': continue
-                    files.append('moat_'+f+'.c')
                     if os.path.exists(f+'.c'):
                         files.append(f+'.c')
+
+                if ow == "moat":
+                    for f in s.subtree('codes','types'):
+                        if f.startswith('_'):
+                            f = f[1:]
+                        f = 'moat_'+f
+                        if os.path.exists(f+'.c'):
+                            files.append(f+'.c')
 
                 print(" ".join(files))
             else:

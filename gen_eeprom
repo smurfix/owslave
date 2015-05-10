@@ -435,14 +435,15 @@ for b in cfg.subtree('codes','types'):
     i += 1
 TypeMax = i
 
-i=1
+i=0
 for b in cfg.subtree('codes','blocks'):
-    BlockName[i] = b
-    BlockID[b] = i
-    bcl = globals()[b.capitalize()+"Block"]
-    BlockStruct[i] = bcl
-    bcl.name = b
-    bcl.id = i
+    if not b.startswith('_'):
+        BlockName[i] = b
+        BlockID[b] = i
+        bcl = globals()[b.capitalize()+"Block"]
+        BlockStruct[i] = bcl
+        bcl.name = b
+        bcl.id = i
     i += 1
 
 if __name__ == "__main__":
