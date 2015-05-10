@@ -100,4 +100,28 @@ can actually talk to your stuff.
 NB: OWFS supports conditional search even if the "alarm" directory is
 missing. You can still access it.
 
+## TODO
+
+### bugs
+
+* make sure that an idle 1wire never results in a hung device
+
+### optimizations
+
+* interrupt-based port monitoring
+* hardware-based PWM
+
+### implementations
+
+* secondary 1wire bus
+* over-the-wire firmware update
+* /alarm handling
+* some (esp. 1wire) statistics
+* ADC
+* PID
+* SMOKE
+* I2C interface
+* THERMO via I2C
+* HYGRO via I2C
+* RF12 instead of 1wire
 
