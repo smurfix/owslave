@@ -92,8 +92,7 @@ void write_pwm(uint16_t crc)
 	uint8_t len;
 	pwm_t *t;
 	uint8_t buf[4];
-	uint16_t a,b;
-	char startup;
+	uint16_t a,b,last;
 
 	chan = recv_byte_in();
 	recv_byte();
@@ -109,7 +108,7 @@ void write_pwm(uint16_t crc)
 
 	crc = recv_bytes_crc(crc,buf,len);
 	end_transmission(crc);
-	startup = !(t->is_on ? t->t_on : t->t_off);
+	last = (t->is_on ? t->t_on : t->t_off);
 	if (len == 2) {
 		a = buf[0];
 		a |= a<<8;
@@ -121,8 +120,12 @@ void write_pwm(uint16_t crc)
 	}
 	t->t_on = a;
 	t->t_off = b;
-	if(startup)
+	if(!last)
 		timer_start(1, &t->timer);
+	else if(last > (t->is_on ? t->t_on : t->t_off))
+		timer_start((t->is_on ? t->t_on : t->t_off), &t->timer);
+
+	
 }
 
 #endif
