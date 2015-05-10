@@ -24,10 +24,16 @@
 
 #ifdef N_PORT
 
-void read_port(uint16_t crc)
+uint8_t read_port_len(uint8_t chan)
 {
-	uint8_t chan;
-	chan = recv_byte_in();
+	if(chan)
+		return 1;
+	else
+		return (N_PORT+7)>>3;
+}
+
+void read_port(uint8_t chan, uint8_t *buf)
+{
 	port_t *portp;
 	if (chan) { // one input: send flags, mark as scanned
 		if (chan > N_PORT)
@@ -36,41 +42,29 @@ void read_port(uint16_t crc)
 		_P_VARS(portp)
 
 		port_pre_send(portp);
-
-		xmit_byte(1);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,1);
-		xmit_byte(flg);
-		crc = crc16(crc,flg);
+		buf[0] = flg;
 	} else { // all inputs: send bits
 		uint8_t b=0,i,mask=1;
-		uint8_t len;
 		portp = ports;
-		len = (N_PORT+7)>>3;
-		xmit_byte(len);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,len);
 
 		for(i=0;i<N_PORT;i++) {
 			if(portp->flags & PFLG_CURRENT)
 				b |= mask;
 			mask <<= 1;
 			if (!mask) { // byte is full
-				xmit_byte(b);
-				crc = crc16(crc,b);
+				*buf++ = b;
 				b=0; mask=1;
 			}
 			portp++;
 		}
-		if (mask != 1) { // residue
-			xmit_byte(b);
-			crc = crc16(crc,b);
-		}
+		if (mask != 1) // residue
+			*buf = b;
 	}
-	end_transmission(crc);
-	if (chan) {
-		port_post_send(portp);
-	}
+}
+
+void read_port_done(uint8_t chan) {
+	if (chan)
+		port_post_send(&ports[chan-1]);
 }
 
 void write_port(uint16_t crc)

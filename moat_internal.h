@@ -18,38 +18,49 @@
 
 #include "moat.h"
 
+#define MAXBUF 32
+
 /* transmit the CRC, check that its complement is received correctly.
    If it is not, this will not return to the caller.
    */
 void end_transmission(uint16_t crc);
 
+#define _NONE ({next_idle(':'); 0})
 #ifdef N_CONSOLE
-void read_console(uint16_t crc);
+uint8_t read_console_len(uint8_t chan);
+void read_console(uint8_t chan, uint8_t *buf);
+void read_console_done(uint8_t chan);
 #else
-#define read_console(crc) do{}while(0)
+#define read_console(c,b) _NONE
+#define read_console_done(crc) do{}while(0)
 #endif
 
 #ifdef N_PORT
-void read_port(uint16_t crc);
+uint8_t read_port_len(uint8_t chan);
+void read_port(uint8_t chan, uint8_t *buf);
+void read_port_done(uint8_t chan);
 void write_port(uint16_t crc);
 #else
-#define read_port(crc) do{}while(0)
+#define read_port(c,b) _NONE
+#define read_port_done(crc) do{}while(0)
 #define write_port(crc) do{}while(0)
 #endif
 
 #ifdef N_PWM
-void read_pwm(uint16_t crc);
+uint8_t read_pwm_len(uint8_t chan);
+void read_pwm(uint8_t chan, uint8_t *buf);
 void write_pwm(uint16_t crc);
 #else
-#define read_pwm(crc) do{}while(0)
+#define read_pwm(c,b) _NONE
 #define write_pwm(crc) do{}while(0)
 #endif
 
 #ifdef N_COUNT
-void read_count(uint16_t crc);
+uint8_t read_count_len(uint8_t chan);
+void read_count(uint8_t chan, uint8_t *buf);
 void write_count(uint16_t crc);
 #else
-#define read_count(crc) do{}while(0)
+#define read_count(c,b) _NONE
 #define write_count(crc) do{}while(0)
 #endif
 

@@ -25,44 +25,38 @@
 #include "timer.h"
 
 #ifdef N_PWM
+#define BLEN N_PWM*2+(N_PWM+7)/8
 
-void read_pwm(uint16_t crc)
+uint8_t read_pwm_len(uint8_t chan)
 {
-	uint8_t chan;
+	if(chan)
+		return 7;
+	else
+		return BLEN;
+}
+void read_pwm(uint8_t chan, uint8_t *buf)
+{
 	pwm_t *t;
 	port_t *p;
 
-	chan = recv_byte_in();
 	if (chan) { // one PWM: send port state, remaining time, timer values
-		uint8_t buf[7], *bp=buf;
 		uint16_t tm;
 		if (chan > N_PWM)
 			next_idle('p');
 		t = &pwms[chan-1];
 		p = &ports[t->port-1];
-
-		xmit_byte(7);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,7);
-
-		*bp++ = p->flags;
 		tm=timer_remaining(&t->timer);
-		*bp++ = tm>>8;
-		*bp++ = tm;
-		*bp++ = t->t_on>>8;
-		*bp++ = t->t_on;
-		*bp++ = t->t_off>>8;
-		*bp++ = t->t_off;
-		crc = xmit_bytes_crc(crc,buf,7);
+
+		*buf++ = p->flags;
+		*buf++ = tm>>8;
+		*buf++ = tm;
+		*buf++ = t->t_on>>8;
+		*buf++ = t->t_on;
+		*buf++ = t->t_off>>8;
+		*buf++ = t->t_off;
 	} else { // all PWMs: send port state, time remaining
-#define BLEN N_PWM*2+(N_PWM+7)/8
-		uint8_t buf[BLEN],*bp=buf;
 		uint8_t i;
 		t = pwms;
-
-		xmit_byte(BLEN);
-		crc = crc16(crc,0);
-		crc = crc16(crc,BLEN);
 
 		for(i=0;i<N_PWM;i++,t++) {
 			uint16_t tm;
@@ -75,15 +69,13 @@ void read_pwm(uint16_t crc)
 						v |= m;
 					m <<= 1;
 				}
-				*bp++ = v;
+				*buf++ = v;
 			}
 			tm=timer_remaining(&t->timer);
-			*bp++ = tm>>8;
-			*bp++ = tm;
+			*buf++ = tm>>8;
+			*buf++ = tm;
 		}
-		crc = xmit_bytes_crc(crc, buf,BLEN);
 	}
-	end_transmission(crc);
 }
 
 void write_pwm(uint16_t crc)

@@ -25,57 +25,50 @@
 #include "timer.h"
 
 #ifdef N_COUNT
+#define BLEN N_COUNT*sizeof(t->count)
 
-void read_count(uint16_t crc)
+uint8_t read_count_len(uint8_t chan)
 {
-	uint8_t chan;
+	count_t *t;
+	if(chan)
+		return sizeof(t->count);
+	else
+		return BLEN;
+}
+
+void read_count(uint8_t chan, uint8_t *buf)
+{
 	count_t *t;
 
-	chan = recv_byte_in();
 	if (chan) { // one COUNT: send value
-		uint8_t buf[sizeof(t->count)], *bp=buf;
 		if (chan > N_COUNT)
 			next_idle('p');
 		t = &counts[chan-1];
 
-		xmit_byte(sizeof(t->count));
-		crc = crc16(crc,chan);
-		crc = crc16(crc,sizeof(t->count));
-
 		cli();
 		switch(sizeof(t->count)) {
-		case 4: *bp++ = t->count>>24;
-		case 3: *bp++ = t->count>>16;
-		case 2: *bp++ = t->count>>8;
-		case 1: *bp++ = t->count;
+		case 4: *buf++ = t->count>>24;
+		case 3: *buf++ = t->count>>16;
+		case 2: *buf++ = t->count>>8;
+		case 1: *buf++ = t->count;
 		}
 		t->flags &=~ CF_IS_ALERT;
 		sei();
-
-		crc = xmit_bytes_crc(crc,buf,sizeof(t->count));
-	} else { // all COUNTs: send port state, time remaining
-#define BLEN N_COUNT*sizeof(t->count)
-		uint8_t buf[BLEN],*bp=buf;
+	} else { // all COUNTs
 		uint8_t i;
 		t = counts;
-
-		xmit_byte(BLEN);
-		crc = crc16(crc,0);
-		crc = crc16(crc,BLEN);
 
 		for(i=0;i<N_COUNT;i++,t++) {
 			cli();
 			switch(sizeof(t->count)) {
-			case 4: *bp++ = t->count>>24;
-			case 3: *bp++ = t->count>>16;
-			case 2: *bp++ = t->count>>8;
-			case 1: *bp++ = t->count;
+			case 4: *buf++ = t->count>>24;
+			case 3: *buf++ = t->count>>16;
+			case 2: *buf++ = t->count>>8;
+			case 1: *buf++ = t->count;
 			}
 			sei();
 		}
-		crc = xmit_bytes_crc(crc, buf,BLEN);
 	}
-	end_transmission(crc);
 }
 
 #endif

@@ -24,48 +24,39 @@
 
 #ifdef N_CONSOLE
 
-#define MAXBUF 32
-void read_console(uint16_t crc)
+static uint8_t sent;
+uint8_t read_console_len(uint8_t chan)
 {
-	uint8_t chan;
-	uint8_t len, sent=0;
-	chan = recv_byte_in();
-	if (chan) {
-		uint8_t buf[MAXBUF];
-
-		if (chan != 1)
-			next_idle('W');
-		len = console_buf_len();
+	uint8_t len;
+	len = console_buf_len();
+	if(chan == 1) {
 		if (len>MAXBUF)
 			len=MAXBUF;
-		xmit_byte(len);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,len);
-		len = console_buf_read(buf,len);
-		while(len) {
-			uint8_t b = buf[sent++];
-			len--;
-			xmit_byte(b);
-			crc = crc16(crc,b);
-		}
+	} else if (!chan) {
+		if (len) len = 2;
+		else len = 0;
+	} else
+		next_idle('W');
+	sent = len;
+	return len;
+	
+}
+void read_console(uint8_t chan, uint8_t *buf)
+{
+	if (chan) {
+		if (chan != 1)
+			next_idle('W');
+		console_buf_read(buf,sent);
 	} else { // list of channels and their length
-		len = console_buf_len();
-		if (len) {
-			xmit_byte(2);
-			crc = crc16(crc,chan);
-			crc = crc16(crc,2);
-			xmit_byte(1);
-			crc = crc16(crc,1);
-			xmit_byte(len);
-			crc = crc16(crc,len);
-		} else {
-			xmit_byte(0);
-			crc = crc16(crc,chan);
-			crc = crc16(crc,0);
-		}
+		uint8_t len = console_buf_len();
+		buf[0] = 1;
+		buf[1] = len;
 	}
-	end_transmission(crc);
-	if (sent)
+}
+
+void read_console_done(uint8_t chan)
+{
+	if (chan)
 		console_buf_done(sent);
 }
 

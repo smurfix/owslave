@@ -59,45 +59,41 @@ void end_transmission(uint16_t crc)
 	}
 }
 
-static inline void
-read_config(uint16_t crc)
+static inline uint8_t
+read_config_len(uint8_t chan)
 {
-	uint8_t chan;
 	cfg_addr_t off;
 	uint8_t len;
-	chan = recv_byte_in();
+	if (chan)
+		cfg_addr(&off, &len, chan);
+	else // list of known types
+		len = cfg_count(&off);
+	return len;
+}
+
+static inline void
+read_config(uint8_t chan, uint8_t *buf)
+{
+	cfg_addr_t off;
+	uint8_t len;
 	if (chan) {
 		cfg_addr(&off, &len, chan);
-		//DBG_C('c'); DBG_X(chan);
-		if (off == 0) len=0;
-		xmit_byte(len);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,len);
-		while(len) {
-			uint8_t b = cfg_byte(off++);
-			len--;
-			xmit_byte(b);
-			crc = crc16(crc,b);
-		}
+		while(len--)
+			*buf++ = cfg_byte(off++);
 	} else { // list of known types
 		len = cfg_count(&off);
-		xmit_byte(len);
-		crc = crc16(crc,chan);
-		crc = crc16(crc,len);
-		while(len) {
-			uint8_t b = cfg_type(&off);
-			len--;
-			xmit_byte(b);
-			crc = crc16(crc,b);
-		}
+		while(len--)
+			*buf++ = cfg_type(&off);
 	}
-	end_transmission(crc);
 }
 
 static void moat_read(void)
 {
 	uint16_t crc = 0;
-	uint8_t dtype;
+	uint8_t dtype,chan;
+	static uint8_t buf[MAXBUF];
+	uint8_t len;
+	uint8_t *bp=buf;
 
 	/*
 	 Implement reading data. We read whatever necessary, write the length,
@@ -116,16 +112,41 @@ static void moat_read(void)
 	recv_byte();
 	crc = crc16(crc,_1W_READ_GENERIC);
 	dtype = recv_byte_in();
-	//DBG_C('T'); DBG_X(dtype);
 	recv_byte();
 	crc = crc16(crc,dtype);
+	chan = recv_byte_in();
 
 	switch(dtype) {
-	case TC_CONFIG: read_config(crc); break;
-	case TC_CONSOLE: read_console(crc); break;
-	case TC_PORT: read_port(crc); break;
-	case TC_PWM: read_pwm(crc); break;
-	case TC_COUNT: read_count(crc); break;
+	case TC_CONFIG:  len = read_config_len(chan); break;
+	case TC_CONSOLE: len = read_console_len(chan); break;
+	case TC_PORT:    len = read_port_len(chan); break;
+	case TC_PWM:     len = read_pwm_len(chan); break;
+	case TC_COUNT:   len = read_count_len(chan); break;
+	default: DBG_C('?'); return;
+	}
+	xmit_byte(len);
+
+	crc = crc16(crc,chan);
+	crc = crc16(crc,len);
+
+	switch(dtype) {
+	case TC_CONFIG:  read_config(chan, buf); break;
+	case TC_CONSOLE: read_console(chan, buf); break;
+	case TC_PORT:    read_port(chan, buf); break;
+	case TC_PWM:     read_pwm(chan, buf); break;
+	case TC_COUNT:   read_count(chan, buf); break;
+	default: DBG_C('?'); return;
+	}
+
+	while(len--) {
+		xmit_byte(*bp);
+		crc = crc16(crc,*bp);
+		bp++;
+	}
+	end_transmission(crc);
+	switch(dtype) {
+	case TC_CONSOLE: read_console_done(chan); break;
+	case TC_PORT:    read_port_done(chan); break;
 	default: DBG_C('?'); return;
 	}
 }
@@ -202,7 +223,7 @@ void mainloop(void) {
 	DBG(0x1E);
 #if CONSOLE_PING
 	if(timer_done(&t)) {
-		DBG_C('!');
+		console_putc('!');
 		timer_start(CONSOLE_PING,&t);
 	}
 #endif
