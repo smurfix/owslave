@@ -77,7 +77,8 @@ static inline char adc_check(adc_t *pp)
 	default:
 		if(!(ADCSRA & (1<<ADIF)))
 			break;
-		val = ADC;
+		val = ADCL;
+		val |= ADCH<<8;
 		val |= val>>10; // fill the lower bits, so that max=0xFFFF
 		pp->value = val;
 		if (pp->flags & ADC_ALERT) {
@@ -116,6 +117,8 @@ void adc_init(void)
 
 	for(i=0;i<N_ADC;i++) {
 		pp->flags &=~ADC_IS_ALERT;
+		pp->lower = 0xFFFF;
+		pp->upper = 0x0000;
 		pp++;
 	}
 }
