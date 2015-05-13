@@ -199,6 +199,7 @@ void moat_write(void) {
 	case TC_CONSOLE: write_console(crc); break;
 	case TC_PORT: write_port(crc); break;
 	case TC_PWM: write_pwm(crc); break;
+	case TC_ADC: write_adc(crc); break;
 	default: DBG_C('?'); return;
 	}
 }

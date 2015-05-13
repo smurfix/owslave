@@ -82,7 +82,8 @@ void write_adc(uint16_t crc)
 
 	len = recv_byte_in();
 	recv_byte();
-	if (len != 2 && len != 4) return;
+	if (len != 2 && len != 4)
+		next_idle('a');
 	crc = crc16(crc,len);
 
 	x = recv_byte_in();
@@ -109,7 +110,6 @@ void write_adc(uint16_t crc)
 		x = recv_byte_in();
 		crc = crc16(crc,x);
 		upper |= x;
-
 	}
 	end_transmission(crc);
 
