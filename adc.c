@@ -116,6 +116,8 @@ void adc_init(void)
 
 	for(i=0;i<N_ADC;i++) {
 		pp->flags &=~ADC_IS_ALERT;
+		pp->lower = 0xFFFF;
+		pp->upper = 0x0000;
 		pp++;
 	}
 }
