@@ -19,6 +19,13 @@ PFLG_ALERT=  (1<<2)
 PFLG_ALT  =  (1<<3)
 PFLG_ALT2 =  (1<<4)
 
+ADC_VBG=1
+ADC_VGND=2
+ADC_VTEMP=3
+ADC_ALT=(1<<3)
+ADC_REF=(1<<4)
+ADC_ALERT=(1<<6)
+
 follow=True
 xstr = re.compile("^x([0-9a-fA-F]{2}){1,}$")
 
@@ -89,6 +96,43 @@ def main(f,*kk):
                             elif vv == "*": flg|=PFLG_ALERT ## participate in alerting
                             else: assert 0,vv
                         print('{'+"{},{}".format(p,flg)+'},',file=f)
+
+                with open("device/"+k+"/_adc.h","w") as f:
+                    print("""\
+/*
+ * This file is auto-generated. It contains the list of analog inputs for
+ * the device "{}".
+ *
+ * Do not edit. Talk to 'moat.cfg' instead.
+ */
+    """.format(k), file=f)
+                    for i in range(1, int(s.subtree('devices',k,'types','adc'))+1):
+                        v = s.subtree('devices',k,'adc',str(i))
+                        flg=0
+                        p=0
+                        assert len(v)>=1 and len(v) <=3
+                        for vv in v:
+                            if vv >= '0' and vv <= '7':
+                                assert not (flg&0xF)
+                                flg |= ord(vv)-ord("0")
+                                p=1
+                            elif vv == "R":
+                                assert not p
+                                flg|=ADC_ALT|ADC_VBG
+                                p=1
+                            elif vv == "G":
+                                assert not p
+                                flg|=ADC_ALT|ADC_VGND
+                                p=1
+                            elif vv == "T":
+                                assert not p
+                                flg|=ADC_ALT|ADC_VTEMP
+                                p=1
+                            elif vv == "-": flg|=ADC_REF
+                            elif vv == "*": flg|=ADC_ALERT ## participate in alerting
+                            else: assert 0,vv
+                        assert p
+                        print('{'+"{},".format(flg)+'},',file=f)
 
                 with open("device/"+k+"/_pwm.h","w") as f:
                     print("""\

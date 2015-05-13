@@ -4,7 +4,7 @@
 #include "dev_data.h"
 #include "features.h"
 
-#if defined(HAVE_TIMER)
+#ifdef HAVE_TIMER
 
 typedef struct {
 	int16_t last;
@@ -16,6 +16,8 @@ void timer_start(int16_t sec, timer_t *t);
 int16_t timer_remaining(timer_t *t);
 
 void timer_reset(timer_t *t);
+
+int16_t timer_counter(void);
 
 /**
  * The point of 'reset_delta' is: assume every(20,&t) controls a 50% PWM output

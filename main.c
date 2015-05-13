@@ -25,6 +25,7 @@
 #include "console.h"
 #include "port.h"
 #include "pwm.h"
+#include "adc.h"
 #include "count.h"
 #include "timer.h"
 #include "dev_data.h"
@@ -67,6 +68,7 @@ init_all(void)
         port_init();
         timer_init();
         pwm_init();
+        adc_init();
         count_init();
 	init_state();
 }
@@ -82,6 +84,7 @@ poll_all(void)
     onewire_poll();
     port_poll();
     pwm_poll();
+    adc_poll();
     count_poll();
 #if defined(UART_DEBUG) && defined(N_CONSOLE)
     c = uart_getc();

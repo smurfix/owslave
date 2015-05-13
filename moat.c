@@ -143,6 +143,7 @@ static void moat_read(void)
 	case TC_PORT:    len = read_port_len(chan); break;
 	case TC_PWM:     len = read_pwm_len(chan); break;
 	case TC_COUNT:   len = read_count_len(chan); break;
+	case TC_ADC:     len = read_adc_len(chan); break;
 	default: DBG_C('?');DBG_C('-'); DBG_X(dtype); next_idle('-');
 	}
 	xmit_byte(len);
@@ -156,6 +157,7 @@ static void moat_read(void)
 	case TC_PORT:    read_port(chan, buf); break;
 	case TC_PWM:     read_pwm(chan, buf); break;
 	case TC_COUNT:   read_count(chan, buf); break;
+	case TC_ADC:     read_adc(chan, buf); break;
 	default: break; // cannot happen
 	}
 
