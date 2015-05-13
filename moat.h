@@ -51,6 +51,9 @@ void do_command(uint8_t cmd);
 /* 'bits' says how many 1wire bit times are left. */
 void update_idle(uint8_t bits);
 
+void moat_init(void);
+void moat_poll(void);
+
 /* Implement if you need it. */
 #ifdef CONDITIONAL_SEARCH
 uint8_t condition_met(void);

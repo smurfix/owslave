@@ -94,9 +94,10 @@ void port_check(port_t *pp) {
 }
 
 /* Each mainloop pass checks one port. */
+uint8_t port_changed_cache;
 static uint8_t poll_next = 0;
 static uint8_t max_seen = 0;
-void port_poll(void)
+void poll_port(void)
 {
 	port_t *pp;
 	uint8_t i = poll_next;
@@ -114,7 +115,7 @@ void port_poll(void)
 	poll_next=i;
 }
 
-void port_init(void)
+void init_port(void)
 {
 	port_t *pp = ports;
 	uint8_t i;

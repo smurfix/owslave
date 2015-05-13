@@ -42,6 +42,8 @@ adc_t adcs[] = {
 static uint8_t poll_this = 0;
 static uint8_t poll_step = 0;
 static uint8_t max_seen = 0;
+/* Number of highest adc that has a change +1  */
+uint8_t adc_changed_cache;
 
 static inline char adc_check(adc_t *pp)
 {
@@ -91,7 +93,7 @@ static inline char adc_check(adc_t *pp)
 	return 0;
 }
 
-void adc_poll(void)
+void poll_adc(void)
 {
 	uint8_t i = poll_this;
 	adc_t *pp;
@@ -110,7 +112,7 @@ void adc_poll(void)
 	poll_this=i;
 }
 
-void adc_init(void)
+void init_adc(void)
 {
 	adc_t *pp = adcs;
 	uint8_t i;

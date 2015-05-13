@@ -32,13 +32,8 @@ static inline char count_alert(void) {
 #define count_alert() 0
 #endif
 
-void count_init(void);
-void count_poll(void);
-
 #else // no i/o
 
-#define count_init() do {} while(0)
-#define count_poll() do {} while(0)
 #define count_alert() 0
 
 #endif // any inputs or outputs at all

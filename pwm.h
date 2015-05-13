@@ -16,13 +16,7 @@ typedef struct {
 
 extern pwm_t pwms[];
 
-void pwm_init(void);
-void pwm_poll(void);
-
 #else // no i/o
-
-#define pwm_init() do {} while(0)
-#define pwm_poll() do {} while(0)
 
 #endif // any inputs or outputs at all
 #endif // pwm_h

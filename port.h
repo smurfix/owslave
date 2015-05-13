@@ -76,7 +76,7 @@ static inline char port_changed(port_t *portp) {
 }
 
 /* Number of highest port that has a change +1  */
-EXTERN uint8_t port_changed_cache;
+extern uint8_t port_changed_cache;
 
 /* Note whether a port has changed */
 static inline char port_has_changed(port_t *portp) {
@@ -108,9 +108,6 @@ static inline void port_post_send (port_t *portp) {
 /* Called after reporting changes, clears PFLG_POLL when PFLG_CHANGED is off */
 void poll_clear(void);
 
-void port_init(void);
-void port_poll(void);
-
 #ifdef CONDITIONAL_SEARCH
 static inline char port_alert(void) {
 	if (port_changed_cache)
@@ -124,8 +121,6 @@ static inline char port_alert(void) {
 
 #else // no i/o
 
-#define port_init() do {} while(0)
-#define port_poll() do {} while(0)
 #define port_alert() 0
 
 #endif // any inputs or outputs at all

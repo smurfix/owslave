@@ -24,13 +24,9 @@ extern adc_t adcs[];
 #define ADC_ALERT    (1<<6)  // trigger an alarm when stepping over boundary
 #define ADC_IS_ALERT (1<<7)  // alarm triggered?
 
-void adc_init(void);
-void adc_poll(void);
-
 #ifdef CONDITIONAL_SEARCH
-/* Number of highest adc that has a change +1  */
-EXTERN uint8_t adc_changed_cache;
 
+extern uint8_t adc_changed_cache;
 static inline char adc_alert(void) {
 	if (adc_changed_cache)
 		return 1;
@@ -43,9 +39,7 @@ static inline char adc_alert(void) {
 
 #else // no i/o
 
-#define adc_init() do {} while(0)
-#define adc_poll() do {} while(0)
-#define adc_alert() 0
+#define alert_adc() 0
 
 #endif // any inputs or outputs at all
 #endif // adc_h

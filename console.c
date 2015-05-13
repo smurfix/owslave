@@ -42,6 +42,7 @@ static volatile unsigned char console_head;
 static volatile unsigned char console_tail;
 #endif
 
+// initialized early, thus not called init_console()
 void console_init(void)
 {
 	console_head = 0;

@@ -25,6 +25,8 @@
    */
 void end_transmission(uint16_t crc);
 
+typedef void init_fn(void);
+typedef void poll_fn(void);
 typedef uint8_t read_len_fn(uint8_t chan);
 typedef void read_fn(uint8_t chan, uint8_t *buf);
 typedef void read_done_fn(uint8_t chan);
@@ -32,12 +34,12 @@ typedef char alert_check_fn(void);
 typedef void alert_fill_fn(uint8_t *buf);
 typedef void write_fn(uint16_t crc);
 
-#define RDEFS(_s) \
+#define DEFS(_s) \
+    init_fn init_ ## _s; \
+    poll_fn poll_ ## _s; \
     read_len_fn read_ ## _s ## _len; \
     read_fn read_ ## _s; \
-    read_done_fn read_ ## _s ## _done;
-
-#define WDEFS(_s) \
+    read_done_fn read_ ## _s ## _done; \
     write_fn write_ ## _s; 
 
 #ifdef CONDITIONAL_SEARCH
@@ -49,6 +51,8 @@ typedef void write_fn(uint16_t crc);
 #endif
 
 typedef struct {
+    init_fn *init;
+    poll_fn *poll;
     read_len_fn *read_len;
     read_fn *read;
     read_done_fn *read_done;
@@ -64,8 +68,7 @@ extern const uint8_t moat_sizes[TC_MAX] __attribute__ ((progmem));
 
 #define TC_DEFINE(x) \
     ADEFS(x) \
-    RDEFS(x) \
-    WDEFS(x)
+    DEFS(x)
 #include "_def.h"
 #undef TC_DEFINE
 

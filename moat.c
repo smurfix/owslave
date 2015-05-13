@@ -40,6 +40,8 @@ const uint8_t moat_sizes[] __attribute__ ((progmem)) = {
 #include "_nums.h"
 };
 
+void dummy_init_fn(void) {}
+void dummy_poll_fn(void) {}
 uint8_t dummy_read_len_fn(uint8_t chan) { next_idle('y'); return 0; }
 void dummy_read_fn(uint8_t chan, uint8_t *buf) { next_idle('y'); }
 void dummy_read_done_fn(uint8_t chan) {}
@@ -48,6 +50,8 @@ char dummy_alert_check_fn(void) { return 0; }
 void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
 
 #define TC_DEFINE(_s) \
+    init_fn init_ ## _s __attribute__((weak,alias("dummy_init_fn"))); \
+    poll_fn poll_ ## _s __attribute__((weak,alias("dummy_poll_fn"))); \
     read_len_fn read_ ## _s ## _len __attribute__((weak,alias("dummy_read_len_fn"))); \
     read_fn read_ ## _s __attribute__((weak,alias("dummy_read_fn"))); \
     read_done_fn read_ ## _s ## _done __attribute__((weak,alias("dummy_read_done_fn"))); \
@@ -66,6 +70,8 @@ void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
 
 #define TC_DEFINE(_s) \
 { \
+    &init_ ## _s, \
+    &poll_ ## _s, \
     &read_ ## _s ## _len, \
     &read_ ## _s, \
     &read_ ## _s ## _done, \
@@ -198,6 +204,28 @@ static void moat_write(void)
 	mc = &moat_calls[dtype];
 	wf = pgm_read_ptr_near(&mc->write);
 	wf(crc);
+}
+
+void moat_poll(void)
+{
+	uint8_t i;
+	const moat_call_t *mc = moat_calls;
+
+	for(i=0;i<TC_MAX;i++,mc++) {
+		poll_fn *pf = pgm_read_ptr_near(&mc->poll);
+		pf();
+	}
+}
+
+void moat_init(void)
+{
+	uint8_t i;
+	const moat_call_t *mc = moat_calls;
+
+	for(i=0;i<TC_MAX;i++,mc++) {
+		init_fn *pf = pgm_read_ptr_near(&mc->init);
+		pf();
+	}
 }
 
 void do_command(uint8_t cmd)

@@ -13,7 +13,7 @@
 #error "I only know how to do a single console"
 #endif
 
-extern void console_init(void);
+void console_init(void);
 extern void console_putc(unsigned char data);
 
 extern void console_puts(const char *s);

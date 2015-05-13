@@ -36,7 +36,7 @@ pwm_t pwms[] = {
 #include "_pwm.h"
 };
 
-void pwm_poll(void)
+void poll_pwm(void)
 {
 	uint8_t i;
 	pwm_t *t = pwms;
@@ -57,7 +57,7 @@ void pwm_poll(void)
 	}
 }
 
-void pwm_init(void)
+void init_pwm(void)
 {
 	pwm_t *t = pwms;
 	port_t *p;

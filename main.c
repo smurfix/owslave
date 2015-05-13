@@ -23,10 +23,6 @@
 #include "onewire.h"
 #include "uart.h"
 #include "console.h"
-#include "port.h"
-#include "pwm.h"
-#include "adc.h"
-#include "count.h"
 #include "timer.h"
 #include "dev_data.h"
 #include "debug.h"
@@ -62,15 +58,12 @@ init_mcu(void)
 static inline void
 init_all(void)
 {
-        console_init();
-	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
-	onewire_init();
-        port_init();
-        timer_init();
-        pwm_init();
-        adc_init();
-        count_init();
-	init_state();
+    console_init();
+    uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
+    onewire_init();
+    timer_init();
+    moat_init();
+    init_state();
 }
 
 inline void
@@ -82,10 +75,7 @@ poll_all(void)
     timer_poll();
     uart_poll();
     onewire_poll();
-    port_poll();
-    pwm_poll();
-    adc_poll();
-    count_poll();
+    moat_poll();
 #if defined(UART_DEBUG) && defined(N_CONSOLE)
     c = uart_getc();
     if(c <= 0xFF)

@@ -38,7 +38,7 @@ count_t counts[] = {
 
 static uint8_t poll_next = 0;
 static uint8_t max_seen = 0;
-void count_poll(void)
+void poll_count(void)
 {
 	uint8_t i = poll_next;
 	count_t *t;
@@ -69,7 +69,7 @@ void count_poll(void)
 	poll_next = i;
 }
 
-void count_init(void)
+void init_count(void)
 {
 	count_t *t = counts;
 	uint8_t i;
