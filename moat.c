@@ -108,6 +108,8 @@ void end_transmission(uint16_t crc)
 	}
 }
 
+// Inlining this code triggers a compiler bug
+static void moat_read(void) __attribute__((noinline));
 static void moat_read(void)
 {
 	uint16_t crc = 0;
@@ -115,6 +117,10 @@ static void moat_read(void)
 	static uint8_t buf[MAXBUF];
 	uint8_t len;
 	uint8_t *bp=buf;
+	const moat_call_t *mc;
+	read_len_fn *rlf;
+	read_fn *rf;
+	read_done_fn *rdf;
 
 	/*
 	 Implement reading data. We read whatever necessary, write the length,
@@ -136,30 +142,20 @@ static void moat_read(void)
 	recv_byte();
 	crc = crc16(crc,dtype);
 	chan = recv_byte_in();
+	//DBG_C('0'+dtype);
+	if (dtype >= TC_MAX)
+		next_idle('p');
+	mc = &moat_calls[dtype];
 
-	switch(dtype) {
-	case TC_CONFIG:  len = read_config_len(chan); break;
-	case TC_CONSOLE: len = read_console_len(chan); break;
-	case TC_PORT:    len = read_port_len(chan); break;
-	case TC_PWM:     len = read_pwm_len(chan); break;
-	case TC_COUNT:   len = read_count_len(chan); break;
-	case TC_ADC:     len = read_adc_len(chan); break;
-	default: DBG_C('?');DBG_C('-'); DBG_X(dtype); next_idle('-');
-	}
+	rlf = pgm_read_ptr_near(&mc->read_len);
+	len = rlf(chan);
 	xmit_byte(len);
 
 	crc = crc16(crc,chan);
 	crc = crc16(crc,len);
 
-	switch(dtype) {
-	case TC_CONFIG:  read_config(chan, buf); break;
-	case TC_CONSOLE: read_console(chan, buf); break;
-	case TC_PORT:    read_port(chan, buf); break;
-	case TC_PWM:     read_pwm(chan, buf); break;
-	case TC_COUNT:   read_count(chan, buf); break;
-	case TC_ADC:     read_adc(chan, buf); break;
-	default: break; // cannot happen
-	}
+	rf = pgm_read_ptr_near(&mc->read);
+	rf(chan, buf);
 
 	while(len--) {
 		xmit_byte(*bp);
@@ -167,16 +163,18 @@ static void moat_read(void)
 		bp++;
 	}
 	end_transmission(crc);
-	switch(dtype) {
-	case TC_CONSOLE: read_console_done(chan); break;
-	case TC_PORT:    read_port_done(chan); break;
-	default: break;
-	}
+
+	rdf = pgm_read_ptr_near(&mc->read_done);
+	rdf(chan);
 }
 
-void moat_write(void) {
+static void moat_write(void) __attribute__((noinline));
+static void moat_write(void)
+{
 	uint16_t crc = 0;
 	uint8_t dtype;
+	const moat_call_t *mc;
+	write_fn *wf;
 
 	/*
 	 Implement reading data. We read whatever necessary, read the length,
@@ -193,15 +191,13 @@ void moat_write(void) {
 	dtype = recv_byte_in();
 	//DBG_C('W'); DBG_X(dtype);
 	recv_byte();
+	if (dtype >= TC_MAX)
+		next_idle('W');
 	crc = crc16(crc,dtype);
 
-	switch(dtype) {
-	case TC_CONSOLE: write_console(crc); break;
-	case TC_PORT: write_port(crc); break;
-	case TC_PWM: write_pwm(crc); break;
-	case TC_ADC: write_adc(crc); break;
-	default: DBG_C('?'); return;
-	}
+	mc = &moat_calls[dtype];
+	wf = pgm_read_ptr_near(&mc->write);
+	wf(crc);
 }
 
 void do_command(uint8_t cmd)
