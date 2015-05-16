@@ -1,0 +1,92 @@
+#!/bin/bash
+
+set -e
+
+cfg() {
+    ./cfg world.cfg "$@"
+}
+V=1
+
+test -z "$V" || echo Setting up
+DEV=test8
+
+TYP=$(cfg devices.$DEV.defs.is_onewire)
+ID=$(cfg devices.$DEV.onewire_id)
+OW=$(cfg codes.onewire.$TYP).$ID
+
+test "$(owread /$OW/config/name)" = "$DEV"
+
+X=""
+while : ; do
+    R="$(owread /uncached/F0.947476A5F130/console)"
+    if test -z "$R" ; then break; fi;
+    X="$X$R"
+done
+if test -n "$X"; then echo "Console: $X"
+else test -z "$V" || echo "no console"; fi
+
+#owdir /$OW
+#owread /$OW/config/types
+owwrite /$OW/pwm.2 1,0
+owwrite /$OW/port.1 0
+owwrite /$OW/pwm.1 1,0
+test -z "$V" || echo PWM and counter monitor
+sleep 2
+owwrite /$OW/pwm.1 9,11
+X=""
+C1="$X$(owread /uncached/$OW/count.1)"
+sleep 1
+X="$X$(owread /uncached/$OW/port.2)"
+sleep 1
+X="$X$(owread /uncached/$OW/port.2)"
+sleep 1
+X="$X$(owread /uncached/$OW/port.2)"
+sleep 1
+X="$X$(owread /uncached/$OW/port.2)"
+sleep 1
+X="$X$(owread /uncached/$OW/port.2)"
+sleep 1
+X="$X$(owread /uncached/$OW/port.2)"
+test "$X" = "010101"
+C2="$(owread /uncached/$OW/count.1)"
+test $(( $C2 - $C1 )) = 6
+
+test -z "$V" || echo ADC check
+A1=$(owread /uncached/F0.947476a5f130/adc.1|sed -e 's/,.*//')
+test $A1 -gt 13700 && test $A1 -lt 14000
+A2=$(owread /uncached/F0.947476a5f130/adc.2|sed -e 's/,.*//')
+test $A2 -gt 4350 && test $A2 -lt 4500
+A3=$(owread /uncached/F0.947476a5f130/adc.3|sed -e 's/,.*//')
+test $A3 -gt 20000 && test $A3 -lt 23000
+
+if test $(owread /uncached/$OW/adc.4|sed -e 's/,.*//') -gt 1024 ; then
+    test -z "$V" || echo Waiting for C to discharge
+    while : ; do
+        sleep 1
+        X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
+        if test $X -lt 1025 ; then break; fi; 
+        echo -ne " $X "'\r'
+    done
+    echo ""
+fi
+trap 'owwrite /$OW/pwm.2 1,0' 0 1 2 15
+
+test -z "$V" || echo start PWM
+owwrite /$OW/pwm.2 5,2
+sleep 1
+X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
+if test $X -gt 5300 && test $X -lt 6250 ; then : ; else echo "ADC $X 1"; exit 1; fi
+sleep 1
+X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
+if test $X -gt 9100 && test $X -lt 10000 ; then : ; else echo "ADC $X 2"; exit 1; fi
+sleep 1
+X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
+if test $X -gt 13800 && test $X -lt 14600 ; then : ; else echo "ADC $X 3"; exit 1; fi
+sleep 1
+X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
+if test $X -gt 16700 && test $X -lt 17750 ; then : ; else echo "ADC $X 4"; exit 1; fi
+sleep 1
+X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
+if test $X -gt 19600 && test $X -lt 20200 ; then : ; else echo "ADC $X 5"; exit 1; fi
+
+test -z "$V" || echo TEST DONE OK

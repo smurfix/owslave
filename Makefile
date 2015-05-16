@@ -31,6 +31,10 @@ burn_%:
 clean:
 	rm -r device
 
+test:
+	make -q test8 || make burn_test8 || true
+	./run_test
+
 .PHONY: all setup targets
 
 
