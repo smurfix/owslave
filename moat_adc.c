@@ -48,7 +48,7 @@ void read_adc(uint8_t chan, uint8_t *buf)
 		*buf++ = adcp->lower&0xFF;
 		*buf++ = adcp->upper>>8;
 		*buf++ = adcp->upper&0xFF;
-	} else { // all inputs: send bits
+	} else { // all inputs: send values
 		uint8_t i;
 		adcp = adcs;
 
