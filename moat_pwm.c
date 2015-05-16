@@ -124,18 +124,25 @@ extern uint8_t pwm_changed_cache;
 
 char alert_pwm_check(void)
 {
-	return pwm_changed_cache;
+	return (pwm_changed_cache+7)>>3;
 }
 
 void alert_pwm_fill(uint8_t *buf)
 {
 	uint8_t i;
 	pwm_t *t = pwms;
+	uint8_t m=1;
 
 	memset(buf,0,(N_PWM+7)>>3);
-	for(i=0;i < N_PWM; i++,t++)
+	for(i=0; i < N_PWM; i++,t++) {
+		if (!m) {
+			m=1;
+			buf++;
+		}
 		if (t->flags & PWM_IS_ALERT)
-			buf[i>>3] |= 1<<(i&7);
+			*buf |= m;
+		m <<= 1;
+	}
 }
 
 #endif // conditional

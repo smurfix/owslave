@@ -98,14 +98,13 @@ void poll_port(void)
 {
 	port_t *pp;
 	uint8_t i = poll_next;
-	if (i >= N_PORT)
+	if (i >= N_PORT) {
 		i=0;
 #ifdef CONDITIONAL_SEARCH
-	if (!i) {
 		port_changed_cache = max_seen;
 		max_seen=0;
-	}
 #endif
+	}
 	pp = &ports[i];
 	i++;
 	port_check(pp);

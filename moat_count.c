@@ -84,18 +84,25 @@ void read_count(uint8_t chan, uint8_t *buf)
 
 char alert_count_check(void)
 {
-	return count_changed_cache;
+	return (count_changed_cache+7)>>3;
 }
 
 void alert_count_fill(uint8_t *buf)
 {
 	uint8_t i;
 	count_t *t = counts;
+	uint8_t m=1;
 
 	memset(buf,0,(N_COUNT+7)>>3);
-	for(i=0;i < N_COUNT; i++,t++)
+	for(i=0;i < N_COUNT; i++,t++) {
+		if (!m) {
+			m = 1;
+			buf++;
+		}
 		if (t->flags & CF_IS_ALERT)
-			buf[i>>3] |= 1<<(i&7);
+			*buf |= m;
+		m <<= 1;
+	}
 }
 
 #endif // conditional

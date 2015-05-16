@@ -259,9 +259,11 @@ void init_state(void)
 }
 
 #ifdef CONDITIONAL_SEARCH
-extern char alert_present;
+extern uint8_t alert_present;
+
 uint8_t condition_met(void) {
 	return alert_present;
+
 }
 #endif
 

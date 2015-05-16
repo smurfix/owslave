@@ -34,9 +34,10 @@
 #endif
 
 uint8_t alert_buf[(TC_MAX+7)>>3];
-uint8_t alert_tmp[(TC_MAX+7)>>3];
+static uint8_t alert_tmp[(TC_MAX+7)>>3];
 uint8_t alert_pos=0;
-char alert_present,alert_max;
+uint8_t alert_present;
+static uint8_t alert_max;
 
 void poll_alert(void)
 {
@@ -54,7 +55,7 @@ void poll_alert(void)
 	mc = &moat_calls[chan];
 	ac = pgm_read_ptr_near(&mc->alert_check);
 	if(ac()) {
-		alert_buf[chan>>3] |= 1<<(chan&7);
+		alert_tmp[chan>>3] |= 1<<(chan&7);
 		alert_max = chan+1;
 	}
 	alert_pos = chan+1;
@@ -64,7 +65,7 @@ uint8_t read_alert_len(uint8_t chan)
 {
 	uint8_t len;
 	if(!chan)
-		len = alert_max;
+		len = alert_present;
 	else if (chan >= TC_MAX)
 		next_idle('x');
 	else

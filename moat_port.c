@@ -114,18 +114,25 @@ void write_port(uint16_t crc)
 
 char alert_port_check(void)
 {
-	return port_changed_cache;
+	return (port_changed_cache+7)>>3;
 }
 
 void alert_port_fill(uint8_t *buf)
 {
 	uint8_t i;
 	port_t *pp = ports;
+	uint8_t m=1;
 
 	memset(buf,0,(N_PORT+7)>>3);
-	for(i=0;i < N_PORT; i++,pp++)
+	for(i=0;i < N_PORT; i++,pp++) {
+		if (!m) {
+			m=1;
+			buf++;
+		}
 		if (pp->flags & (PFLG_CHANGED|PFLG_POLL) && pp->flags & PFLG_ALERT)
-			buf[i>>3] |= 1<<(i&7);
+			*buf |= m;
+		m <<= 1;
+	}
 }
 
 #endif // conditional
