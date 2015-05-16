@@ -99,6 +99,11 @@ void write_console(uint16_t crc)
 	}
 	end_transmission(crc);
 	buf[pos] = 0;
+#if CONSOLE_WRITE>1
+	if(pos==1 && buf[0]=='?') {
+		console_puts_P("Hello.");
+	} else
+#endif
 	console_puts((char *)buf);
 }
 #endif // console_write
