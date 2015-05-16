@@ -16,6 +16,8 @@
 /* This code implements reading adc pins via 1wire.
  */
 
+#include <string.h>
+
 #include "moat_internal.h"
 #include "dev_data.h"
 #include "debug.h"
@@ -62,7 +64,7 @@ void read_adc_done(uint8_t chan) {
 	adc_t *adcp;
 	if(!chan) return;
 	adcp = &adcs[chan-1];
-	adcp->flags &=~ ADC_IS_ALERT;
+	adcp->flags &=~ (ADC_IS_ALERT_L|ADC_IS_ALERT_H);
 }
 
 void write_adc(uint16_t crc)
@@ -116,5 +118,37 @@ void write_adc(uint16_t crc)
 	adcp->lower = lower;
 	adcp->upper = upper;
 }
+
+#ifdef CONDITIONAL_SEARCH
+
+char alert_adc_check(void)
+{
+	return (adc_changed_cache*2 +7)>>3;
+}
+
+void alert_adc_fill(uint8_t *buf)
+{
+	uint8_t i;
+	adc_t *t = adcs;
+	uint8_t m=1;
+
+    DBG_X(adc_changed_cache);
+	memset(buf,0,(N_ADC*2 +7)>>3);
+	for(i=0;i < N_ADC; i++,t++) {
+		if (!m) {
+			m = 1;
+			buf++;
+		}
+		if (t->flags & ADC_IS_ALERT_L)
+			*buf |= m;
+		m <<= 1;
+		if (t->flags & ADC_IS_ALERT_H)
+			*buf |= m;
+		m <<= 1;
+	}
+}
+
+#endif // conditional
+
 
 #endif

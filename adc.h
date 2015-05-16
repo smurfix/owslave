@@ -15,14 +15,15 @@ typedef struct {
 extern adc_t adcs[];
 
 // the first two bits are used for adc_out_t, i.e. PO_* constants. Hardcoded.
-#define ADC_MASK     ((1<<3)-1)
-#define ADC_VBG      0x01
-#define ADC_VGND     0x02
-#define ADC_VTEMP    0x03
-#define ADC_ALT      (1<<3)  // use Vbg et al, not analog inputs 0-7
-#define ADC_REF      (1<<4)  // use Vbg as reference, not Vdd
-#define ADC_ALERT    (1<<6)  // trigger an alarm when stepping over boundary
-#define ADC_IS_ALERT (1<<7)  // alarm triggered?
+#define ADC_MASK       ((1<<3)-1)
+#define ADC_VBG        0x01
+#define ADC_VGND       0x02
+#define ADC_VTEMP      0x03
+#define ADC_ALT        (1<<3)  // use Vbg et al, not analog inputs 0-7
+#define ADC_REF        (1<<4)  // use Vbg as reference, not Vdd
+#define ADC_ALERT      (1<<5)  // trigger an alarm when stepping over boundary
+#define ADC_IS_ALERT_L (1<<6)  // alarm triggered (low)?
+#define ADC_IS_ALERT_H (1<<7)  // alarm triggered (high)?
 
 #ifdef CONDITIONAL_SEARCH
 

@@ -26,7 +26,7 @@ ADC_VGND=2
 ADC_VTEMP=3
 ADC_ALT=(1<<3)
 ADC_REF=(1<<4)
-ADC_ALERT=(1<<6)
+ADC_ALERT=(1<<5)
 
 ### copied from pwm.h
 PWM_ALERT=(1<<0)

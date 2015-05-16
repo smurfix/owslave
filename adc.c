@@ -84,8 +84,10 @@ static inline char adc_check(adc_t *pp)
 		val |= val>>10; // fill the lower bits, so that max=0xFFFF
 		pp->value = val;
 		if (pp->flags & ADC_ALERT) {
-			if ((pp->lower != 0xFFFF && pp->value <= pp->lower) || (pp->upper != 0x0000 && pp->value >= pp->upper))
-				pp->flags |= ADC_IS_ALERT;
+			if (pp->lower != 0xFFFF && pp->value <= pp->lower)
+				pp->flags |= ADC_IS_ALERT_L;
+			if (pp->upper != 0x0000 && pp->value >= pp->upper)
+				pp->flags |= ADC_IS_ALERT_H;
 		}
 		poll_step = 0;
 		return 1;
@@ -106,7 +108,7 @@ void poll_adc(void)
 	pp = &adcs[i];
 	if (adc_check(pp)) {
 		i += 1;
-		if (pp->flags & ADC_IS_ALERT)
+		if (pp->flags & (ADC_IS_ALERT_L|ADC_IS_ALERT_H))
 			max_seen = i;
 	}
 	poll_this=i;
@@ -118,7 +120,7 @@ void init_adc(void)
 	uint8_t i;
 
 	for(i=0;i<N_ADC;i++) {
-		pp->flags &=~ADC_IS_ALERT;
+		pp->flags &=~(ADC_IS_ALERT_L|ADC_IS_ALERT_H);
 		pp->lower = 0xFFFF;
 		pp->upper = 0x0000;
 		pp++;
