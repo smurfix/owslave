@@ -40,7 +40,7 @@ extern port_t ports[];
 typedef enum {
 	PI_OFF=0, PI_ON=1
 } port_in_t;
-typedef enum {
+typedef enum { // do not change: bit values are user in port.c
 	PO_OFF=0, PO_ON=1, PO_Z=2, PO_PULLUP=3
 } port_out_t;
 
