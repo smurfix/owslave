@@ -43,22 +43,17 @@ void port_set(port_t *portp, char val)
 	// Rather than write a complicated switch statement, we go by bits.
 	if(flg & PFLG_ALT) {
 		// This does PO_OFF=0 | PO_PULLUP=3 and PO_ON=1 | PO_Z=2
-		if(!(s & 1) == !val) return;
+		// OFF/ON must be 0/1, so test bit 0
+		if((s & 1) != !val) return;
 		s ^= 3;
 	} else if(flg & PFLG_ALT2) {
 		// This does PO_OFF=0 | PO_Z=2 and PO_ON=1 | PO_PULLUP=3
-		// OFF/ON is definitely 0/1, so the other two checks need to be switched around
-		// thus no bit arithmetic in the check here
-		switch(s) {
-		case PO_OFF:    if(!val)return; break;
-		case PO_ON:     if(val) return; break;
-		case PO_Z:      if(val) return; break;
-		case PO_PULLUP: if(!val)return; break;
-		}
+		// OFF/ON must be 0/1, so bit 1 is tested+switched while bit 0 inverts the test if it's set
+		if ((1&((s>>1) ^ s)) != !val) return;
 		s ^= 2;
 	} else {
 		// This does PO_OFF=0 | PO_ON=1 and PO_Z=2 | PO_PULLUP=3
-		if(!(s & 1) == !val) return;
+		if((s & 1) != !val) return;
 		s ^= 1;
 	}
 	port_set_out(portp,s);
@@ -94,24 +89,30 @@ void port_check(port_t *pp) {
 }
 
 /* Each mainloop pass checks one port. */
-uint8_t port_changed_cache;
 static uint8_t poll_next = 0;
+#ifdef CONDITIONAL_SEARCH
+uint8_t port_changed_cache;
 static uint8_t max_seen = 0;
+#endif
 void poll_port(void)
 {
 	port_t *pp;
 	uint8_t i = poll_next;
 	if (i >= N_PORT)
 		i=0;
+#ifdef CONDITIONAL_SEARCH
 	if (!i) {
 		port_changed_cache = max_seen;
 		max_seen=0;
 	}
+#endif
 	pp = &ports[i];
 	i++;
 	port_check(pp);
+#ifdef CONDITIONAL_SEARCH
 	if(pp->flags & (PFLG_POLL|PFLG_CHANGED) && pp->flags & PFLG_ALERT)
 		max_seen = i;
+#endif
 	poll_next=i;
 }
 
@@ -131,7 +132,9 @@ void init_port(void)
 		pp->flags = flg &~PFLG_CHANGED;
 		pp++;
 	}
+#ifdef CONDITIONAL_SEARCH
 	port_changed_cache = 0;
+#endif
 }
 
 

@@ -16,6 +16,8 @@
 /* This code implements reading port pins via 1wire.
  */
 
+#include <string.h> // memset
+
 #include "moat_internal.h"
 #include "dev_data.h"
 #include "debug.h"
@@ -108,4 +110,24 @@ void write_port(uint16_t crc)
 	}
 }
 
-#endif
+#ifdef CONDITIONAL_SEARCH
+
+char alert_port_check(void)
+{
+	return port_changed_cache;
+}
+
+void alert_port_fill(uint8_t *buf)
+{
+	uint8_t i;
+	port_t *pp = ports;
+
+	memset(buf,0,(N_PORT+7)>>3);
+	for(i=0;i < N_PORT; i++,pp++)
+		if (pp->flags & (PFLG_CHANGED|PFLG_POLL) && pp->flags & PFLG_ALERT)
+			buf[i>>3] |= 1<<(i&7);
+}
+
+#endif // conditional
+
+#endif // N_PORT

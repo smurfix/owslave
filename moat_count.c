@@ -16,11 +16,12 @@
 /* This code implements reading port pins via 1wire.
  */
 
+#include <string.h> // memset
+
 #include "moat_internal.h"
 #include "dev_data.h"
 #include "debug.h"
 #include "onewire.h"
-#include "port.h"
 #include "count.h"
 #include "timer.h"
 
@@ -46,12 +47,16 @@ void read_count(uint8_t chan, uint8_t *buf)
 		t = &counts[chan-1];
 
 		cli();
-		switch(sizeof(t->count)) {
-		case 4: *buf++ = t->count>>24;
-		case 3: *buf++ = t->count>>16;
-		case 2: *buf++ = t->count>>8;
-		case 1: *buf++ = t->count;
-		}
+#if COUNT_SIZE >= 4
+		*buf++ = t->count>>24;
+#endif
+#if COUNT_SIZE >= 3
+		*buf++ = t->count>>16;
+#endif
+#if COUNT_SIZE >= 2
+		*buf++ = t->count>>8;
+#endif
+		*buf++ = t->count;
 		t->flags &=~ CF_IS_ALERT;
 		sei();
 	} else { // all COUNTs
@@ -60,15 +65,41 @@ void read_count(uint8_t chan, uint8_t *buf)
 
 		for(i=0;i<N_COUNT;i++,t++) {
 			cli();
-			switch(sizeof(t->count)) {
-			case 4: *buf++ = t->count>>24;
-			case 3: *buf++ = t->count>>16;
-			case 2: *buf++ = t->count>>8;
-			case 1: *buf++ = t->count;
-			}
+#if COUNT_SIZE >= 4
+			*buf++ = t->count>>24;
+#endif
+#if COUNT_SIZE >= 3
+			*buf++ = t->count>>16;
+#endif
+#if COUNT_SIZE >= 2
+			*buf++ = t->count>>8;
+#endif
+			*buf++ = t->count;
 			sei();
 		}
 	}
 }
+
+#ifdef CONDITIONAL_SEARCH
+
+char alert_count_check(void)
+{
+	return count_changed_cache;
+}
+
+void alert_count_fill(uint8_t *buf)
+{
+	uint8_t i;
+	count_t *t = counts;
+
+	memset(buf,0,(N_COUNT+7)>>3);
+	for(i=0;i < N_COUNT; i++,t++)
+		if (t->flags & CF_IS_ALERT)
+			buf[i>>3] |= 1<<(i&7);
+}
+
+#endif // conditional
+
+
 
 #endif

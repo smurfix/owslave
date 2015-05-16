@@ -259,21 +259,14 @@ void init_state(void)
 }
 
 #ifdef CONDITIONAL_SEARCH
-char condition_seen;
+extern char alert_present;
 uint8_t condition_met(void) {
-	return condition_seen;
+	return alert_present;
 }
 #endif
 
 void mainloop(void) {
 	DBG(0x1E);
-#ifdef CONDITIONAL_SEARCH
-	condition_seen = (
-		console_alert() ||
-		port_alert() ||
-		count_alert() ||
-		0);
-#endif
 #if CONSOLE_PING
 	if(timer_done(&t)) {
 		console_putc('!');

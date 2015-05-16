@@ -16,6 +16,8 @@
 /* This code implements reading port pins via 1wire.
  */
 
+#include <string.h> // memset
+
 #include "moat_internal.h"
 #include "dev_data.h"
 #include "debug.h"
@@ -100,7 +102,7 @@ void write_pwm(uint16_t crc)
 
 	crc = recv_bytes_crc(crc,buf,len);
 	end_transmission(crc);
-	last = (t->is_on ? t->t_on : t->t_off);
+	last = ((t->flags & PWM_IS_ON) ? t->t_on : t->t_off);
 	if (len == 2) {
 		a = buf[0];
 		a |= a<<8;
@@ -112,12 +114,32 @@ void write_pwm(uint16_t crc)
 	}
 	t->t_on = a;
 	t->t_off = b;
-	if(!last)
-		timer_start(1, &t->timer);
-	else if(last > (t->is_on ? t->t_on : t->t_off))
-		timer_start((t->is_on ? t->t_on : t->t_off), &t->timer);
-
-	
+	if(!last || (t->flags & PWM_FORCE))
+		timer_reset(&t->timer);
 }
+
+#ifdef CONDITIONAL_SEARCH
+
+extern uint8_t pwm_changed_cache;
+
+char alert_pwm_check(void)
+{
+	return pwm_changed_cache;
+}
+
+void alert_pwm_fill(uint8_t *buf)
+{
+	uint8_t i;
+	pwm_t *t = pwms;
+
+	memset(buf,0,(N_PWM+7)>>3);
+	for(i=0;i < N_PWM; i++,t++)
+		if (t->flags & PWM_IS_ALERT)
+			buf[i>>3] |= 1<<(i&7);
+}
+
+#endif // conditional
+
+
 
 #endif

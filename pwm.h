@@ -9,9 +9,13 @@
 
 typedef struct {
 	uint8_t port;
+	uint8_t flags;
 	timer_t timer;
 	uint16_t t_on,t_off;
-	char is_on;
+#define PWM_ALERT    (1<<0) // alert when one-shot PWM stops
+#define PWM_FORCE    (1<<1) // switch immediately when setting PWM
+#define PWM_IS_ALERT (1<<6) // alert present
+#define PWM_IS_ON    (1<<7) // PWM is in OM phase
 } pwm_t;
 
 extern pwm_t pwms[];

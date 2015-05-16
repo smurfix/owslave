@@ -60,6 +60,17 @@ void read_console_done(uint8_t chan)
 		console_buf_done(sent);
 }
 
+char alert_console_check()
+{
+	return console_alert();
+}
+
+void alert_console_fill(uint8_t *buf)
+{
+	if(console_alert())
+		buf[0]=1;
+}
+
 #ifdef CONSOLE_WRITE
 void write_console(uint16_t crc)
 {

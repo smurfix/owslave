@@ -36,8 +36,12 @@ count_t counts[] = {
 #include "_count.h"
 };
 
-static uint8_t poll_next = 0;
+#ifdef CONDITIONAL_SEARCH
+uint8_t count_changed_cache;
 static uint8_t max_seen = 0;
+#endif
+
+static uint8_t poll_next = 0;
 void poll_count(void)
 {
 	uint8_t i = poll_next;
@@ -46,10 +50,12 @@ void poll_count(void)
 
 	if (i >= N_COUNT)
 		i = 0;
+#ifdef CONDITIONAL_SEARCH
 	if (!i) {
 		count_changed_cache = max_seen;
 		max_seen = 0;
 	}
+#endif
 	t = &counts[i];
 	i++;
 	poll_next = i;
@@ -62,10 +68,12 @@ void poll_count(void)
 	else
 		t->flags &=~CF_IS_ON;
 	t->count++;
+#ifdef CONDITIONAL_SEARCH
 	if(t->flags & CF_ALERTING) {
 		t->flags |= CF_IS_ALERT;
 		max_seen = i;
 	}
+#endif
 	poll_next = i;
 }
 

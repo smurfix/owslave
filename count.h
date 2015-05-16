@@ -3,30 +3,23 @@
 
 #include "dev_data.h"
 #include "features.h"
-#include "timer.h"
 
 #if defined(N_COUNT)
-
-#define CF_ALERTING 0x01
-#define CF_IS_ALERT 0x02
-#define CF_IS_ON 0x80
 
 typedef struct {
 	uint8_t port;
 	unsigned char flags;
+#define CF_ALERTING (1<<0)
+#define CF_IS_ALERT (1<<6)
+#define CF_IS_ON (1<<7)
 	uint16_t count;
+#define COUNT_SIZE 2
 } count_t;
 
 extern count_t counts[];
 
-EXTERN uint8_t count_changed_cache;
-
 #ifdef CONDITIONAL_SEARCH
-static inline char count_alert(void) {
-        if (count_changed_cache)
-                return 1;
-        return 0;
-}
+extern uint8_t count_changed_cache;
 
 #else
 #define count_alert() 0

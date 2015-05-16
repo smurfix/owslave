@@ -17,6 +17,7 @@
  */
 
 #include <avr/pgmspace.h>
+#include <string.h> // memset
 
 #include "moat_internal.h"
 #include "dev_data.h"
@@ -25,12 +26,46 @@
 
 #ifdef CONDITIONAL_SEARCH
 
+#ifndef N_ALERT
+#error You need to set alert=1
+#endif
+#if N_ALERT != TC_MAX
+#error Something is wrong in your configuration
+#endif
+
+uint8_t alert_buf[(TC_MAX+7)>>3];
+uint8_t alert_tmp[(TC_MAX+7)>>3];
+uint8_t alert_pos=0;
+char alert_present,alert_max;
+
+void poll_alert(void)
+{
+	uint8_t chan = alert_pos;
+	const moat_call_t *mc;
+	alert_check_fn *ac;
+
+	if(chan >= TC_MAX) {
+		chan=0;
+		memcpy(alert_buf,alert_tmp,sizeof(alert_buf));
+		memset(alert_tmp,0,sizeof(alert_tmp));
+		alert_present = alert_max;
+		alert_max = 0;
+	}
+	mc = &moat_calls[chan];
+	ac = pgm_read_ptr_near(&mc->alert_check);
+	if(ac()) {
+		alert_buf[chan>>3] |= 1<<(chan&7);
+		alert_max = chan+1;
+	}
+	alert_pos = chan+1;
+}
+
 uint8_t read_alert_len(uint8_t chan)
 {
 	uint8_t len;
 	if(!chan)
-		len = TC_MAX;
-	if (chan >= TC_MAX)
+		len = alert_max;
+	else if (chan >= TC_MAX)
 		next_idle('x');
 	else
 		len = pgm_read_byte_near(&moat_sizes[chan]);
@@ -49,22 +84,7 @@ void read_alert(uint8_t chan, uint8_t *buf)
 
 		ac(buf);
 	} else { // all inputs: send bits
-		uint8_t b=0,i,mask=1;
-		const moat_call_t *mc = moat_calls;
-
-		for(i=0;i<TC_MAX;i++) {
-			alert_check_fn *ac = pgm_read_ptr_near(&mc->alert_check);
-			if(ac())
-				b |= mask;
-			mask <<= 1;
-			if (!mask) { // byte is full
-				*buf++ = b;
-				b=0; mask=1;
-			}
-			mc++;
-		}
-		if (mask != 1) // residue
-			*buf = b;
+		memcpy(buf,alert_buf,sizeof(alert_buf));
 	}
 }
 
