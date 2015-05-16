@@ -1,7 +1,7 @@
 # MoaT
 
 or "Master of all Things" is a project to control various interesting
-little things using 1wire, via a basic common interface.
+little things using 1wire, via a common interface.
 
 ## Goals
 
@@ -15,16 +15,11 @@ The available I/O solutions are limited. Most slaves can't be parameterized
 in any meaningful way, can't work autonomously if the bus is wedged, and
 don't use CONDITIONAL SEARCH (required for any non-trivial network).
 
-There are efforts to overcome this problem, most notably the BAE0910/0911
-which is a generic proprammable slave. I happen to not like that approach,
-as OWFS then exports a whole lot of attributes, most of which are
-irrelevant.
-
-MoaT slaves do things differently. A common configuration file lists the
-features for each device you program. The parameters are added to the flash
-code (or, optionally, to the device's EEPROM) and can be interrogated via
-1wire. OWFS then exports exactly those featurs which your device actually
-uses.
+MoaT slaves are different. A common configuration file lists the features
+for each device you program. The parameters are added to the flash code
+(or, in the hopefully-not-too-far future, to the device's EEPROM) and can
+be interrogated via 1wire. OWFS then exports exactly those featurs which
+your device actually uses.
 
 ## License
 
@@ -124,13 +119,13 @@ See HOWTO.md
 * store config in EEPROM
 * over-the-wire config changes
 * over-the-wire firmware update
-* /alarm handling
 * some (esp. 1wire) statistics
-* ADC
 * PID
 * SMOKE
 * I2C interface
 * THERMO via I2C
 * HYGRO via I2C
 * RF12 instead of 1wire
+* serial bridge
+* named ports
 
