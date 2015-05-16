@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# This test requires a "test8" device, which is an ATmega88.
+# 
+# Connect GND
+# Connect VCC and AVCC to +5V
+# Connect B1 to D6
+# Connect B0 to D7
+# Connect B0 via 1Mohm resistor to C0
+# Connect C0 via 10µF capacitor to GND
+# Connect AREF via a 100nF capacitor to GND
+# Connect 1wire to D2
+
 set -e
 
 cfg() {
