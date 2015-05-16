@@ -102,6 +102,6 @@ sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
 if test $X -gt 19600 && test $X -lt 20200 ; then : ; else echo "ADC $X 5"; exit 1; fi
 if owread /uncached/$OW/alarm/sources|grep -qs adc ; then : ; else echo "ADC ALARM OFF?"; exit 1; fi
-if owread /uncached/$OW/alarm/sources|grep -qs 4 ; then : ; else echo "ADC ALARM 4?"; exit 1; fi
+if owread /uncached/$OW/alarm/adc|fgrep -qs +4 ; then : ; else echo "ADC ALARM 4?"; exit 1; fi
 
 test -z "$V" || echo TEST DONE OK
