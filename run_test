@@ -75,7 +75,7 @@ if test $(owread /uncached/$OW/adc.4|sed -e 's/,.*//') -gt 1024 ; then
     while : ; do
         sleep 1
         X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
-        if test $X -lt 1025 ; then break; fi; 
+        if test $X -lt 1025 ; then echo " $X."; break; fi; 
         echo -ne " $X "'\r'
     done
     echo ""
@@ -84,12 +84,14 @@ trap 'owwrite /$OW/pwm.2 1,0' 0 1 2 15
 
 test -z "$V" || echo start PWM
 owwrite /$OW/pwm.2 5,2
+owwrite /$OW/adc.4 0,15000
 sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
-if test $X -gt 5300 && test $X -lt 6250 ; then : ; else echo "ADC $X 1"; exit 1; fi
+if test $X -gt 5300 && test $X -lt 6600 ; then : ; else echo "ADC $X 1"; exit 1; fi
+if owread /uncached/$OW/alarm/sources|grep -qs adc ; then echo "ADC ALARM ON?"; exit 1; fi
 sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
-if test $X -gt 9100 && test $X -lt 10000 ; then : ; else echo "ADC $X 2"; exit 1; fi
+if test $X -gt 9100 && test $X -lt 10800 ; then : ; else echo "ADC $X 2"; exit 1; fi
 sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
 if test $X -gt 13600 && test $X -lt 14600 ; then : ; else echo "ADC $X 3"; exit 1; fi
@@ -99,5 +101,7 @@ if test $X -gt 16700 && test $X -lt 17750 ; then : ; else echo "ADC $X 4"; exit 
 sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
 if test $X -gt 19600 && test $X -lt 20200 ; then : ; else echo "ADC $X 5"; exit 1; fi
+if owread /uncached/$OW/alarm/sources|grep -qs adc ; then : ; else echo "ADC ALARM OFF?"; exit 1; fi
+if owread /uncached/$OW/alarm/sources|grep -qs 4 ; then : ; else echo "ADC ALARM 4?"; exit 1; fi
 
 test -z "$V" || echo TEST DONE OK
