@@ -92,7 +92,7 @@ X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
 if test $X -gt 9100 && test $X -lt 10000 ; then : ; else echo "ADC $X 2"; exit 1; fi
 sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
-if test $X -gt 13800 && test $X -lt 14600 ; then : ; else echo "ADC $X 3"; exit 1; fi
+if test $X -gt 13600 && test $X -lt 14600 ; then : ; else echo "ADC $X 3"; exit 1; fi
 sleep 1
 X=$(owread /uncached/$OW/adc.4|sed -e 's/,.*//')
 if test $X -gt 16700 && test $X -lt 17750 ; then : ; else echo "ADC $X 4"; exit 1; fi
