@@ -15,10 +15,12 @@ PO_OFF=0
 PO_ON=1
 PO_Z=2
 PO_PULLUP=3
+
 PFLG_ALERT=  (1<<2)
 PFLG_ALT  =  (1<<3)
 PFLG_ALT2 =  (1<<4)
 
+### copied from adc.h
 ADC_VBG=1
 ADC_VGND=2
 ADC_VTEMP=3
@@ -128,7 +130,7 @@ def main(f,*kk):
                                 assert not p
                                 flg|=ADC_ALT|ADC_VTEMP
                                 p=1
-                            elif vv == "-": flg|=ADC_REF
+                            elif vv == "-": flg|=ADC_REF   ## use ref voltage as max
                             elif vv == "*": flg|=ADC_ALERT ## participate in alerting
                             else: assert 0,vv
                         assert p
@@ -271,7 +273,8 @@ def main(f,*kk):
                         if a == "config":
                             v = len(s.subtree('codes','blocks'))
                         elif a == "alert":
-                            v = max_t
+                            #v = len(s.subtree('codes','types'))
+                            v = max_t+1 # ignore codes above this
                         else:
                             v = int(v)
                         print("#define TC_{} {}".format(a.upper(),typecode[a]), file=f)
