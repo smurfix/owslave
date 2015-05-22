@@ -59,6 +59,16 @@ disrupt real functions.
 
 Set this if your code uses the timer interrupt, i.e. functions from `timer.h`.
 
+### `have_watchdog`
+
+Turns on the watchdog timer at the start of the program. Uses the
+longest-possible timeout.
+
+If you're using MoaT, this means that you have to poll the bus, using
+CONDITIONAL SEARCH, every eight seconds; to be safe, you should poll at
+least every five seconds). This should be sufficient to restart a polling
+server.
+
 ### `debug_uart`
 
 If you need to debug the low-level UART code itself, set this. Should not be necessary.

@@ -120,6 +120,7 @@ See HOWTO.md
 * over-the-wire config changes
 * over-the-wire firmware update
 * some (esp. 1wire) statistics
+* ... including the fact that the device has been reset, and why
 * PID
 * SMOKE
 * I2C interface

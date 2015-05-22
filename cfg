@@ -285,6 +285,7 @@ def main(f,*kk):
                     ow = s.subtree('devices',k,'defs','is_onewire')
                     if ow:
                         print("#define HAVE_ONEWIRE 1", file=f)
+                        print("#define ONEWIRE_"+ow.upper(), file=f)
 
                     for a,v in s.keyval('devices',k,'types'):
                         if a == "config":

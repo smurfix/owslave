@@ -17,6 +17,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
  
 #include "dev_data.h"
 #ifndef DEBUG_ONEWIRE
@@ -495,12 +496,17 @@ void set_idle(void)
 static inline void do_select(uint8_t cmd)
 {
 	uint8_t i;
+	char cond;
 
 	DBG_C('S');
 	switch(cmd) {
 #ifdef CONDITIONAL_SEARCH
 	case 0xEC: // CONDITIONAL SEARCH
-		if (!condition_met()) {
+		cond = condition_met();
+#ifdef HAVE_WATCHDOG
+		wdt_reset();
+#endif
+		if (!cond) {
 			DBG(0x23);
 			next_idle('c');
 		}

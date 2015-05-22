@@ -17,6 +17,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 
 #define MAIN
 #include "features.h"
@@ -89,6 +90,9 @@ main(void)
 {
         const char *done_info = P("\nrestart\n");
 
+#ifdef HAVE_WATCHDOG
+        wdt_enable(0x09);
+#endif
 #ifdef HAVE_DBG_PIN
         DBGPINPORT &= ~(1 << DBGPIN);
         DBGPINDDR |= (1 << DBGPIN);
@@ -120,6 +124,9 @@ main(void)
         DBG(0x23);
         /* clobbered variables (and constants) beyond this point */
 	while(1) {
+#if defined(HAVE_WATCHDOG) && (!defined(ONEWIRE_MOAT) || !defined(CONDITIONAL_SEARCH))
+            wdt_reset();
+#endif
             poll_all();
             mainloop();
 	}
