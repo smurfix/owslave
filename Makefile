@@ -17,16 +17,16 @@ setup: device
 device:
 	mkdir device
 run/%:
-	@make DEV=$(notdir $@) NO_BURN=y
+	@gmake DEV=$(notdir $@) NO_BURN=y
 
 targets:
 	./cfg ${CFG} targets
 
 burn_%:
 	@echo BURN $(subst burn_,,$@)
-	@make DEV=$(subst burn_,,$@) burn
+	@gmake DEV=$(subst burn_,,$@) burn
 %:
-	@make DEV=$@ all
+	@gmake DEV=$@ all
 	
 clean:
 	rm -r device
