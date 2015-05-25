@@ -130,7 +130,9 @@ static void moat_read(void)
 
 	switch(dtype) {
 	case TC_CONFIG: read_config(crc); break;
+#ifdef TC_CONSOLE
 	case TC_CONSOLE: read_console(crc); break;
+#endif
 	default: DBG_C('?'); return;
 	}
 }
