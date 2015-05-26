@@ -441,5 +441,5 @@ uint8_t condition_met(void) {
 #endif
 
 void mainloop(void) {
-	while(1) onewire_poll();
+	update_idle(100);
 }

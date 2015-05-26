@@ -496,7 +496,9 @@ void set_idle(void)
 static inline void do_select(uint8_t cmd)
 {
 	uint8_t i;
+#ifdef CONDITIONAL_SEARCH
 	char cond;
+#endif
 
 	DBG_C('S');
 	switch(cmd) {

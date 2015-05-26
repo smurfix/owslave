@@ -35,21 +35,21 @@ static inline void
 init_mcu(void)
 {
 #ifdef __AVR_ATtiny13__
-       CLKPR = 0x80;    // Prepare to ...
-       CLKPR = 0x00;    // ... set to 9.6 MHz
+	CLKPR = 0x80;    // Prepare to ...
+	CLKPR = 0x00;    // ... set to 9.6 MHz
 
 #elif defined(__AVR_ATtiny25__)
-       CLKPR = 0x80;    // Prepare to ...
-       CLKPR = 0x00;    // ... set to 8.0 MHz
+	CLKPR = 0x80;    // Prepare to ...
+	CLKPR = 0x00;    // ... set to 8.0 MHz
 
 #elif defined(__AVR_ATtiny84__)
-       CLKPR = 0x80;    // Prepare to ...
-       CLKPR = 0x00;    // ... set to 8.0 MHz
+	CLKPR = 0x80;    // Prepare to ...
+	CLKPR = 0x00;    // ... set to 8.0 MHz
 
 #elif defined (__AVR_ATmega8__)
-       // Clock is set via fuse
+	// Clock is set via fuse
 #elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__) || defined(__AVR_ATmega328__)
-       // Clock is set via fuse
+	// Clock is set via fuse
 
 #else
 #error Basic config for your CPU undefined
@@ -63,7 +63,6 @@ init_all(void)
     uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
     onewire_init();
     timer_init();
-    moat_init();
     init_state();
 }
 
@@ -76,7 +75,6 @@ poll_all(void)
     timer_poll();
     uart_poll();
     onewire_poll();
-    moat_poll();
 #if defined(UART_DEBUG) && defined(N_CONSOLE)
     c = uart_getc();
     if(c <= 0xFF)
@@ -88,14 +86,12 @@ poll_all(void)
 int
 main(void)
 {
-        const char *done_info = P("\nrestart\n");
-
 #ifdef HAVE_WATCHDOG
-        wdt_enable(0x09);
+	wdt_enable(0x09);
 #endif
 #ifdef HAVE_DBG_PIN
-        DBGPINPORT &= ~(1 << DBGPIN);
-        DBGPINDDR |= (1 << DBGPIN);
+	DBGPINPORT &= ~(1 << DBGPIN);
+	DBGPINDDR |= (1 << DBGPIN);
 #endif
 #ifdef HAVE_DBG_PORT
 	DBGPORT = 0;
@@ -110,25 +106,18 @@ main(void)
 	init_all();
 
 	// now go
-        DBG(0x33);
+	DBG(0x33);
 	sei();
-
-        DBG(0x31);
-
-#ifndef CONSOLE_DEBUG
-        DBG_P_(done_info);
-#endif
-	console_puts_p(done_info);
-        DBG(0x21);
-        setjmp_q(_go_out);
-        DBG(0x23);
-        /* clobbered variables (and constants) beyond this point */
+	DBG(0x21);
+	setjmp_q(_go_out);
+	DBG(0x23);
+	/* clobbered variables (and constants) beyond this point */
 	while(1) {
 #if defined(HAVE_WATCHDOG) && (!defined(ONEWIRE_MOAT) || !defined(CONDITIONAL_SEARCH))
-            wdt_reset();
+		wdt_reset();
 #endif
-            poll_all();
-            mainloop();
+		poll_all();
+		mainloop();
 	}
 }
 

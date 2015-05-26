@@ -256,6 +256,7 @@ void init_state(void)
 #if CONSOLE_PING
 	timer_start(CONSOLE_PING,&t);
 #endif
+	moat_init();
 }
 
 #ifdef CONDITIONAL_SEARCH
@@ -269,6 +270,7 @@ uint8_t condition_met(void) {
 
 void mainloop(void) {
 	DBG(0x1E);
+	moat_poll();
 #if CONSOLE_PING
 	if(timer_done(&t)) {
 		console_putc('!');
