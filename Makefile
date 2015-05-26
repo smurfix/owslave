@@ -6,12 +6,16 @@
 CFG?=world.cfg
 export CFG
 
+RUN_CFG?=./cfg
+RUN_CFGWRITE?=./cfg_write
+RUN_EEPROM?=./gen_eeprom
+
 ifeq ($(DEV),)
 
-TARGET?=$(shell ./cfg ${CFG} targets)
+TARGET?=$(shell $(RUN_CFG) ${CFG} targets)
 help burn: 
 	@echo "Usage: make all | DEV | burn_DEV"
-	@echo "Known devices: $$(./cfg ${CFG} .devs)"
+	@echo "Known devices: $$($(RUN_CFG) ${CFG} .devs)"
 all: setup $(addprefix run/,${TARGET})
 setup: device
 device:
@@ -20,7 +24,7 @@ run/%:
 	@$(MAKE) DEV=$(notdir $@) NO_BURN=y
 
 targets:
-	./cfg ${CFG} targets
+	$(RUN_CFG) ${CFG} targets
 
 burn_%:
 	@echo BURN $(subst burn_,,$@)
@@ -40,45 +44,45 @@ test:
 
 else # DEV is defined
 
-MCU:=$(shell ./cfg ${CFG} devices.${DEV}.mcu)
-MCU_PROG:=$(shell ./cfg ${CFG} devices.${DEV}.prog)
-PROG:=$(shell ./cfg ${CFG} env.prog)
+MCU:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.mcu)
+MCU_PROG:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.prog)
+PROG:=$(shell $(RUN_CFG) ${CFG} env.prog)
 
 CC=avr-gcc
 OBJCOPY:=avr-objcopy
 OBJDUMP:=avr-objdump
 CFLAGS:=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -fshort-enums
 LDFLAGS:=$(CFLAGS)
-#CFLAGS+=$(shell ./cfg ${CFG} .cdefs ${DEV})
+#CFLAGS+=$(shell $(RUN_CFG) ${CFG} .cdefs ${DEV})
 CFLAGS+=-Idevice/${DEV}
 
-OW_TYPE:=$(shell ./cfg ${CFG} devices.${DEV}.defs.is_onewire || echo 0)
+OW_TYPE:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.is_onewire || echo 0)
 
-OBJS:=$(addprefix device/${DEV}/,$(addsuffix .o,$(basename $(shell ./cfg ${CFG} .cfiles ${DEV}))))
+OBJS:=$(addprefix device/${DEV}/,$(addsuffix .o,$(basename $(shell $(RUN_CFG) ${CFG} .cfiles ${DEV}))))
 
 ifeq (${NO_BURN},)
-ifeq (shell ./cfg ${CFG} devices.${DEV}.defs.use_eeprom,1)
+ifeq (shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom,1)
 EEP:=-U eeprom:w:device/${DEV}/eprom.bin:i
 else
 EEP:=
 endif
 burn_cfg:
 	@echo -n LFUSE:
-	@./cfg ${CFG} devices.${DEV}.fuse.l
+	@$(RUN_CFG) ${CFG} devices.${DEV}.fuse.l
 	@echo -n HFUSE:
-	@./cfg ${CFG} devices.${DEV}.fuse.h
+	@$(RUN_CFG) ${CFG} devices.${DEV}.fuse.h
 	@echo -n EFUSE:
-	@./cfg ${CFG} devices.${DEV}.fuse.e
+	@$(RUN_CFG) ${CFG} devices.${DEV}.fuse.e
 	@echo -n EEPROM:
-	@./cfg ${CFG} devices.${DEV}.defs.use_eeprom
+	@$(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom
 
 burn: burn_cfg all
 	TF=$$(tempfile); echo "default_safemode = no;" >$$TF; \
 	sudo avrdude -c $(PROG) -p $(MCU_PROG) -C +$$TF \
 		-U flash:w:device/${DEV}/image.hex:i ${EEP} \
-		-U lfuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.l):m \
-		-U hfuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.h):m \
-		-U efuse:w:0x$(shell ./cfg ${CFG} devices.${DEV}.fuse.e):m \
+		-U lfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.l):m \
+		-U hfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.h):m \
+		-U efuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.e):m \
 	; X=$$?; rm $$TF; exit $$X
 endif
 
@@ -87,15 +91,15 @@ device/${DEV}:
 	mkdir $@
 device/${DEV}/cfg: ${CFG} cfg
 	@echo -n MCU:
-	@./cfg ${CFG} devices.${DEV}.mcu
+	@$(RUN_CFG) ${CFG} devices.${DEV}.mcu
 	@echo -n MCU_PROG:
-	@./cfg ${CFG} devices.${DEV}.prog
+	@$(RUN_CFG) ${CFG} devices.${DEV}.prog
 	@echo -n PROG:
-	@./cfg ${CFG} env.prog
+	@$(RUN_CFG) ${CFG} env.prog
 	@echo -n CFILES:
-	@./cfg ${CFG} .cfiles ${DEV}
+	@$(RUN_CFG) ${CFG} .cfiles ${DEV}
 	@echo -n TYPE:
-	@./cfg ${CFG} .type ${DEV}
+	@$(RUN_CFG) ${CFG} .type ${DEV}
 	@cp ${CFG} device/${DEV}/cfg
 device/${DEV}/image.hex: device/${DEV}/image.elf
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
@@ -105,28 +109,28 @@ device/${DEV}/image.lss: device/${DEV}/image.elf
 	$(OBJDUMP) -h -S $< > $@
 
 device/${DEV}/dev_config.h: ${CFG} cfg
-	./cfg ${CFG} .hdr ${DEV}
+	$(RUN_CFG) ${CFG} .hdr ${DEV}
 
 $(DEVNAME).hex : $(DEVNAME).elf
 device/${DEV}/eprom.bin: ${CFG}
 	set -e; \
-	./gen_eeprom $@ type $$(./cfg ${CFG} .type ${DEV}); \
-	if ./gen_eeprom $@ name >/dev/null 2>&1 ; then : ; else \
-		./gen_eeprom $@ name ${DEV} ; fi ; \
+	$(RUN_EEPROM) $@ type $$($(RUN_CFG) ${CFG} .type ${DEV}); \
+	if $(RUN_EEPROM) $@ name >/dev/null 2>&1 ; then : ; else \
+		$(RUN_EEPROM) $@ name ${DEV} ; fi ; \
 	if [ ${OW_TYPE} != 0 ] ; then \
-		if ./gen_eeprom $@ owid serial >/dev/null 2>&1 ; then \
-			SER=$$(./gen_eeprom $@ owid serial); \
-			if ./cfg ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
-				test "$$(./cfg ${CFG} devices.${DEV}.onewire_id)" = "$$SER" ; \
+		if $(RUN_EEPROM) $@ owid serial >/dev/null 2>&1 ; then \
+			SER=$$($(RUN_EEPROM) $@ owid serial); \
+			if $(RUN_CFG) ${CFG} devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
+				test "$$($(RUN_CFG) ${CFG} devices.${DEV}.onewire_id)" = "$$SER" ; \
 			else \
-				./cfg_write ${CFG} devices.${DEV}.onewire_id x$$SER; \
+				$(RUN_CFGWRITE) ${CFG} devices.${DEV}.onewire_id x$$SER; \
 			fi; \
-		elif ./cfg ${CFG} .nofollow devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
-			SER=$$(./cfg ${CFG} devices.${DEV}.onewire_id); \
-			./gen_eeprom $@ owid type 0x$$(./cfg ${CFG} codes.onewire.${OW_TYPE}) serial $$SER; \
+		elif $(RUN_CFG) ${CFG} .nofollow devices.${DEV}.onewire_id >/dev/null 2>&1 ; then \
+			SER=$$($(RUN_CFG) ${CFG} devices.${DEV}.onewire_id); \
+			$(RUN_EEPROM) $@ owid type 0x$$($(RUN_CFG) ${CFG} codes.onewire.${OW_TYPE}) serial $$SER; \
 		else \
-			./gen_eeprom $@ owid type 0x$$(./cfg ${CFG} codes.onewire.${OW_TYPE}) serial random; \
-			./cfg_write ${CFG} devices.${DEV}.onewire_id x$$(./gen_eeprom $@ owid serial); \
+			$(RUN_EEPROM) $@ owid type 0x$$($(RUN_CFG) ${CFG} codes.onewire.${OW_TYPE}) serial random; \
+			$(RUN_CFGWRITE) ${CFG} devices.${DEV}.onewire_id x$$($(RUN_EEPROM) $@ owid serial); \
 		fi; \
 	fi
 
