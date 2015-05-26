@@ -3,6 +3,9 @@
 or "Master of all Things" is a project to control various interesting
 little things using 1wire, via a common interface.
 
+The master copy of this code is located at https://github.com/M-o-a-T/owslave --
+please come and contribute! (Bug reports welcome.)
+
 ## Goals
 
 1wire is a nice protocol for wire-based home automation. It's reasonably
