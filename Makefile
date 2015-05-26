@@ -36,6 +36,8 @@ clean:
 	rm -r device
 
 test:
+	$(MAKE) test_ds2423
+	$(MAKE) test_ds2408
 	$(MAKE) -q test8 || $(MAKE) burn_test8 || true
 	./run_test
 
