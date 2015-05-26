@@ -17,22 +17,22 @@ setup: device
 device:
 	mkdir device
 run/%:
-	@make DEV=$(notdir $@) NO_BURN=y
+	@$(MAKE) DEV=$(notdir $@) NO_BURN=y
 
 targets:
 	./cfg ${CFG} targets
 
 burn_%:
 	@echo BURN $(subst burn_,,$@)
-	@make DEV=$(subst burn_,,$@) burn
+	@$(MAKE) DEV=$(subst burn_,,$@) burn
 %:
-	@make DEV=$@ all
+	@$(MAKE) DEV=$@ all
 	
 clean:
 	rm -r device
 
 test:
-	make -q test8 || make burn_test8 || true
+	$(MAKE) -q test8 || $(MAKE) burn_test8 || true
 	./run_test
 
 .PHONY: all setup targets
