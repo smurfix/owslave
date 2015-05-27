@@ -43,5 +43,5 @@ while kk:
         else: val = str(val)
     v[lk] = val
 
-dump(s, stream=open(sys.argv[1],'w'))
+dump(s, stream=open(sys.argv[1],'w'), default_flow_style=False)
 

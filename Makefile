@@ -64,7 +64,7 @@ OBJS:=$(addprefix device/${DEV}/,$(addsuffix .o,$(basename $(shell $(RUN_CFG) ${
 
 ifeq (${NO_BURN},)
 ifeq (shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom,1)
-EEP:=-U eeprom:w:device/${DEV}/eprom.bin:i
+EEP:=-U eeprom:w:device/${DEV}/eprom.bin:r
 else
 EEP:=
 endif
