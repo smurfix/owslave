@@ -15,101 +15,17 @@
 
 /* Based on work published at http://www.mikrocontroller.net/topic/44100 */
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/wdt.h>
- 
-#include "dev_data.h"
-#ifndef DEBUG_ONEWIRE
-#define NO_DEBUG
-#endif
-#include "debug.h"
+#include "onewire_internal.h"
 
-#include "uart.h"
-#include "features.h"
-#include "onewire.h"
-#include "moat.h"
-
-union {
-	CFG_DATA(owid) ow_addr;
-	uint8_t addr[8];
-} ow_addr;
+ow_addr_t ow_addr;
 
 volatile uint8_t bitp;  // mask of current bit
 volatile uint8_t bytep; // position of current byte
 volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
+volatile xmode_t xmode;
+volatile wmode_t wmode;
+volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
-#ifndef EICRA
-#define EICRA MCUCR
-#endif
-
-// use timer 2 (if present), because (a) we reset the prescaler and (b) the
-// scaler from T2 is more accurate: 4 µsec vs. 8 µsec, in 8-MHz mode
-#ifdef ONEWIRE_USE_T2
-#define PRESCALE 32
-#else
-#ifdef ONEWIRE_USE_T0
-#define PRESCALE 64
-#else
-#error "Which timer should we use?"
-#endif
-#endif
-
-// Frequency-dependent timing macros
-#if 0 // def DBGPIN // additional overhead for playing with the trace pin
-#define _ADD_T 1
-#else
-#define _ADD_T 0
-#endif
-// T_(x)-y => value for setting the timer
-// x: nominal time in microseconds
-// y: overhead: increase by 1 for each 64 clock ticks
-#define T_(c) ((F_CPU/PRESCALE)/(1000000/c)-_ADD_T)
-#define OWT_MIN_RESET T_(410)
-#define OWT_RESET_PRESENCE (T_(40)-1)
-#define OWT_PRESENCE (T_(160)-1)
-#define OWT_READLINE (T_(30)-2)
-#define OWT_LOWTIME (T_(40)-2)
-
-#if (OWT_MIN_RESET>240)
-#error Reset timing is broken, your clock is too fast
-#endif
-#if (OWT_READLINE<1)
-#error Read timing is broken, your clock is too slow
-#endif
-
-#define EN_OWINT() do {IMSK|=(1<<INT0);IFR|=(1<<INTF0);}while(0)  //enable interrupt 
-#define DIS_OWINT() do {IMSK&=~(1<<INT0);} while(0)  //disable interrupt
-#define SET_RISING() do {EICRA|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
-#define SET_FALLING() do {EICRA|=(1<<ISC01);EICRA&=~(1<<ISC00);} while(0) //set interrupt at falling edge
-#define CHK_INT_EN() (IMSK&(1<<INT0)) //test if pin interrupt enabled
-#define PIN_INT INT0_vect  // the interrupt service routine
-//Timer Interrupt
-
-#ifdef ONEWIRE_USE_T2
-#define EN_TIMER() do {TIMSK2 |= (1<<TOIE2); TIFR2|=(1<<TOV2);}while(0) //enable timer interrupt
-#define DIS_TIMER() do {TIMSK2 &= ~(1<<TOIE2);} while(0) // disable timer interrupt
-#define SET_TIMER(x) do { GTCCR = (1<<PSRASY); TCNT2=(uint8_t)~(x); } while(0) // reset prescaler
-#define TIMER_INT ISR(TIMER2_OVF_vect) //the timer interrupt service routine
-
-#else
-#define EN_TIMER() do {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);}while(0) //enable timer interrupt
-#define DIS_TIMER() do {TIMSK0 &= ~(1<<TOIE0);} while(0) // disable timer interrupt
-#define SET_TIMER(x) do { GTCCR = (1<<PSRSYNC); TCNT0=(uint8_t)~(x); } while(0) // reset prescaler
-#define TIMER_INT ISR(TIMER0_OVF_vect) //the timer interrupt service routine
-#endif
-
-// stupidity
-#ifndef TIMER0_OVF_vect
-#  define TIMER0_OVF_vect TIM0_OVF_vect
-#endif
-
-#define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
-#define CLEAR_LOW() do {OWDDR&=~(1<<ONEWIREPIN);} while(0) //set 1-Wire pin as input
-
-static void do_select(uint8_t cmd);
-
-// Initialise the hardware
 void
 onewire_init(void)
 {
@@ -160,38 +76,6 @@ onewire_init(void)
 	set_idle();
 }
 
-//States / Modes
-typedef enum {
-	OWM_SLEEP,  //Waiting for next reset pulse
-	OWM_IN_RESET,  //waiting of rising edge from reset pulse
-	OWM_AFTER_RESET,  //Reset pulse received 
-	OWM_PRESENCE,  //sending presence pulse
-	OWM_SEARCH_ZERO,  //SEARCH_ROM algorithm
-	OWM_SEARCH_ONE,
-	OWM_SEARCH_READ,
-
-	OWM_IDLE, // non-IRQ mode starts here (mostly)
-	OWM_READ, // reading some bits
-	OWM_WRITE, // writing some bits
-} mode_t;
-volatile mode_t mode; //state
-
-//next high-level state
-typedef enum {
-	OWX_IDLE, // nothing is happening
-	OWX_SELECT, // will read a selector
-	OWX_COMMAND, // will read a command
-	OWX_RUNNING, // in user code
-} xmode_t;
-volatile xmode_t xmode;
-
-// Write this bit at next falling edge from master.
-// We use a whole byte for this for assembly speed reasons.
-typedef enum {
-	OWW_WRITE_0, // used in assembly
-	OWW_WRITE_1,
-	OWW_NO_WRITE,
-} wmode_t;
 volatile wmode_t wmode;
 volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
@@ -207,21 +91,7 @@ void next_idle(char reason)
 	go_out();
 }
 
-static inline void start_reading(uint8_t bits) {
-	mode = OWM_READ;
-	cbuf=0;
-	bitp=1<<(8-bits);
-}
-// same thing for within the timer interrupt
-#define START_READING(bits) do { \
-	lmode = OWM_READ; \
-	cbuf=0; \
-	lbitp=1<<(8-bits); \
-} while(0)
-
-#define wait_complete(c) _wait_complete()
-//static inline void wait_complete(char c)
-static inline void _wait_complete(void)
+void _wait_complete(void)
 {
 //	if(bitp || (wmode != OWW_NO_WRITE))
 //		DBG_C(c);
@@ -240,7 +110,6 @@ static inline void _wait_complete(void)
 	}
 }
 
-void next_command(void) __attribute__((noreturn));
 void next_command(void)
 {
 	wait_complete('n');
@@ -292,7 +161,7 @@ void xmit_byte(uint8_t val)
 	xmit_any(val,8);
 }
 
-inline uint16_t xmit_byte_crc(uint16_t crc, uint8_t val)
+uint16_t xmit_byte_crc(uint16_t crc, uint8_t val)
 {
 	xmit_any(val,8);
 	crc = crc16(crc, val);
@@ -394,6 +263,72 @@ crc16(uint16_t r, uint8_t x)
         return r;
 }
 
+static inline void do_select(uint8_t cmd)
+{
+	uint8_t i;
+#ifdef CONDITIONAL_SEARCH
+	char cond;
+#endif
+
+	DBG_C('S');
+	switch(cmd) {
+#ifdef CONDITIONAL_SEARCH
+	case 0xEC: // CONDITIONAL SEARCH
+		cond = condition_met();
+#ifdef HAVE_WATCHDOG
+		wdt_reset();
+#endif
+		if (!cond) {
+			DBG(0x23);
+			next_idle('c');
+		}
+		/* FALL THRU */
+#endif
+	case 0xF0: // SEARCH_ROM; handled in interrupt
+		DBG_C('s');
+		mode = OWM_SEARCH_ZERO;
+		bytep = 0;
+		bitp = 1;
+		cbuf = ow_addr.addr[0];
+		actbit = cbuf&1;
+		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
+		return;
+	case 0x55: // MATCH_ROM
+		DBG_C('S'); DBG_C('m');
+		recv_byte();
+		for (i=0;;i++) {
+			uint8_t b = recv_byte_in();
+			if (b != ow_addr.addr[i]) {
+				DBG(0x27);
+				next_idle('n');
+			}
+			if (i < 7)
+				recv_byte();
+			else
+				break;
+		}
+		//DBG_C('m');
+		next_command();
+#ifdef SINGLE_DEVICE
+	case 0xCC: // SKIP_ROM
+		DBG_C('k');
+		next_command();
+	case 0x33: // READ_ROM
+		DBG_C('r');
+		for (i=0;i<8;i++)
+			xmit_byte(ow_addr.addr[i]);
+		DBG(0x26);
+		next_idle('r');
+#endif
+	default:
+		DBG_C('?');
+		DBG_X(cmd);
+		DBG_C(' ');
+		DBG(0x25);
+		next_idle('u');
+	}
+}
+
 /**
  * The reason for splitting onewire_poll() into two functions
  * (and for the OS_task attribute) is that otherwise, AVR-GCC
@@ -491,72 +426,6 @@ void set_idle(void)
 	SET_FALLING();
 	EN_OWINT();
 	SREG = sreg;
-}
-
-static inline void do_select(uint8_t cmd)
-{
-	uint8_t i;
-#ifdef CONDITIONAL_SEARCH
-	char cond;
-#endif
-
-	DBG_C('S');
-	switch(cmd) {
-#ifdef CONDITIONAL_SEARCH
-	case 0xEC: // CONDITIONAL SEARCH
-		cond = condition_met();
-#ifdef HAVE_WATCHDOG
-		wdt_reset();
-#endif
-		if (!cond) {
-			DBG(0x23);
-			next_idle('c');
-		}
-		/* FALL THRU */
-#endif
-	case 0xF0: // SEARCH_ROM; handled in interrupt
-		DBG_C('s');
-		mode = OWM_SEARCH_ZERO;
-		bytep = 0;
-		bitp = 1;
-		cbuf = ow_addr.addr[0];
-		actbit = cbuf&1;
-		wmode = actbit ? OWW_WRITE_1 : OWW_WRITE_0;
-		return;
-	case 0x55: // MATCH_ROM
-		DBG_C('S'); DBG_C('m');
-		recv_byte();
-		for (i=0;;i++) {
-			uint8_t b = recv_byte_in();
-			if (b != ow_addr.addr[i]) {
-				DBG(0x27);
-				next_idle('n');
-			}
-			if (i < 7)
-				recv_byte();
-			else
-				break;
-		}
-		//DBG_C('m');
-		next_command();
-#ifdef SINGLE_DEVICE
-	case 0xCC: // SKIP_ROM
-		DBG_C('k');
-		next_command();
-	case 0x33: // READ_ROM
-		DBG_C('r');
-		for (i=0;i<8;i++)
-			xmit_byte(ow_addr.addr[i]);
-		DBG(0x26);
-		next_idle('r');
-#endif
-	default:
-		DBG_C('?');
-		DBG_X(cmd);
-		DBG_C(' ');
-		DBG(0x25);
-		next_idle('u');
-	}
 }
 
 TIMER_INT {
