@@ -33,7 +33,7 @@ inline uint8_t cfg_byte(cfg_addr_t addr) {
 #ifdef USE_EEPROM
     return eeprom_read_byte(EEPROM_POS+addr);
 #else
-    return pgm_read_byte(_config_start+addr);
+    return pgm_read_byte((&_config_start)+addr);
 #endif
 }
 #define read_byte(x) cfg_byte(x)
