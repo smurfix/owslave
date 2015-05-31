@@ -9,6 +9,13 @@
 #define CRC 0  // needs 300 bytes
 #define DEFAULT 1 // needs 30 bytes, plus _config data (built by gen_eprom)
 
+#ifdef USE_EEPROM
+extern uint8_t _econfig_start;
+#define EEPROM_POS (&_econfig_start)
+#else
+extern uint8_t _config_start;
+#endif
+
 /*
  * Layout of configuration blocks:
  *  4 signature 'DevC'
@@ -45,11 +52,6 @@ static uint8_t read_crc_byte(uint16_t &crc, uint8_t pos) {
 static inline void write_byte(uint8_t b, uint8_t pos) {
 	eeprom_write_byte((uint8_t *)EEPROM_POS + pos, b);
 }
-#endif
-
-#if !USE_EEPROM
-extern const uint8_t _config_start[] __attribute__ ((progmem));
-extern const uint8_t _config_end[] __attribute__ ((progmem));
 #endif
 
 #if USE_EEPROM

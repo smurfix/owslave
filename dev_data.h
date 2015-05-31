@@ -4,7 +4,6 @@
 #include <inttypes.h>
 #include "dev_config.h"
 
-#define EEPROM_POS 128
 #define EUID_LEN 8
 
 #define CFG_DATA(n) struct config_##n
@@ -16,9 +15,6 @@
 char _cfg_read(void *data, uint8_t size, ConfigID id);
 #ifdef CFG_EEPROM
 char _cfg_write(void *data, uint8_t size, ConfigID id);
-#else
-extern const uint8_t _config_start[] __attribute__ ((progmem));
-extern const uint8_t _config_end[] __attribute__ ((progmem));
 #endif
 
 #ifdef SMALL_DEVICE

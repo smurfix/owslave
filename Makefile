@@ -64,9 +64,13 @@ OBJS:=$(addprefix device/${DEV}/,$(addsuffix .o,$(basename $(shell $(RUN_CFG) ${
 
 ifeq (${NO_BURN},)
 ifeq (shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom,1)
-EEP:=-U eeprom:w:device/${DEV}/eprom.bin:r
+EEP:=-U eeprom:w:device/${DEV}/eprom.hex:i
+PROM=eeprom
+PSYM=econfig
 else
 EEP:=
+PROM=progmem
+PSYM=config
 endif
 burn_cfg:
 	@echo -n LFUSE:
@@ -88,7 +92,7 @@ burn: burn_cfg all
 	; X=$$?; rm $$TF; exit $$X
 endif
 
-all: device/${DEV} device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.bin device/${DEV}/image.lss
+all: device/${DEV} device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.hex device/${DEV}/image.lss
 device/${DEV}: 
 	mkdir $@
 device/${DEV}/cfg: ${CFG} cfg
@@ -109,6 +113,8 @@ device/${DEV}/image.elf: ${OBJS}
 	$(CC) $(LDFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
 device/${DEV}/image.lss: device/${DEV}/image.elf
 	$(OBJDUMP) -h -S $< > $@
+device/${DEV}/eprom.hex: device/${DEV}/image.elf
+	$(OBJCOPY) -j .eeprom -O ihex $< $@
 
 device/${DEV}/dev_config.h: ${CFG} cfg
 	$(RUN_CFG) ${CFG} .hdr ${DEV}
@@ -136,11 +142,21 @@ device/${DEV}/eprom.bin: ${CFG}
 		fi; \
 	fi
 
+device/${DEV}/owadr.bin: device/${DEV}/eprom.bin
+	$(RUN_EEPROM) $^ owid binary > $@
+
+device/${DEV}/owadr.o: device/${DEV}/owadr.bin
+	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.eeprom \
+		--redefine-sym "_binary_device_${DEV}_owadr_bin_start=_owadr_start" \
+		--redefine-sym "_binary_device_${DEV}_owadr_bin_size=_owadr_size" \
+		--redefine-sym "_binary_device_${DEV}_owadr_bin_end=_owadr_end" \
+		$^ $@
+
 device/${DEV}/config.o: device/${DEV}/eprom.bin
-	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.progmem \
-		--redefine-sym "_binary_device_${DEV}_eprom_bin_start=_config_start" \
-		--redefine-sym "_binary_device_${DEV}_eprom_bin_size=_config_size" \
-		--redefine-sym "_binary_device_${DEV}_eprom_bin_end=_config_end" \
+	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.$(PROM) \
+		--redefine-sym "_binary_device_${DEV}_eprom_bin_start=_$(PSYM)_start" \
+		--redefine-sym "_binary_device_${DEV}_eprom_bin_size=_$(PSYM)_size" \
+		--redefine-sym "_binary_device_${DEV}_eprom_bin_end=_$(PSYM)_end" \
 		$^ $@
 
 device/${DEV}/%.o: %.c device/${DEV}/dev_config.h *.h
