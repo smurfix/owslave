@@ -37,12 +37,6 @@
 #define EN_TIMER() do {TIFR|=(1<<TOV0); TIMSK|=(1<<TOIE0);}while(0) //enable timer interrupt
 #define DIS_TIMER() do {TIMSK &= ~(1<<TOIE0);} while(0) // disable timer interrupt
 
-ISR(TIMER0_OVF_vect) {
-    DBG(0x10);
-    DIS_TIMER();
-    DBG(0x1E);
-}
-
 static unsigned long long x = 0;
 void init_state(void) {
     DBG(0x01);

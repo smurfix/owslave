@@ -116,8 +116,12 @@ main(void)
 #if defined(HAVE_WATCHDOG) && (!defined(ONEWIRE_MOAT) || !defined(CONDITIONAL_SEARCH))
 		wdt_reset();
 #endif
+#ifdef IS_BOOTLOADER
+		onewire_poll();
+#else
 		poll_all();
 		mainloop();
+#endif
 	}
 }
 

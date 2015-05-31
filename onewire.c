@@ -16,6 +16,14 @@
 /* Based on work published at http://www.mikrocontroller.net/topic/44100 */
 
 #include "onewire_internal.h"
+#include <avr/eeprom.h>
+
+#ifdef USE_BOOTLOADER
+#undef cli
+#define cli() do{}while(0)
+#undef sei
+#define sei() do{}while(0)
+#endif
 
 ow_addr_t ow_addr;
 
@@ -68,16 +76,22 @@ onewire_init(void)
 	OWPORT &= ~(1 << ONEWIREPIN);
 	OWDDR &= ~(1 << ONEWIREPIN);
 
+#ifdef IS_BOOTLOADER
+	{
+		uint8_t x;
+		extern uint8_t _owadr_start;
+		for (x=0;x<8;x++)
+			ow_addr.addr[x] = eeprom_read_byte(&_owadr_start+x);
+	}
+#else
 	cfg_read(owid, ow_addr.ow_addr);
+#endif
 
 	IFR |= (1 << INTF0);
 	IMSK |= (1 << INT0);
 
 	set_idle();
 }
-
-volatile wmode_t wmode;
-volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
 void next_idle(char reason)
 {
@@ -88,6 +102,17 @@ void next_idle(char reason)
 		set_idle();
 	}
 	DBG(0x2D);
+	go_out();
+}
+
+void next_command(void)
+{
+	wait_complete('n');
+	start_reading(8);
+	//DBG_P(".e4");
+
+	xmode = OWX_COMMAND;
+	DBG(0x2B);
 	go_out();
 }
 
@@ -108,17 +133,6 @@ void _wait_complete(void)
 		uart_poll();
 		update_idle(1); // actbit
 	}
-}
-
-void next_command(void)
-{
-	wait_complete('n');
-	start_reading(8);
-	//DBG_P(".e4");
-
-	xmode = OWX_COMMAND;
-	DBG(0x2B);
-	go_out();
 }
 
 static inline void
@@ -161,19 +175,6 @@ void xmit_byte(uint8_t val)
 	xmit_any(val,8);
 }
 
-uint16_t xmit_byte_crc(uint16_t crc, uint8_t val)
-{
-	xmit_any(val,8);
-	crc = crc16(crc, val);
-	return crc;
-}
-
-uint16_t xmit_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len)
-{
-	while(len--)
-		crc = xmit_byte_crc(crc, *buf++);
-	return crc;
-}
 
 #if 0
 uint8_t rx_ready(void)
@@ -234,20 +235,6 @@ recv_byte(void)
 	recv_any(8);
 }
 
-uint16_t recv_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len)
-{
-	uint8_t val;
-
-	while(len--) {
-		val = recv_byte_in();
-		*buf++ = val;
-		if (len)
-			recv_byte();
-		crc = crc16(crc, val);
-	}
-	return crc;
-}
-
 // this code is from owfs
 static uint8_t parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
 
@@ -263,6 +250,21 @@ crc16(uint16_t r, uint8_t x)
         return r;
 }
 
+uint16_t recv_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len)
+{
+	uint8_t val;
+
+	while(len--) {
+		val = recv_byte_in();
+		*buf++ = val;
+		if (len)
+			recv_byte();
+		crc = crc16(crc, val);
+	}
+	return crc;
+}
+
+
 static inline void do_select(uint8_t cmd)
 {
 	uint8_t i;
@@ -272,8 +274,9 @@ static inline void do_select(uint8_t cmd)
 
 	DBG_C('S');
 	switch(cmd) {
-#ifdef CONDITIONAL_SEARCH
+#if defined(CONDITIONAL_SEARCH) || defined(IS_BOOTLOADER)
 	case 0xEC: // CONDITIONAL SEARCH
+#ifndef IS_BOOTLOADER
 		cond = condition_met();
 #ifdef HAVE_WATCHDOG
 		wdt_reset();
@@ -283,7 +286,8 @@ static inline void do_select(uint8_t cmd)
 			next_idle('c');
 		}
 		/* FALL THRU */
-#endif
+#endif // bootloader
+#endif // conditional
 	case 0xF0: // SEARCH_ROM; handled in interrupt
 		DBG_C('s');
 		mode = OWM_SEARCH_ZERO;
@@ -428,7 +432,8 @@ void set_idle(void)
 	SREG = sreg;
 }
 
-TIMER_INT {
+TIMER_INT
+{
 	//Read input line state first
 	//and copy a few globals to registers
 	DBG_ON();DBG_OFF();DBG_ON();
@@ -555,7 +560,8 @@ TIMER_INT {
 // Do this in assembler so that writing a zero is _fast_.
 void real_PIN_INT(void) __attribute__((signal));
 void INT0_vect(void) __attribute__((naked));
-void INT0_vect(void) {
+void INT0_vect(void)
+{
 	// WARNING: No command in here may change the status register!
 	DBG_ON();
 	asm("     push r24");

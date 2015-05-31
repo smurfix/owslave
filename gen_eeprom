@@ -371,6 +371,14 @@ class OwidBlock(Block):
         self.data['serial'] = binascii.hexlify(data[1:7]).decode('utf-8')
         self.data['crc'] = data[7]
         
+    def get_data(self,k):
+        if k == "binary":
+            from base64 import b16decode
+            with open("/dev/stdout","wb") as f:
+                f.write(bytes((self.data['type'],))+b16decode(self.data['serial'],True)+bytes((self.data['crc'],)))
+            sys.exit()
+        else:
+            return super(OwidBlock,self).get_data(k)
     def set_data(self,k,v):
         if k == "crc":
             raise SyntaxError("The CRC cannot be set manually.")

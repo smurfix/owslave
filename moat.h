@@ -21,7 +21,9 @@
 
 /* Setup */
 /* Called before enabling interrupts */
+#ifndef init_state
 void init_state(void);
+#endif
 
 /* Your main loop. You need to poll_all() if you don't return. */
 void mainloop(void);
@@ -49,7 +51,9 @@ void do_command(uint8_t cmd);
 
 /* Ditto, but called from idle / bit-wait context. You implement this! */
 /* 'bits' says how many 1wire bit times are left. */
+#ifndef update_idle
 void update_idle(uint8_t bits);
+#endif
 
 void moat_init(void);
 void moat_poll(void);
