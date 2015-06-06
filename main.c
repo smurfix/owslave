@@ -34,6 +34,10 @@
 static inline void
 init_mcu(void)
 {
+#ifdef HAVE_WATCHDOG
+	wdt_reset();
+	wdt_enable(0x09);
+#endif
 #ifdef __AVR_ATtiny13__
 	CLKPR = 0x80;    // Prepare to ...
 	CLKPR = 0x00;    // ... set to 9.6 MHz
@@ -86,16 +90,13 @@ poll_all(void)
 int
 main(void)
 {
-#ifdef HAVE_WATCHDOG
-	wdt_enable(0x09);
-#endif
 #ifdef HAVE_DBG_PIN
 	DBGPINPORT &= ~(1 << DBGPIN);
 	DBGPINDDR |= (1 << DBGPIN);
 #endif
 #ifdef HAVE_DBG_PORT
 	DBGPORT = 0;
-	DBGDDR = 0xFF;
+	DBGDDR |= 0x1F;
 #endif
 #ifdef HAVE_ONEWIRE
 	OWDDR &= ~(1<<ONEWIREPIN);
@@ -104,6 +105,7 @@ main(void)
 
 	init_mcu();
 	init_all();
+	uart_puts_P("\nreboot\n");
 
 	// now go
 	DBG(0x33);

@@ -18,6 +18,7 @@
  */
 
 #include <avr/io.h>
+#include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include <string.h>
 #include "onewire.h"
@@ -39,19 +40,20 @@
 
 static unsigned long long x = 0;
 void init_state(void) {
+	wdt_reset();
     DBG(0x01);
     DBG_ON();
     DBG_OFF();
     DBG_ON();
 
-    TCCR0A = 0;
-    TCCR0B = 0x03;  // Prescaler 1/64
+    //TCCR0A = 0;
+    //TCCR0B = 0x03;  // Prescaler 1/64
 
     DBG_OFF();
     DBG_ON();
 
-    EN_TIMER();
-    TCNT0=0xF0;
+    //EN_TIMER();
+    //TCNT0=0xF0;
 
     DBG_OFF();
     DBG(0x03);
@@ -61,6 +63,7 @@ void mainloop(void) {
     DBG(0x02);
     DBG_ON();
     DBG_OFF();
+	wdt_reset();
     if(++x<100000ULL) {
         DBG(0x06);
         return;
@@ -68,7 +71,7 @@ void mainloop(void) {
     DBG(0x0A);
     x = 0;
     DBG_C('/');
-    TCNT0=0xE0;
-    EN_TIMER();
+    //TCNT0=0xE0;
+    //EN_TIMER();
     DBG(0x0B);
 }
