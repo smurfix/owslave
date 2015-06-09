@@ -32,7 +32,8 @@ typedef void read_fn(uint8_t chan, uint8_t *buf);
 typedef void read_done_fn(uint8_t chan);
 typedef char alert_check_fn(void);
 typedef void alert_fill_fn(uint8_t *buf);
-typedef void write_fn(uint16_t crc);
+typedef void write_check_fn(uint8_t chan, uint8_t *buf, uint8_t len);
+typedef void write_fn(uint8_t chan, uint8_t *buf, uint8_t len);
 
 #define DEFS(_s) \
     init_fn init_ ## _s; \
@@ -40,6 +41,7 @@ typedef void write_fn(uint16_t crc);
     read_len_fn read_ ## _s ## _len; \
     read_fn read_ ## _s; \
     read_done_fn read_ ## _s ## _done; \
+    write_check_fn write_ ## _s ## _check;  \
     write_fn write_ ## _s; 
 
 #ifdef CONDITIONAL_SEARCH
@@ -56,6 +58,7 @@ typedef struct {
     read_len_fn *read_len;
     read_fn *read;
     read_done_fn *read_done;
+    write_check_fn *write_check;
     write_fn *write;
 #ifdef CONDITIONAL_SEARCH
     alert_check_fn *alert_check;

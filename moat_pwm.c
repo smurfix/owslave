@@ -80,28 +80,16 @@ void read_pwm(uint8_t chan, uint8_t *buf)
 	}
 }
 
-void write_pwm(uint16_t crc)
+void write_pwm_check(uint8_t chan, uint8_t *buf, uint8_t len)
 {
-	uint8_t chan;
-	uint8_t len;
-	pwm_t *t;
-	uint8_t buf[4];
-	uint16_t a,b,last;
-
-	chan = recv_byte_in();
-	recv_byte();
-	len = recv_byte_in();
-	recv_byte();
-
-	crc = crc16(crc, chan);
-	crc = crc16(crc, len);
-
 	if (chan == 0 || chan > N_PWM || (len != 2 && len != 4))
 		next_idle('w');
-	t = &pwms[chan-1];
+}
+void write_pwm(uint8_t chan, uint8_t *buf, uint8_t len)
+{
+	pwm_t *t = &pwms[chan-1];
+	uint16_t a,b,last;
 
-	crc = recv_bytes_crc(crc,buf,len);
-	end_transmission(crc);
 	last = ((t->flags & PWM_IS_ON) ? t->t_on : t->t_off);
 	if (len == 2) {
 		a = buf[0];

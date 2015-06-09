@@ -69,44 +69,30 @@ void read_port_done(uint8_t chan) {
 		port_post_send(&ports[chan-1]);
 }
 
-void write_port(uint16_t crc)
+void write_port_check(uint8_t chan, uint8_t *buf, uint8_t len)
 {
-	uint8_t chan;
-	uint8_t len, a,b;
-	port_t *portp;
-	chan = recv_byte_in();
-	recv_byte();
-
 	if (chan == 0 || chan > N_PORT)
 		next_idle('p');
-	portp = &ports[chan-1];
+	if (len != 1 || len != 2)
+		next_idle('q');
+}
+void write_port(uint8_t chan, uint8_t *buf, uint8_t len)
+{
+	uint8_t a,b;
+	port_t *portp = &ports[chan-1];
 	_P_VARS(portp)
 
-	crc = crc16(crc,chan);
-
-	len = recv_byte_in();
-	recv_byte();
-	crc = crc16(crc,len);
-	a = recv_byte_in();
-	crc = crc16(crc,a);
-	if(len == 2) { // set parameters (a:value; b:bitmask)
-		recv_byte();
-		b = recv_byte_in();
-		crc = crc16(crc,b);
-	} else if(len != 1) { // len=1: set value
-		next_idle('q');
-	}
-
-	end_transmission(crc);
-	if (len == 2) {
+	a = *buf++;
+	if(len == 1) // len=1: set value
+		port_set(portp,a);
+	else {
+		b = *buf++;
 		flg = (portp->flags&~b) | (a&b);
 		portp->flags = flg;
 		if(b&PFLG_CURRENT)
 			port_set(portp,a&0x80);
 		else if (b&3)
 			port_set_out(portp,flg&3);
-	} else {
-		port_set(portp,a);
 	}
 }
 

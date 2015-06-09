@@ -45,7 +45,8 @@ void dummy_poll_fn(void) {}
 uint8_t dummy_read_len_fn(uint8_t chan) { next_idle('y'); return 0; }
 void dummy_read_fn(uint8_t chan, uint8_t *buf) { next_idle('y'); }
 void dummy_read_done_fn(uint8_t chan) {}
-void dummy_write_fn(uint16_t crc) { next_idle('y'); }
+void dummy_write_check_fn(uint8_t chan, uint8_t *buf, uint8_t len) { return; }
+void dummy_write_fn(uint8_t chan, uint8_t *buf, uint8_t len) { next_idle('y'); }
 char dummy_alert_check_fn(void) { return 0; }
 void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
 
@@ -55,6 +56,7 @@ void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
     read_len_fn read_ ## _s ## _len __attribute__((weak,alias("dummy_read_len_fn"))); \
     read_fn read_ ## _s __attribute__((weak,alias("dummy_read_fn"))); \
     read_done_fn read_ ## _s ## _done __attribute__((weak,alias("dummy_read_done_fn"))); \
+    write_check_fn write_ ## _s ## _check __attribute__((weak,alias("dummy_write_check_fn")));  \
     write_fn write_ ## _s __attribute__((weak,alias("dummy_write_fn")));  \
 	ALERT_DEF(_s)
 #ifdef CONDITIONAL_SEARCH
@@ -75,6 +77,7 @@ void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
     &read_ ## _s ## _len, \
     &read_ ## _s, \
     &read_ ## _s ## _done, \
+    &write_ ## _s ## _check, \
     &write_ ## _s, \
 	ALERT_DEF(_s) \
 },
@@ -114,13 +117,14 @@ void end_transmission(uint16_t crc)
 	}
 }
 
+static uint8_t buf[MAXBUF];
+
 // Inlining this code triggers a compiler bug
 static void moat_read(void) __attribute__((noinline));
 static void moat_read(void)
 {
 	uint16_t crc = 0;
 	uint8_t dtype,chan;
-	static uint8_t buf[MAXBUF];
 	uint8_t len;
 	uint8_t *bp=buf;
 	const moat_call_t *mc;
@@ -178,12 +182,14 @@ static void moat_write(void) __attribute__((noinline));
 static void moat_write(void)
 {
 	uint16_t crc = 0;
-	uint8_t dtype;
+	uint8_t dtype,chan;
+	uint8_t len;
 	const moat_call_t *mc;
+	write_check_fn *wfc;
 	write_fn *wf;
 
 	/*
-	 Implement reading data. We read whatever necessary, read the length,
+	 Implement writing data. We read whatever necessary, read the length,
 	 read the data, write the resulting CRC, read the inverted CRC back,
 	 and then do whatever necessary to effect the write (e.g. clear a flag,
 	 update a stored value, whatever).
@@ -200,10 +206,20 @@ static void moat_write(void)
 	if (dtype >= TC_MAX)
 		next_idle('W');
 	crc = crc16(crc,dtype);
+	chan = recv_byte_in();
+	recv_byte();
+	crc = crc16(crc,chan);
+	len = recv_byte_in();
+	recv_byte();
+	crc = crc16(crc,len);
+	crc = recv_bytes_crc(crc, buf, len);
 
 	mc = &moat_calls[dtype];
+	wfc = pgm_read_ptr_near(&mc->write_check);
+	wfc(chan,buf,len);
+	end_transmission(crc);
 	wf = pgm_read_ptr_near(&mc->write);
-	wf(crc);
+	wf(chan,buf,len);
 }
 
 void moat_poll(void)

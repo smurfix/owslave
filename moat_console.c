@@ -72,35 +72,18 @@ void alert_console_fill(uint8_t *buf)
 }
 
 #ifdef CONSOLE_WRITE
-void write_console(uint16_t crc)
+void write_console_check(uint8_t chan, uint8_t *buf, uint8_t len)
 {
-	uint8_t chan;
-	uint8_t len, pos=0;
-	uint8_t buf[MAXBUF+1];
-	chan = recv_byte_in();
 	if (chan != 1)
 		next_idle('w');
-	recv_byte();
-	len = recv_byte_in();
-	recv_byte();
 	if ((len==0) || (len>MAXBUF))
 		next_idle('u');
-	crc = crc16(crc,chan);
-	crc = crc16(crc,len);
-	while(1) {
-		uint8_t b = recv_byte_in();
-		buf[pos++] = b;
-		if (pos == len) {
-			crc = crc16(crc,b);
-			break;
-		}
-		recv_byte();
-		crc = crc16(crc,b);
-	}
-	end_transmission(crc);
-	buf[pos] = 0;
+}
+void write_console(uint8_t chan, uint8_t *buf, uint8_t len)
+{
+	buf[len] = 0;
 #if CONSOLE_WRITE>1
-	if(pos==1 && buf[0]=='?') {
+	if(len==1 && buf[0]=='?') {
 		console_puts_P("Hello.");
 	} else
 #endif

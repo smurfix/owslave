@@ -67,54 +67,32 @@ void read_adc_done(uint8_t chan) {
 	adcp->flags &=~ (ADC_IS_ALERT_L|ADC_IS_ALERT_H);
 }
 
-void write_adc(uint16_t crc)
+void write_adc_check(uint8_t chan, uint8_t *buf, uint8_t len)
 {
-	uint8_t chan;
-	uint8_t len, x;
-	uint16_t lower,upper;
-	adc_t *adcp;
-	chan = recv_byte_in();
-	recv_byte();
 
 	if (chan == 0 || chan > N_ADC)
 		next_idle('p');
-	adcp = &adcs[chan-1];
 
-	crc = crc16(crc,chan);
-
-	len = recv_byte_in();
-	recv_byte();
 	if (len != 2 && len != 4)
 		next_idle('a');
-	crc = crc16(crc,len);
+}
 
-	x = recv_byte_in();
-	recv_byte();
-	crc = crc16(crc,x);
-	if (len == 2)
-		lower = (x<<8)|x;
-	else
-		lower = x<<8;
-
-	x = recv_byte_in();
+void write_adc(uint8_t chan, uint8_t *buf, uint8_t len)
+{
+	uint8_t x;
+	uint16_t lower,upper;
+	adc_t *adcp = &adcs[chan-1];
 	if (len == 2) {
-		crc = crc16(crc,x);
+		x = *buf++;
+		lower = (x<<8)|x;
+		x = *buf++;
 		upper = (x<<8)|x;
 	} else {
-		recv_byte();
-		crc = crc16(crc,x);
-		lower |= x;
-
-		x = recv_byte_in();
-		recv_byte();
-		crc = crc16(crc,x);
-		upper = (x<<8);
-		x = recv_byte_in();
-		crc = crc16(crc,x);
-		upper |= x;
+		lower = (*buf++)<<8;
+		lower |= *buf++;
+		upper = (*buf++)<<8;
+		upper |= *buf++;
 	}
-	end_transmission(crc);
-
 	adcp->lower = lower;
 	adcp->upper = upper;
 }
