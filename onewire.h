@@ -24,7 +24,12 @@
 void set_idle(void);
 
 /* aborts and return to idle state */
+#ifdef ONE_WIRE_DEBUG
 void next_idle(char reason) __attribute__((noreturn));
+#else
+#define next_idle(x) _next_idle()
+void _next_idle(void) __attribute__((noreturn));
+#endif
 
 /* send something. Will return as soon as transmission is active. */
 void xmit_bit(uint8_t bit);

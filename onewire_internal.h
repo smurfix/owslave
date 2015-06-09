@@ -146,8 +146,6 @@ typedef enum {
 extern volatile wmode_t wmode;
 extern volatile uint8_t actbit; // current bit. Keeping this saves 14bytes ROM
 
-void next_idle(char reason);
-
 static inline void start_reading(uint8_t bits) {
 	mode = OWM_READ;
 	cbuf=0;

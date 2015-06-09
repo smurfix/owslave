@@ -93,7 +93,11 @@ onewire_init(void)
 	set_idle();
 }
 
+#ifdef ONEWIRE_DEBUG
 void next_idle(char reason)
+#else
+void _next_idle(void)
+#endif
 {
 	DBG(0x2D);
 	DBG_C('I');
