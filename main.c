@@ -30,14 +30,19 @@
 #include "moat.h"
 #include "jmp.h"
 
+#ifdef HAVE_WATCHDOG
+void setup_watchdog(void) __attribute__((naked,section(".init3")));
+void setup_watchdog(void)
+{
+	wdt_reset();
+	wdt_enable(0x09);
+}
+#endif
+
 // Initialise the hardware
 static inline void
 init_mcu(void)
 {
-#ifdef HAVE_WATCHDOG
-	wdt_reset();
-	wdt_enable(0x09);
-#endif
 #ifdef __AVR_ATtiny13__
 	CLKPR = 0x80;    // Prepare to ...
 	CLKPR = 0x00;    // ... set to 9.6 MHz
