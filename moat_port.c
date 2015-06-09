@@ -73,7 +73,7 @@ void write_port_check(uint8_t chan, uint8_t *buf, uint8_t len)
 {
 	if (chan == 0 || chan > N_PORT)
 		next_idle('p');
-	if (len != 1 || len != 2)
+	if (len != 1 && len != 2)
 		next_idle('q');
 }
 void write_port(uint8_t chan, uint8_t *buf, uint8_t len)
