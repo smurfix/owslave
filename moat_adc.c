@@ -95,6 +95,7 @@ void write_adc(uint8_t chan, uint8_t *buf, uint8_t len)
 	}
 	adcp->lower = lower;
 	adcp->upper = upper;
+	adcp->flags &=~ (ADC_IS_ALERT_L|ADC_IS_ALERT_H);
 }
 
 #ifdef CONDITIONAL_SEARCH
