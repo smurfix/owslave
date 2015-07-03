@@ -94,7 +94,7 @@ endif
 
 all: device/${DEV} device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.hex device/${DEV}/image.lss
 device/${DEV}: 
-	mkdir $@
+	mkdir -p $@
 device/${DEV}/cfg: ${CFG} cfg
 	@echo -n MCU:
 	@$(RUN_CFG) ${CFG} devices.${DEV}.mcu
