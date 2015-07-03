@@ -58,7 +58,7 @@ uint8_t debug_state;
 #define PINCHANGE_vect PCINT0_vect
 #define PCIE PCIE0
 #define PCMSK PCMSK0
-#elif defined(__AVR_ATtiny25__)
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 #define ADLARREG ADCSRB
 #define ADLARMUX 0
 #elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__)  || defined (__AVR_ATmega328__)

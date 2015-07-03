@@ -56,7 +56,7 @@
 #define IFR GIFR
 #endif
 
-#ifdef __AVR_ATtiny25__
+#if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 #define F_CPU_                8000000
 #define OWPIN PINB
 #define OWPORT PORTB
@@ -65,6 +65,8 @@
 
 #define IMSK GIMSK
 #define IFR GIFR
+#define TIMSK0 TIMSK
+#define TIFR0 TIFR
 
 #define ADPIN PINB
 #define ADPIN_vect PCINT0_vect

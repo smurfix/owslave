@@ -94,6 +94,9 @@ extern volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 #define TIMER_INT ISR(TIMER2_OVF_vect) //the timer interrupt service routine
 
 #else
+#ifndef PSRSYNC
+#define PSRSYNC PSR0
+#endif
 #define EN_TIMER() do {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);}while(0) //enable timer interrupt
 #define DIS_TIMER() do {TIMSK0 &= ~(1<<TOIE0);} while(0) // disable timer interrupt
 #define SET_TIMER(x) do { GTCCR = (1<<PSRSYNC); TCNT0=(uint8_t)~(x); } while(0) // reset prescaler

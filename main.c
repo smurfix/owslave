@@ -47,7 +47,7 @@ init_mcu(void)
 	CLKPR = 0x80;    // Prepare to ...
 	CLKPR = 0x00;    // ... set to 9.6 MHz
 
-#elif defined(__AVR_ATtiny25__)
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 	CLKPR = 0x80;    // Prepare to ...
 	CLKPR = 0x00;    // ... set to 8.0 MHz
 

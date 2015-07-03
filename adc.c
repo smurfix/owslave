@@ -34,10 +34,6 @@ adc_t adcs[] = {
 #include "_adc.h"
 };
 
-#ifndef HAVE_TIMER
-#error Need HAVE_TIMER for ADC because I need to delay measuring
-#endif
-
 /* Each mainloop pass checks one adc. */
 static uint8_t poll_this = 0;
 static uint8_t poll_step = 0;

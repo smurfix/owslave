@@ -20,7 +20,5 @@ typedef struct {
 
 extern pwm_t pwms[];
 
-#else // no i/o
-
-#endif // any inputs or outputs at all
+#endif // any PWMs at all
 #endif // pwm_h

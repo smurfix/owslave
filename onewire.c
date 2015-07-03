@@ -43,7 +43,7 @@ onewire_init(void)
 
 	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
-#elif defined(__AVR_ATtiny25__)
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
 #elif defined(__AVR_ATtiny84__)
