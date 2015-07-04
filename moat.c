@@ -157,14 +157,14 @@ static void moat_read(void)
 		next_idle('p');
 	mc = &moat_calls[dtype];
 
-	rlf = pgm_read_ptr_near(&mc->read_len);
+	rlf = pgm_read_ptr(&mc->read_len);
 	len = rlf(chan);
 	xmit_byte(len);
 
 	crc = crc16(crc,chan);
 	crc = crc16(crc,len);
 
-	rf = pgm_read_ptr_near(&mc->read);
+	rf = pgm_read_ptr(&mc->read);
 	rf(chan, buf);
 
 	while(len--) {
@@ -174,7 +174,7 @@ static void moat_read(void)
 	}
 	end_transmission(crc);
 
-	rdf = pgm_read_ptr_near(&mc->read_done);
+	rdf = pgm_read_ptr(&mc->read_done);
 	rdf(chan);
 }
 
@@ -215,10 +215,10 @@ static void moat_write(void)
 	crc = recv_bytes_crc(crc, buf, len);
 
 	mc = &moat_calls[dtype];
-	wfc = pgm_read_ptr_near(&mc->write_check);
+	wfc = pgm_read_ptr(&mc->write_check);
 	wfc(chan,buf,len);
 	end_transmission(crc);
-	wf = pgm_read_ptr_near(&mc->write);
+	wf = pgm_read_ptr(&mc->write);
 	wf(chan,buf,len);
 }
 
@@ -228,7 +228,7 @@ void moat_poll(void)
 	const moat_call_t *mc = moat_calls;
 
 	for(i=0;i<TC_MAX;i++,mc++) {
-		poll_fn *pf = pgm_read_ptr_near(&mc->poll);
+		poll_fn *pf = pgm_read_ptr(&mc->poll);
 		pf();
 	}
 }
@@ -239,7 +239,7 @@ void moat_init(void)
 	const moat_call_t *mc = moat_calls;
 
 	for(i=0;i<TC_MAX;i++,mc++) {
-		init_fn *pf = pgm_read_ptr_near(&mc->init);
+		init_fn *pf = pgm_read_ptr(&mc->init);
 		pf();
 	}
 }

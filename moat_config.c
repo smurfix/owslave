@@ -56,7 +56,7 @@ void read_config(uint8_t chan, uint8_t *buf)
 	if (chan == CfgID_nums) {
 		uint8_t i;
 		for(i=0;i<TC_MAX;i++)
-			*buf++ = pgm_read_byte_near(&moat_sizes[i]);
+			*buf++ = pgm_read_byte(&moat_sizes[i]);
 	} else if (chan == CfgID_list) {
 		uint8_t b;
 		memset(buf,0,(CFG_MAX+7)>>3);

@@ -53,7 +53,7 @@ void poll_alert(void)
 		alert_max = 0;
 	}
 	mc = &moat_calls[chan];
-	ac = pgm_read_ptr_near(&mc->alert_check);
+	ac = pgm_read_ptr(&mc->alert_check);
 	if(ac()) {
 		alert_tmp[chan>>3] |= 1<<(chan&7);
 		alert_max = chan+1;
@@ -69,7 +69,7 @@ uint8_t read_alert_len(uint8_t chan)
 	else if (chan >= TC_MAX)
 		next_idle('x');
 	else
-		len = pgm_read_byte_near(&moat_sizes[chan]);
+		len = pgm_read_byte(&moat_sizes[chan]);
 	return (len+7)>>3;
 }
 
@@ -81,7 +81,7 @@ void read_alert(uint8_t chan, uint8_t *buf)
 		if (chan >= TC_MAX)
 			next_idle('p');
 		mc = &moat_calls[chan];
-		ac = pgm_read_ptr_near(&mc->alert_fill);
+		ac = pgm_read_ptr(&mc->alert_fill);
 
 		ac(buf);
 	} else { // all inputs: send bits
