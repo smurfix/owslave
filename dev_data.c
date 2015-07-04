@@ -40,7 +40,7 @@ inline uint8_t cfg_byte(cfg_addr_t addr) {
 
 #if CRC
 static uint8_t read_crc_byte(uint16_t &crc, uint8_t pos) {
-	uint8_t b = read_byte((uint8_t *)EEPROM_POS + pos);
+	uint8_t b = read_byte((uint8_t *)pos);
 	crc = _crc16_update(crc, b);
 	return b;
 }
