@@ -224,7 +224,7 @@ recv_any_in(void)
 	mode = OWM_IDLE;
 	return cbuf;
 }
-#ifdef NEED_BIT
+#ifdef NEED_BITS
 void
 recv_bit(void)
 {

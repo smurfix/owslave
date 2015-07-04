@@ -182,7 +182,7 @@ uint8_t rx_ready(void);
 #endif
 
 uint8_t recv_any_in(void);
-#ifdef NEED_BIT
+#ifdef NEED_BITS
 void recv_bit(void);
 #endif
 
