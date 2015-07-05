@@ -85,6 +85,7 @@ def main(f,*kk):
                         v = s.subtree('devices',k,'port',str(i))
                         flg=0
                         p=0
+                        if isinstance(v,int): v = str(v)
                         assert len(v)>=2 and len(v) <=6
                         for vv in v:
                             if vv >= 'A' and vv <= 'Z':
@@ -116,6 +117,7 @@ def main(f,*kk):
                         v = s.subtree('devices',k,'adc',str(i))
                         flg=0
                         p=0
+                        if isinstance(v,int): v = str(v)
                         assert len(v)>=1 and len(v) <=3
                         for vv in v:
                             if vv >= '0' and vv <= '7':
@@ -154,20 +156,18 @@ def main(f,*kk):
                         v = s.subtree('devices',k,'pwm',str(i))
                         flg = 0
                         port = 0
-                        p = 0
-                        if isinstance(v,int):
-                            port = v
-                        else:
-                            assert len(v)>=1 and len(v) <=3
-                            for vv in v:
-                                if vv >= '0' and vv <= '9':
-                                    assert not flg;
-                                    port = 10*port+(flg-'0');
-                                    p = 1
-                                elif vv == "*": flg|=PWM_ALERT ## participate in alerting
-                                elif vv == "!": flg|=PWM_FORCE ## immediately switch
-                                else: assert 0,vv
-                            assert p
+                        p = False
+                        if isinstance(v,int): v = str(v)
+                        assert len(v)>=1 and len(v) <=3
+                        for vv in v:
+                            if vv >= '0' and vv <= '9':
+                                assert not flg, v
+                                port = 10*port+(ord(vv)-ord('0'))
+                                p = True
+                            elif vv == "*": flg|=PWM_ALERT ## participate in alerting
+                            elif vv == "!": flg|=PWM_FORCE ## immediately switch
+                            else: assert 0,vv
+                        assert p, v
                         if v in seen:
                             print("Warning: PWM %d is known"%v,file=sys.stderr)
                             continue
