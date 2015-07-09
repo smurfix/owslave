@@ -2,10 +2,15 @@
 
 ## Quick intro
 
-First, edit `world.cfg`. This is a YAML-formatted file. Aou'll need to edit
-the `env` section and tell it which programmer you use.
+First, look at `world.cfg`. This is a YAML-formatted file. Its structure is
+reasonably obvious. Hopefully.
 
-Then, add your slaves to the "devices" section.
+Now copy `sample.cfg`. We'll use `project.cfg` subsequently; you
+should probably use the actual name of your project.
+
+Edit the `env` section and tell it which programmer you use.
+
+Then, add your slaves to the `devices` section.
 
 Let's say you want to use three ports of an ATmega88: a PWM output on pin
 B0, a counter input on B1, and an alarm input on B2. Let's call your slave
@@ -28,10 +33,11 @@ B0, a counter input on B1, and an alarm input on B2. Let's call your slave
         count:
           1: 2
 
-Now `make try1`. Your slave will get a randomized 1wire ID assigned, which
-will be added to `world.cfg`.
+Now `make CFG=project.cfg try1`. Your slave will get a random 1wire
+ID assigned, which will be auto-added to `project.cfg`.
 
-Next, use `make burn_try1` to flash your device.
+Now use `make CFG=project.cfg burn_try1` to flash your device.
+There's no need for `sudo` here, as the Makefile already contains that.
 
 ## Definitions
 

@@ -57,10 +57,46 @@ class Cfg(object):
         Encapsultates looking up items in a config tree.
         """
     follow = True
+    iseq = 1
 
     def __init__(self, f):
         with open(f) as fd:
             self.data = yaml.load(fd)
+        self.ipath = {}
+        self.data['_idata_'] = {}
+
+    def inc1(self,f):
+        i = self.ipath.get(f,None)
+        if i is None:
+            i = str(self.iseq)
+            self.iseq += 1
+            with open(f) as fd:
+                self.data['_idata_'][i] = yaml.load(fd)
+            self.ipath[f] = i
+
+        return "_idata_."+i
+
+    def inc(self,ak):
+        "parse _ref entries"
+        r = ak.get('_ref',None)
+        if r is None:
+            ak['_ref'] = r = []
+        elif not isinstance(r,list):
+            ak['_ref'] = r = [r]
+
+        ri = ak.get('_include',None)
+        if ri is not None:
+            if isinstance(ri,list):
+                for rin in ri:
+                    r.append(self.inc1(rin))
+            else:
+                r.append(self.inc1(ri))
+
+            del ak['_include']
+
+        if not r:
+            del ak['_ref']
+        return iter(r)
 
     def getpath(self,ak,k1,*rest):
         try:
@@ -78,9 +114,12 @@ class Cfg(object):
                 return v1
         except (KeyError,AttributeError) as e:
             if not self.follow: raise
-            try: v = ak['_ref']
-            except KeyError: raise e
-            return self.getpath(self.data,*(v.split('.')+[k1]+list(rest)))
+            for v in self.inc(ak):
+                try:
+                    return self.getpath(self.data,*(v.split('.')+[k1]+list(rest)))
+                except KeyError:
+                    pass
+            raise e
 
     def getkeys(self,lk,ak,*rest):
         if rest:
@@ -94,8 +133,10 @@ class Cfg(object):
         else:
             for k in ak:
                 lk.add(k)
-        if self.follow and isinstance(ak,dict) and '_ref' in ak:
-            self.getkeys(lk,self.data,*(ak['_ref'].split('.')+list(rest)))
+        if self.follow and isinstance(ak,dict):
+            if not rest or rest[0] != '_idata_':
+                for v in self.inc(ak):
+                    self.getkeys(lk,self.data,*(v.split('.')+list(rest)))
 
 
     def subtree(self,*key):
