@@ -188,13 +188,17 @@ static void moat_write(void)
 
 void moat_poll(void)
 {
-	uint8_t i;
-	const moat_call_t *mc = dispatch;
+	static uint8_t i = 0;
+	poll_fn *pf;
 
-	for(i=0;i<tc_max;i++,mc++) {
-		poll_fn *pf = pgm_read_ptr(&mc->poll);
-		pf();
+	if (i >= tc_max) {
+		i = 0;
+		return;
+		// this makes sure that we do nothing if tc_max==0
 	}
+	pf = pgm_read_ptr(&dispatch[i].poll);
+	pf();
+	i++;
 }
 
 void moat_init(void)
