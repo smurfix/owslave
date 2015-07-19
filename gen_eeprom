@@ -127,6 +127,7 @@ class Block(object):
     def __init__(self):
         self.data = {};
 
+    @property
     def display_names(self):
         return self.names
 
@@ -262,13 +263,20 @@ class BytesBlock(Block):
         self.data = [int(arg,0) for arg in args]
 
     def pack(self):
-        return struct.pack(str(len(self.data))+"b",*self.data)
+        return struct.pack(str(len(self.data))+"B",*self.data)
 
     def unpack(self,s):
-        self.data = struct.unpack(str(len(s))+"b",s)
+        self.data = struct.unpack(str(len(s))+"B",s)
 
     def usage(self):
         return u"0x?? …"
+
+class WordBlock(BytesBlock):
+    def pack(self):
+        return struct.pack(">"+str(len(self.data))+"H",*self.data)
+
+    def unpack(self,s):
+        self.data = struct.unpack(">"+str(len(s)//2)+"H",s)
 
 
 class NameBlock(Block):
@@ -295,6 +303,16 @@ class NameBlock(Block):
 
     def usage(self):
         return u"some_name"
+
+
+#class LoaderBlock(WordBlock):
+#    def set_all(self,args):
+#        assert len(args) == 3
+#        super(LoaderBlock,self).set_all(args)
+
+class LoaderBlock(Block):
+    names = "loader endp crc".split(" ")
+    sig = ">HHH"
 
 
 class EuidBlock(BytesBlock):
@@ -376,6 +394,9 @@ class OwidBlock(Block):
             from base64 import b16decode
             with open("/dev/stdout","wb") as f:
                 f.write(bytes((self.data['type'],))+b16decode(self.data['serial'],True)+bytes((self.data['crc'],)))
+            sys.exit()
+        elif k == "ascii":
+            print("%02x.%s" % (self.data['type'], self.data['serial'])) #  self.data['crc']
             sys.exit()
         else:
             return super(OwidBlock,self).get_data(k)

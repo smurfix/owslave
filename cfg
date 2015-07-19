@@ -35,8 +35,19 @@ PWM_FORCE=(1<<1)
 follow=True
 xstr = re.compile("^x([0-9a-fA-F]{2}){1,}$")
 
-def main(f,*kk):
-    s = Cfg(f)
+# These need to be in the loader
+basetypes = ('console',)
+
+def moat_files(s):
+    for f in s.subtree('codes','types'):
+        if f.startswith('_'):
+            f = f[1:]
+        f = 'moat_'+f
+        if os.path.exists(f+'.c'):
+            yield f+'.c'
+
+def main(cfg_name,*kk):
+    s = Cfg(cfg_name)
     if kk:
         mode = ""
         for k in kk:
@@ -72,15 +83,16 @@ def main(f,*kk):
                             else:
                                 print(f)
             elif mode == "hdr":
+                BL = s.subtree('devices',k,'defs','use_bootloader')
                 with open("device/"+k+"/_port.h","w") as f:
                     print("""\
 /*
  * This file is auto-generated. It contains the list of input/output ports for
  * the device "{}".
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k), file=f)
+    """.format(k,cfg_name), file=f)
                     for i in range(1, int(s.subtree('devices',k,'types','port'))+1):
                         v = s.subtree('devices',k,'port',str(i))
                         flg=0
@@ -110,9 +122,9 @@ def main(f,*kk):
  * This file is auto-generated. It contains the list of analog inputs for
  * the device "{}".
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k), file=f)
+    """.format(k,cfg_name), file=f)
                     for i in range(1, int(s.subtree('devices',k,'types','adc'))+1):
                         v = s.subtree('devices',k,'adc',str(i))
                         flg=0
@@ -148,9 +160,9 @@ def main(f,*kk):
  * This file is auto-generated. It contains the list of ports to do PWM with
  * on the device "{}".
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k), file=f)
+    """.format(k,cfg_name), file=f)
                     seen = set()
                     for i in range(1, int(s.subtree('devices',k,'types','pwm'))+1):
                         v = s.subtree('devices',k,'pwm',str(i))
@@ -180,9 +192,9 @@ def main(f,*kk):
  * This file is auto-generated. It contains the list of ports to count
  * transitions of, on the device "{}".
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k), file=f)
+    """.format(k,cfg_name), file=f)
                     seen = set()
                     for i in range(1, int(s.subtree('devices',k,'types','count'))+1):
                         v = s.subtree('devices',k,'count',str(i))
@@ -218,14 +230,26 @@ def main(f,*kk):
                         max_t = typecode[a]
                     typecount[typecode[a]] = v
 
+                i = 0
+                statuscode = {}
+                statuscodes = []
+                for a in s.subtree('codes','status'):
+                    if a.startswith('_'):
+                        a = a[1:]
+                    else:
+                        statuscode[a]=i
+                    statuscodes.append(a)
+                    i += 1
+                max_s = i
+
                 with open("device/"+k+"/_nums.h","w") as f:
                     print("""\
 /*
  * This file is auto-generated. It contains the number of devices.
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k), file=f)
+    """.format(k,cfg_name), file=f)
                     typecount[0] = len(s.subtree('codes','blocks'))
                     typecount[1] = max_t
                     for i in range(max_t+1):
@@ -237,13 +261,24 @@ def main(f,*kk):
 /*
  * This file is auto-generated. It contains the device codes.
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k), file=f)
+    """.format(k,cfg_name), file=f)
                     for i in range(max_t+1):
                         a = typecodes[i]
                         print("TC_DEFINE({})".format(a), file=f)
 
+                with open("device/"+k+"/_status.h","w") as f:
+                    print("""\
+/*
+ * This file is auto-generated. It contains the status codes.
+ *
+ * Do not edit. Talk to '{}' instead.
+ */
+    """.format(k,cfg_name), file=f)
+                    for n,v in statuscode.items():
+                        print("#define S_{} {}".format(n,v), file=f)
+                    print("#define STATUS_MAX {}".format(max_s), file=f)
 
                 with open("device/"+k+"/dev_config.h","w") as f:
                     print("""\
@@ -254,9 +289,9 @@ def main(f,*kk):
  * This file is auto-generated. It contains a mix of global and local
  * definitions because I am lazy.
  *
- * Do not edit. Talk to 'moat.cfg' instead.
+ * Do not edit. Talk to '{}' instead.
  */
-    """.format(k,k), file=f)
+    """.format(k,k,cfg_name), file=f)
 
                     i = 0
                     print("typedef enum _ConfigID {", file=f)
@@ -272,6 +307,8 @@ def main(f,*kk):
 } ConfigID;""", file=f)
 
                     for a,v in s.keyval('devices',k,'defs'):
+                        if BL and a == "is_bootloader":
+                            continue
                         try:
                             v = int(v)
                         except ValueError:
@@ -307,39 +344,43 @@ def main(f,*kk):
             elif mode == "type":
                 print(" ".join("{} {}".format(a,v) for a,v in s.keyval('devices',k,'types')))
             elif mode == "cdefs":
+                BL = s.subtree('devices',k,'defs','use_bootloader')
                 types = dict((a,int(v)) for a,v in s.keyval('devices',k,'types') if int(v) > 0)
                 maxtype = max(())
-                print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in s.keyval('devices',k,'defs')) + " " + " ".join("-DN_{}={}".format(a.upper(),v) for a,v in s.keyval('devices',k,'types') if int(v) > 0))
+                print(" ".join("-D{}=\"{}\"".format(a.upper(),str(v).replace('"','\"')) for a,v in s.keyval('devices',k,'defs') if a != ("is_bootloader" if BL else "")) + " " + " ".join("-DN_{}={}".format(a.upper(),v) for a,v in s.keyval('devices',k,'types') if int(v) > 0))
             elif mode == "cfiles":
-                files = ['main.c','jmp.S']
-                if s.subtree('devices',k,'defs','is_bootloader'):
-                    files.append('owadr.o')
-                else:
+                files = []
+                BL = s.subtree('devices',k,'defs','use_bootloader')
+                BI = False if BL else s.subtree('devices',k,'defs','is_bootloader')
+                ow = s.subtree('devices',k,'defs','is_onewire')
+                if BL or not BI:
+                    files.append('moat_backend.c')
+                if not BL:
+                    files.append('main.c')
+                    files.append('jmp.S')
                     files.append('dev_data.c')
                     files.append('config.o')
-                if s.subtree('devices',k,'defs','have_uart'):
-                    files.append('uart.c')
-                if s.subtree('devices',k,'defs','have_timer'):
-                    files.append('timer.c')
-                ow = s.subtree('devices',k,'defs','is_onewire')
-                if not ow: pass
-                else:
-                    files.append(ow+'.c')
-                    files.append('onewire.c')
-                for f in s.subtree('devices',k,'code'):
-                    files.append(f+'.c')
-                for f in s.subtree('devices',k,'types'):
+                    if s.subtree('devices',k,'defs','have_uart'):
+                        files.append('uart.c')
+                    if s.subtree('devices',k,'defs','have_timer'):
+                        files.append('timer.c')
+                    if not ow: pass
+                    else:
+                        files.append(ow+'.c')
+                        files.append('onewire.c')
+                    for f in s.subtree('devices',k,'code'):
+                        files.append(f+'.c')
+
+                for f,v in s.keyval('devices',k,'types'):
+                    if not v: continue
                     if f[0] == '_': continue
+                    if ow == "moat" and ((f in basetypes) if BL else (f not in basetypes) if BI else False):
+                        continue
                     if os.path.exists(f+'.c'):
                         files.append(f+'.c')
 
-                if ow == "moat":
-                    for f in s.subtree('codes','types'):
-                        if f.startswith('_'):
-                            f = f[1:]
-                        f = 'moat_'+f
-                        if os.path.exists(f+'.c'):
-                            files.append(f+'.c')
+                if ow == "moat" and not BI:
+                    files.extend(moat_files(s))
 
                 print(" ".join(files))
             else:

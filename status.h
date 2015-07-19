@@ -16,14 +16,6 @@ typedef enum {
 } t_status_boot;
 extern t_status_boot status_boot;
 
-typedef enum {
-	S_reboot = 1,
-	S_max
-#define STATUS_MAX S_max
-} t_status_nr;
-
-extern t_status_boot status_boot;
-
 #ifdef CONDITIONAL_SEARCH
 extern uint8_t init_msg;
 #endif

@@ -17,13 +17,7 @@
 
 #include "onewire_internal.h"
 #include <avr/eeprom.h>
-
-#ifdef USE_BOOTLOADER
-#undef cli
-#define cli() do{}while(0)
-#undef sei
-#define sei() do{}while(0)
-#endif
+#include <string.h> // for memset
 
 ow_addr_t ow_addr;
 
@@ -76,16 +70,12 @@ onewire_init(void)
 	OWPORT &= ~(1 << ONEWIREPIN);
 	OWDDR &= ~(1 << ONEWIREPIN);
 
-#ifdef IS_BOOTLOADER
+	if(!cfg_read(owid, ow_addr.ow_addr))
 	{
-		uint8_t x;
-		extern uint8_t _owadr_start;
-		for (x=0;x<8;x++)
-			ow_addr.addr[x] = eeprom_read_byte(&_owadr_start+x);
+		ow_addr.ow_addr.type = 0xF0;
+		memset(ow_addr.ow_addr.serial,0,6);
+		ow_addr.ow_addr.crc = 0x44;
 	}
-#else
-	cfg_read(owid, ow_addr.ow_addr);
-#endif
 
 	IFR |= (1 << INTF0);
 	IMSK |= (1 << INT0);
@@ -278,9 +268,8 @@ static inline void do_select(uint8_t cmd)
 
 	DBG_C('S');
 	switch(cmd) {
-#if defined(CONDITIONAL_SEARCH) || defined(IS_BOOTLOADER)
+#if defined(CONDITIONAL_SEARCH)
 	case 0xEC: // CONDITIONAL SEARCH
-#ifndef IS_BOOTLOADER
 		cond = condition_met();
 #ifdef HAVE_WATCHDOG
 		wdt_reset();
@@ -290,7 +279,6 @@ static inline void do_select(uint8_t cmd)
 			next_idle('c');
 		}
 		/* FALL THRU */
-#endif // bootloader
 #endif // conditional
 	case 0xF0: // SEARCH_ROM; handled in interrupt
 		DBG_C('s');

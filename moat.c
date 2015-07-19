@@ -36,63 +36,14 @@
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4
 
-const uint8_t moat_sizes[] __attribute__ ((progmem)) = {
-#include "_nums.h"
-};
-
-void dummy_init_fn(void) {}
-void dummy_poll_fn(void) {}
-uint8_t dummy_read_len_fn(uint8_t chan) { next_idle('y'); return 0; }
-void dummy_read_fn(uint8_t chan, uint8_t *buf) { next_idle('y'); }
-void dummy_read_done_fn(uint8_t chan) {}
-void dummy_write_check_fn(uint8_t chan, uint8_t *buf, uint8_t len) { return; }
-void dummy_write_fn(uint8_t chan, uint8_t *buf, uint8_t len) { next_idle('y'); }
-char dummy_alert_check_fn(void) { return 0; }
-void dummy_alert_fill_fn(uint8_t *buf) { next_idle('y'); }
-
-#define TC_DEFINE(_s) \
-    init_fn init_ ## _s __attribute__((weak,alias("dummy_init_fn"))); \
-    poll_fn poll_ ## _s __attribute__((weak,alias("dummy_poll_fn"))); \
-    read_len_fn read_ ## _s ## _len __attribute__((weak,alias("dummy_read_len_fn"))); \
-    read_fn read_ ## _s __attribute__((weak,alias("dummy_read_fn"))); \
-    read_done_fn read_ ## _s ## _done __attribute__((weak,alias("dummy_read_done_fn"))); \
-    write_check_fn write_ ## _s ## _check __attribute__((weak,alias("dummy_write_check_fn")));  \
-    write_fn write_ ## _s __attribute__((weak,alias("dummy_write_fn")));  \
-	ALERT_DEF(_s)
-#ifdef CONDITIONAL_SEARCH
-#define ALERT_DEF(_s) \
-    alert_check_fn alert_ ## _s ## _check __attribute__((weak,alias("dummy_alert_check_fn"))); \
-    alert_fill_fn alert_ ## _s ## _fill __attribute__((weak,alias("dummy_alert_fill_fn")));
-#else
-#define ALERT_DEF(x) // nothing
+#ifdef IS_BOOTLOADER
+#include "moat_dummy.c"
 #endif
-#include "_def.h"
-#undef ALERT_DEF
-#undef TC_DEFINE
 
-#define TC_DEFINE(_s) \
-{ \
-    &init_ ## _s, \
-    &poll_ ## _s, \
-    &read_ ## _s ## _len, \
-    &read_ ## _s, \
-    &read_ ## _s ## _done, \
-    &write_ ## _s ## _check, \
-    &write_ ## _s, \
-	ALERT_DEF(_s) \
-},
-#ifdef CONDITIONAL_SEARCH
-#define ALERT_DEF(_s) \
-    &alert_ ## _s ## _check, \
-    &alert_ ## _s ## _fill, 
-#else
-#define ALERT_DEF(x) // nothing
+#ifdef IS_BOOTLOADER
+ALIASDEFS(loader)
+static const moat_call_t dispatch_loader __attribute__ ((progmem)) = FUNCPTRS(loader);
 #endif
-const moat_call_t moat_calls[TC_MAX] __attribute__((progmem)) = {
-#include "_def.h"
-};
-#undef ALERT_DEF
-#undef TC_DEFINE
 
 void end_transmission(uint16_t crc)
 {
@@ -117,7 +68,15 @@ void end_transmission(uint16_t crc)
 	}
 }
 
-static uint8_t buf[MAXBUF];
+uint8_t moat_buf[MAXBUF];
+
+#ifdef IS_BOOTLOADER
+static const moat_call_t *dispatch;
+static uint8_t tc_max;
+#else
+#define dispatch moat_calls
+#define tc_max TC_MAX
+#endif
 
 // Inlining this code triggers a compiler bug
 static void moat_read(void) __attribute__((noinline));
@@ -126,24 +85,17 @@ static void moat_read(void)
 	uint16_t crc = 0;
 	uint8_t dtype,chan;
 	uint8_t len;
-	uint8_t *bp=buf;
+	uint8_t *bp=moat_buf;
 	const moat_call_t *mc;
 	read_len_fn *rlf;
 	read_fn *rf;
 	read_done_fn *rdf;
 
 	/*
-	 Implement reading data. We read whatever necessary, write the length,
+	 Implement reading data. We read the header, write the length,
 	 write the data, write the CRC, read the inverted CRC back, and then do
-	 whatever necessary to effect the read (e.g. clear a flag, update a
-	 stored value, whatever).
-
-	 Typically there's some free time between reading, writing the length,
-	 and writing the data respectively. CRC read is immediate, so we
-	 pre-calculate as much as possible and add the rest on the go.
-
-	 Do not forget that bus errors and whatnot can abort this code in any
-	 recv/xmit call.
+	 whatever necessary to effect the read (e.g. remove the read data from
+	 a buffer, clear a flag, whatever).
 	 */
 	
 	recv_byte();
@@ -153,9 +105,16 @@ static void moat_read(void)
 	crc = crc16(crc,dtype);
 	chan = recv_byte_in();
 	//DBG_C('0'+dtype);
-	if (dtype >= TC_MAX)
-		next_idle('p');
-	mc = &moat_calls[dtype];
+#ifdef IS_BOOTLOADER
+	if (dtype == 0xFF) {
+		mc = &dispatch_loader;
+	} else
+#endif
+	{
+		if (dtype >= tc_max)
+			next_idle('p');
+		mc = &dispatch[dtype];
+	}
 
 	rlf = pgm_read_ptr(&mc->read_len);
 	len = rlf(chan);
@@ -165,7 +124,7 @@ static void moat_read(void)
 	crc = crc16(crc,len);
 
 	rf = pgm_read_ptr(&mc->read);
-	rf(chan, buf);
+	rf(chan, moat_buf);
 
 	while(len--) {
 		xmit_byte(*bp);
@@ -189,13 +148,10 @@ static void moat_write(void)
 	write_fn *wf;
 
 	/*
-	 Implement writing data. We read whatever necessary, read the length,
-	 read the data, write the resulting CRC, read the inverted CRC back,
+	 Write data. We read the header, read the length, read the data,
+	 write the resulting CRC, read the inverted CRC,
 	 and then do whatever necessary to effect the write (e.g. clear a flag,
 	 update a stored value, whatever).
-
-	 Do not forget that bus errors and whatnot can abort this code in any
-	 recv/xmit call.
 	 */
 	
 	recv_byte();
@@ -203,8 +159,6 @@ static void moat_write(void)
 	dtype = recv_byte_in();
 	//DBG_C('W'); DBG_X(dtype);
 	recv_byte();
-	if (dtype >= TC_MAX)
-		next_idle('W');
 	crc = crc16(crc,dtype);
 	chan = recv_byte_in();
 	recv_byte();
@@ -212,22 +166,31 @@ static void moat_write(void)
 	len = recv_byte_in();
 	recv_byte();
 	crc = crc16(crc,len);
-	crc = recv_bytes_crc(crc, buf, len);
+	crc = recv_bytes_crc(crc, moat_buf, len);
 
-	mc = &moat_calls[dtype];
+#ifdef IS_BOOTLOADER
+	if (dtype == 0xFF) {
+		mc = &dispatch_loader;
+	} else
+#endif
+	{
+		if (dtype >= tc_max)
+			next_idle('W');
+		mc = &dispatch[dtype];
+	}
 	wfc = pgm_read_ptr(&mc->write_check);
-	wfc(chan,buf,len);
+	wfc(chan,moat_buf,len);
 	end_transmission(crc);
 	wf = pgm_read_ptr(&mc->write);
-	wf(chan,buf,len);
+	wf(chan,moat_buf,len);
 }
 
 void moat_poll(void)
 {
 	uint8_t i;
-	const moat_call_t *mc = moat_calls;
+	const moat_call_t *mc = dispatch;
 
-	for(i=0;i<TC_MAX;i++,mc++) {
+	for(i=0;i<tc_max;i++,mc++) {
 		poll_fn *pf = pgm_read_ptr(&mc->poll);
 		pf();
 	}
@@ -236,10 +199,45 @@ void moat_poll(void)
 void moat_init(void)
 {
 	uint8_t i;
-	const moat_call_t *mc = moat_calls;
+#ifdef IS_BOOTLOADER
+	struct config_loader cl;
+	const moat_loader_t *loader;
+#endif
+	const moat_call_t *mc;
+	init_fn *pf;
 
-	for(i=0;i<TC_MAX;i++,mc++) {
-		init_fn *pf = pgm_read_ptr(&mc->init);
+#ifdef IS_BOOTLOADER
+	loader = NULL;
+	tc_max = 0;
+	dispatch = NULL;
+
+	if (!cfg_read (loader, cl)) {
+		DBG_P("\nM:no cfg\n");
+		return;
+	}
+	loader = (moat_loader_t *)cl.loader;
+	if (! loader) {
+		DBG_P("\nM:no loader\n");
+		return;
+	}
+	if (pgm_read_byte(&loader->sig[0]) != 'M' ||
+			pgm_read_byte(&loader->sig[1]) != 'L') {
+		DBG_P("\nM:no sig ");
+		DBG_W((uint16_t)loader);
+		DBG_C('\n');
+		return;
+	}
+
+	tc_max = pgm_read_byte(&loader->n_types);
+	dispatch = pgm_read_ptr(&loader->calls);
+
+	pf = pgm_read_ptr(&loader->init);
+	pf();
+#endif
+
+	mc = dispatch;
+	for(i=0;i<tc_max;i++,mc++) {
+		pf = pgm_read_ptr(&mc->init);
 		pf();
 	}
 }
@@ -276,10 +274,10 @@ void init_state(void)
 }
 
 #ifdef CONDITIONAL_SEARCH
-extern uint8_t alert_present;
+uint8_t moat_alert_present;
 
 uint8_t condition_met(void) {
-	return alert_present;
+	return moat_alert_present;
 
 }
 #endif

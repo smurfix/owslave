@@ -36,7 +36,6 @@
 uint8_t alert_buf[(TC_MAX+7)>>3];
 static uint8_t alert_tmp[(TC_MAX+7)>>3];
 uint8_t alert_pos=0;
-uint8_t alert_present;
 static uint8_t alert_max;
 
 void poll_alert(void)
@@ -49,7 +48,7 @@ void poll_alert(void)
 		chan=0;
 		memcpy(alert_buf,alert_tmp,sizeof(alert_buf));
 		memset(alert_tmp,0,sizeof(alert_tmp));
-		alert_present = alert_max;
+		moat_alert_present = alert_max;
 		alert_max = 0;
 	}
 	mc = &moat_calls[chan];
@@ -65,7 +64,7 @@ uint8_t read_alert_len(uint8_t chan)
 {
 	uint8_t len;
 	if(!chan)
-		len = alert_present;
+		len = moat_alert_present;
 	else if (chan >= TC_MAX)
 		next_idle('x');
 	else

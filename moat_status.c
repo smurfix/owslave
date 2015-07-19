@@ -24,16 +24,25 @@
 #include "onewire.h"
 #include "status.h"
 #include "timer.h"
+#include "_status.h"
 
 #ifdef N_STATUS
+
+#if N_STATUS>1 && defined(IS_BOOTLOADER)
+static const char buildv[] __attribute__ ((progmem)) = BUILDVER;
+#endif
 
 uint8_t read_status_len(uint8_t chan)
 {
 	switch (chan) {
 	case 0:
 		return 1;
-	case 1:
+	case S_reboot:
 		return 1;
+#if N_STATUS>1 && defined(IS_BOOTLOADER)
+	case S_loader:
+		return strlen(BUILDVER);
+#endif
 	default:
 		next_idle('s');
 	}
@@ -44,14 +53,27 @@ void read_status(uint8_t chan, uint8_t *buf)
 {
 	switch(chan) {
 	case 0:
-		*buf = (1<<(STATUS_MAX-1))-1;
+		*buf = ((1<<(STATUS_MAX-1))-1)
+#if N_STATUS < 2 || !defined(IS_BOOTLOADER)
+			& ~(1<<(S_loader-1))
+#endif
+		;
 		break;
-	case 1:
+	case S_reboot:
 		*buf = status_boot;
 #ifdef CONDITIONAL_SEARCH
 		init_msg &=~ (1<<(S_reboot-1));
 #endif
 		break;
+#if N_STATUS>1 && defined(WITH_BOOTLOADER)
+	case S_loader:
+		const char *v = buildv;
+		while ((*buf = pgm_read_byte(v))) {
+			buf++;
+			v++;
+		}
+		break;
+#endif
 	default:
 		next_idle('s');
 	}
@@ -75,5 +97,4 @@ void alert_status_fill(uint8_t *buf)
 #endif // conditional
 
 
-
-#endif
+#endif // N_STATUS

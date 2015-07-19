@@ -8,12 +8,12 @@
 
 #define CFG_DATA(n) struct config_##n
 #define cfg_read(n,x) _cfg_read(&x, sizeof(struct config_##n), CfgID_##n)
-#ifdef CFG_EEPROM
+#ifdef USE_EEPROM
 #define cfg_write(n,x) _cfg_write(&x, sizeof(struct config_##n), CfgID_##n)
 #endif
 
 char _cfg_read(void *data, uint8_t size, ConfigID id);
-#ifdef CFG_EEPROM
+#ifdef USE_EEPROM
 char _cfg_write(void *data, uint8_t size, ConfigID id);
 #endif
 
@@ -23,10 +23,18 @@ typedef uint8_t cfg_addr_t;
 typedef uint16_t cfg_addr_t;
 #endif
 
-void cfg_addr(cfg_addr_t *addr, uint8_t *size, ConfigID id);
+// Find the block where this config item is stored
+cfg_addr_t cfg_addr(uint8_t *size, ConfigID id);
+
+// read a config byte
 uint8_t cfg_byte(cfg_addr_t addr);
 
-/* enumerate config entries. Zero == no more. */
+/**	enumerate config entries. Zero == no more.
+	Usage:
+		len = cfg_count(&adr);
+		while (len--)
+			typ = cfg_type(&adr);
+ */
 uint8_t cfg_count(cfg_addr_t *addr);
 uint8_t cfg_type(cfg_addr_t *addr);
 
@@ -52,10 +60,10 @@ struct config_owid {
 	uint8_t crc;
 };
 
-// data for M_INFO; see OWFS:ow_moat.h for details
-struct config_info {
-	uint8_t types;
-	uint8_t data[0];
+struct config_loader {
+	uint16_t loader; // address of moat_loader_t struct
+	uint16_t endp;   // end of loaded area
+	uint16_t crc;    // checksum of loadable code
 };
 
 #endif // dev_data_h

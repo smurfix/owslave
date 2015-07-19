@@ -38,7 +38,7 @@ inline uint8_t cfg_byte(cfg_addr_t addr) {
 }
 #define read_byte(x) cfg_byte(x)
 
-#if CRC
+#if 0 /* def USE_EEPROM_CRC */
 static uint8_t read_crc_byte(uint16_t &crc, uint8_t pos) {
 	uint8_t b = read_byte((uint8_t *)pos);
 	crc = _crc16_update(crc, b);
@@ -54,21 +54,21 @@ static inline void write_byte(uint8_t b, uint8_t pos) {
 }
 #endif
 
-#if USE_EEPROM
-char _do_crc(bool update) // from eeprom; True if CRC matches
+#if 0 /* defined(USE_EEPROM) && defined(USE_EEPROM_CRC) */
+char _do_crc(char update) // from eeprom; True if CRC matches
 {
-	static bool crc_checked = false;
-	static bool crc_good = false;
+	static char crc_checked = 0;
+	static char crc_good = 0;
 
 	if(!update && crc_checked)
 		return crc_good;
 
 	uint16_t crc = ~0;
-	uint8_t b, i=0, j;
+	uint8_t i=0, j;
 
 	for(j=0;j<4;j++) {
 		if(read_crc_byte(crc, i++) != read_byte(j)) {
-			return false;
+			return 0;
 		}
 	}
 
@@ -81,19 +81,18 @@ char _do_crc(bool update) // from eeprom; True if CRC matches
 	if(update) {
 		write_byte(i++, crc & 0xFF);
 		write_byte(i++, crc >> 8);
-		crc_good = true;
+		crc_good = 1;
 	} else {
 		read_crc_byte(crc, i++);
 		read_crc_byte(crc, i++);
 		crc_good = (crc == 0);
 	}
-	crc_checked = true;
+	crc_checked = 1;
 	return crc_good;
 }
 #else // !crc
-#define _do_crc(x) true
+#define _do_crc(x) 1
 #endif
-
 
 
 char _cfg_read(void *data, uint8_t size, ConfigID id) {
@@ -101,7 +100,7 @@ char _cfg_read(void *data, uint8_t size, ConfigID id) {
 	uint8_t len;
 	uint8_t *d = data;
 
-	cfg_addr(&off,&len,id);
+	off = cfg_addr(&len,id);
 	if((!off) || (size != len)) return 0;
 
 	while(len) {
@@ -111,24 +110,69 @@ char _cfg_read(void *data, uint8_t size, ConfigID id) {
 	return 1;
 }
 
-#ifdef CFG_EEPROM
-char _cfg_write(void *addr, uint8_t size, ConfigID id) {
+#ifdef USE_EEPROM
+inline cfg_addr_t cfg_addr_w(uint8_t size, ConfigID id) {
+	cfg_addr_t off;
+	uint8_t sz;
+	// Look for the existing block
+	off = cfg_addr (&sz, id);
+	if (off != 0) {
+		// return if sizes match
+		if (sz == size)
+			return off;
+		// otherwise mark as free
+		write_byte(--off, 0);
+		if (size == 0)
+			return 0;
+	}
+	off=4;
+	while((sz = read_byte(off++)) > 0) {
+		ConfigID cur_id = read_byte(off++);
+		if (sz == size && cur_id == 0) {
+			// found a free block
+			write_byte(off-1, id);
+			return off;
+		}
+		off += sz;
+	}
+	// No free space. Add to the end.
+	write_byte(off-1,size);
+	write_byte(off++,id);
+	write_byte(off+size,0);
+	return off;
+}
+
+char _cfg_write(void *data, uint8_t size, ConfigID id) {
+	cfg_addr_t off;
+	if (!_do_crc(0))
+		return 0;
+	off = cfg_addr_w(size,id);
+	if (size) {
+		if (!off)
+			return 0;
+		do {
+			write_byte(off++, *(uint8_t *)data++);
+		} while (--size);
+	}
+	return _do_crc(1);
 }
 #endif
     
-void cfg_addr(cfg_addr_t *addr, uint8_t *size, ConfigID id) {
-	cfg_addr_t i=4;
+cfg_addr_t cfg_addr(uint8_t *size, ConfigID id) {
+	cfg_addr_t off=4;
 	uint8_t len,t;
-	while((len = read_byte(i++)) > 0) {
-		t = read_byte(i++);
+	if (!_do_crc(0))
+		return 0;
+
+	while((len = read_byte(off++)) > 0) {
+		t = read_byte(off++);
 		if (t == id) {
-			*addr = i;
 			*size = len;
-			return;
-		} else
-			i += len;
+			return off;
+		}
+		off += len;
 	}
-	*addr = 0;
+	return 0;
 }
 
 uint8_t cfg_count(cfg_addr_t *addr) {

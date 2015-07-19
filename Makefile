@@ -3,12 +3,15 @@
 # initially written by guido socher
 # extended by Matthias Urlichs
 
+SHELL=/bin/bash
 CFG?=world.cfg
 export CFG
 
 RUN_CFG?=./cfg
 RUN_CFGWRITE?=./cfg_write
 RUN_EEPROM?=./gen_eeprom
+RUN_ELF_END?=./elf_end
+LD:=avr-ld
 
 ifeq ($(DEV),)
 
@@ -54,7 +57,7 @@ CC=avr-gcc
 OBJCOPY:=avr-objcopy
 OBJDUMP:=avr-objdump
 CFLAGS:=-g -mmcu=$(MCU) -Wall -Wstrict-prototypes -Os -mcall-prologues -fshort-enums
-LDFLAGS:=$(CFLAGS)
+LDFLAGS:=
 #CFLAGS+=$(shell $(RUN_CFG) ${CFG} .cdefs ${DEV})
 CFLAGS+=-Idevice/${DEV}
 
@@ -62,16 +65,21 @@ OW_TYPE:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.is_onewire || echo 0)
 
 OBJS:=$(addprefix device/${DEV}/,$(addsuffix .o,$(basename $(shell $(RUN_CFG) ${CFG} .cfiles ${DEV}))))
 
-ifeq (${NO_BURN},)
-ifeq (shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom,1)
-EEP:=-U eeprom:w:device/${DEV}/eprom.hex:i
+ifeq ($(shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom),1)
+EE:=device/${DEV}/eprom.hex
+EEP:=-U eeprom:w:$(EE):i
 PROM=eeprom
 PSYM=econfig
 else
+EE:=
 EEP:=
 PROM=progmem
 PSYM=config
 endif
+
+LOADER:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_bootloader || echo 0)
+ifeq ($(LOADER),0)
+ifeq (${NO_BURN},)
 burn_cfg:
 	@echo -n LFUSE:
 	@$(RUN_CFG) ${CFG} devices.${DEV}.fuse.l
@@ -82,7 +90,7 @@ burn_cfg:
 	@echo -n EEPROM:
 	@$(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom
 
-burn: burn_cfg all
+burn: burn_cfg all $(EE)
 	TF=$$(tempfile); echo "default_safemode = no;" >$$TF; \
 	sudo avrdude -c $(PROG) -p $(MCU_PROG) -C +$$TF \
 		-U flash:w:device/${DEV}/image.hex:i ${EEP} \
@@ -90,12 +98,40 @@ burn: burn_cfg all
 		-U hfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.h):m \
 		-U efuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.e):m \
 	; X=$$?; rm $$TF; exit $$X
+endif # NO_BURN
+
+all: device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.hex device/${DEV}/image.lss
+
+device/${DEV}/image.elf: ${OBJS}
+	$(CC) $(CFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
+
+else # using $LOADER
+
+all: device/${DEV}/cfg device/${DEV}/image.bin device/${DEV}/eprom.bin device/${DEV}/image.lss
+
+device/${LOADER}/image.elf:
+	@echo You did no yet build the $(LOADER) base image. Exiting.
+	@false
+
+#		--defsym=mtext_start=$$TS 
+device/${DEV}/image.elf: device/${LOADER}/image.elf ${OBJS} module.ld
+	$(LD) $(LDFLAGS) -o $@ -T module.ld \
+		--section-start=.mtext=$(shell $(RUN_ELF_END) device/${LOADER}/image.elf text $(shell $(RUN_CFG) ${CFG} devices.${DEV}.flash.align)) \
+		--section-start=.mdata=$(shell $(RUN_ELF_END) device/${LOADER}/image.elf bss 2) \
+		-Map device/${DEV}/image.map --cref $(OBJS) \
+		-R device/${LOADER}/image.elf 
+	test $$(( $(shell $(RUN_ELF_END) device/${DEV}/image.elf mtext) )) -lt $$(( $(shell $(RUN_CFG) ${CFG} devices.${DEV}.flash.size) * 1024 ))
+device/${DEV}/image.bin: device/${DEV}/image.elf
+	$(OBJCOPY) -R mtext -O binary $< $@
+
+burn: all
+	ow_send $(shell $(RUN_EEPROM) device/${DEV}/eprom.bin owid ascii) device/${DEV}/image.bin device/${DEV}/eprom.bin
+	
 endif
 
-all: device/${DEV} device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.hex device/${DEV}/image.lss
 device/${DEV}: 
 	mkdir -p $@
-device/${DEV}/cfg: ${CFG} cfg
+device/${DEV}/cfg: device/${DEV} ${CFG} cfg
 	@echo -n MCU:
 	@$(RUN_CFG) ${CFG} devices.${DEV}.mcu
 	@echo -n MCU_PROG:
@@ -109,18 +145,16 @@ device/${DEV}/cfg: ${CFG} cfg
 	@cp ${CFG} device/${DEV}/cfg
 device/${DEV}/image.hex: device/${DEV}/image.elf
 	$(OBJCOPY) -R .eeprom -O ihex $< $@
-device/${DEV}/image.elf: ${OBJS}
-	$(CC) $(LDFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
 device/${DEV}/image.lss: device/${DEV}/image.elf
 	$(OBJDUMP) -h -S $< > $@
 device/${DEV}/eprom.hex: device/${DEV}/image.elf
 	$(OBJCOPY) -j .eeprom -O ihex $< $@
 
-device/${DEV}/dev_config.h: ${CFG} cfg
+device/${DEV}/dev_config.h: device/${DEV} ${CFG} cfg
 	$(RUN_CFG) ${CFG} .hdr ${DEV}
 
 $(DEVNAME).hex : $(DEVNAME).elf
-device/${DEV}/eprom.bin: ${CFG}
+device/${DEV}/eprom.bin: device/${DEV} ${CFG}
 	set -e; \
 	$(RUN_EEPROM) $@ type $$($(RUN_CFG) ${CFG} .type ${DEV}); \
 	if $(RUN_EEPROM) $@ name >/dev/null 2>&1 ; then : ; else \

@@ -29,13 +29,6 @@
 #define INIT(x)
 #endif
 
-#ifdef IS_BOOTLOADER
-#define init_state() do {} while(0)
-#define mainloop boot_mainloop
-#define update_idle(x) do {} while(0)
-#define do_command boot_do_command
-#endif
-
 #ifndef BAUDRATE
 #define BAUDRATE 38400
 #endif
@@ -149,6 +142,14 @@
 
 #if defined(HAVE_UART_SYNC) && defined(HAVE_UART_IRQ)
 #error Poll. Or IRQ. Not both.
+#endif
+
+#if defined(IS_BOOTLOADER) && defined(USE_BOOTLOADER)
+#error "Either you're a the loader or you're the loaded."
+#endif
+
+#if defined(IS_BOOTLOADER) && !defined(USE_EEPROM)
+#error "You need EEPROM support for bootloading"
 #endif
 
 #define likely(x)       __builtin_expect(!!(x), 1)

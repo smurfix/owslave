@@ -42,7 +42,8 @@ typedef void write_fn(uint8_t chan, uint8_t *buf, uint8_t len);
     read_fn read_ ## _s; \
     read_done_fn read_ ## _s ## _done; \
     write_check_fn write_ ## _s ## _check;  \
-    write_fn write_ ## _s; 
+    write_fn write_ ## _s;  \
+    ADEFS(_s)
 
 #ifdef CONDITIONAL_SEARCH
 #define ADEFS(_s) \
@@ -50,6 +51,42 @@ typedef void write_fn(uint8_t chan, uint8_t *buf, uint8_t len);
     alert_fill_fn alert_ ## _s ## _fill;
 #else
 #define ADEFS(_s) // nothing
+#endif
+
+#define ALIASDEFS(_s) \
+    init_fn init_ ## _s __attribute__((weak,alias("dummy_init_fn"))); \
+    poll_fn poll_ ## _s __attribute__((weak,alias("dummy_poll_fn"))); \
+    read_len_fn read_ ## _s ## _len __attribute__((weak,alias("dummy_read_len_fn"))); \
+    read_fn read_ ## _s __attribute__((weak,alias("dummy_read_fn"))); \
+    read_done_fn read_ ## _s ## _done __attribute__((weak,alias("dummy_read_done_fn"))); \
+    write_check_fn write_ ## _s ## _check __attribute__((weak,alias("dummy_write_check_fn")));  \
+    write_fn write_ ## _s __attribute__((weak,alias("dummy_write_fn")));  \
+        ALERT_ALIASDEF(_s)
+#ifdef CONDITIONAL_SEARCH
+#define ALERT_ALIASDEF(_s) \
+    alert_check_fn alert_ ## _s ## _check __attribute__((weak,alias("dummy_alert_check_fn"))); \
+    alert_fill_fn alert_ ## _s ## _fill __attribute__((weak,alias("dummy_alert_fill_fn")));
+#else 
+#define ALERT_ALIASDEF(x) // nothing
+#endif
+
+#define FUNCPTRS(_s) \
+{ \
+    &init_ ## _s, \
+    &poll_ ## _s, \
+    &read_ ## _s ## _len, \
+    &read_ ## _s, \
+    &read_ ## _s ## _done, \
+    &write_ ## _s ## _check, \
+    &write_ ## _s, \
+	ALERTPTRS(_s) \
+}
+#ifdef CONDITIONAL_SEARCH
+#define ALERTPTRS(_s) \
+    &alert_ ## _s ## _check, \
+    &alert_ ## _s ## _fill, 
+#else
+#define ALERTPTRS(x) // nothing
 #endif
 
 typedef struct {
@@ -69,10 +106,21 @@ extern const moat_call_t moat_calls[TC_MAX] __attribute__ ((progmem));
 
 extern const uint8_t moat_sizes[TC_MAX] __attribute__ ((progmem));
 
+#if defined(IS_BOOTLOADER) || defined(USE_BOOTLOADER)
+typedef struct {
+    char sig[2]; // 'ML'
+    init_fn *init;
+    const moat_call_t *calls;
+    uint8_t n_types;
+} moat_loader_t;
+#endif
+
 #define TC_DEFINE(x) \
-    ADEFS(x) \
     DEFS(x)
 #include "_def.h"
 #undef TC_DEFINE
+
+extern uint8_t moat_buf[MAXBUF];
+extern uint8_t moat_alert_present;
 
 #endif // moat_internal.h
