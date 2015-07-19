@@ -1,7 +1,9 @@
 #include <avr/boot.h>
 #include <avr/interrupt.h>
 
-/* This is called "boot_program_page" */
+/* This is called "boot_program_page" in the main code,
+ * but as that's a non-weak symbol this would clash.
+ */
 void _boot_program_page (uint32_t page, uint8_t *buf)
 {
     uint16_t i;

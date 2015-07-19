@@ -232,10 +232,14 @@ void moat_init(void)
 		DBG_C('\n');
 		return;
 	}
+	// TODO: calculate and check CRC
 
 	tc_max = pgm_read_byte(&loader->n_types);
 	dispatch = pgm_read_ptr(&loader->calls);
 
+	DBG_P("\nM:has ");
+	DBG_X(tc_max);
+	DBG_C('\n');
 	pf = pgm_read_ptr(&loader->init);
 	pf();
 #endif
