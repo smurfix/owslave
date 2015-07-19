@@ -1,0 +1,15 @@
+_include:
+    world.cfg
+
+devices:
+  _default:
+    _ref: defaults.target.m88
+    types:
+      _ref: defaults.types
+    code: []
+  test88:
+    onewire_id: x2fb6640aae69
+targets:
+- test
+- one
+- two
