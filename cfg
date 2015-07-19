@@ -355,6 +355,11 @@ def main(cfg_name,*kk):
                 ow = s.subtree('devices',k,'defs','is_onewire')
                 if BL or not BI:
                     files.append('moat_backend.c')
+                ## does not work, needs to be in bootloader memory
+                #if BI:
+                #    files.append('boot.c')
+                if BI:
+                    files.append('moat_loader.c')
                 if not BL:
                     files.append('main.c')
                     files.append('jmp.S')

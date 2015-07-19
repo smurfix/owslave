@@ -77,8 +77,19 @@ PROM=progmem
 PSYM=config
 endif
 
+ifeq ($(shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.is_bootloader || echo 0),1)
+# Build a boot loader. This needs to use the SPM instruction, which must be
+# located in high memory. Thus boot.c gets its own code block.
+EE+=device/${DEV}/boot.hex
+EEP+=-U flash:w:device/${DEV}/boot.hex:i
+BOOTADR=$(shell printf "0x%x" $$(( $(shell $(RUN_CFG) ${CFG} devices.${DEV}.flash.size) * 1024 - 128)) )
+BOOTLDFLAGS:=-Wl,--defsym=boot_program_page=${BOOTADR}
+endif
+
 LOADER:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.defs.use_bootloader || echo 0)
 ifeq ($(LOADER),0)
+# build "traditional" code
+
 ifeq (${NO_BURN},)
 burn_cfg:
 	@echo -n LFUSE:
@@ -100,12 +111,22 @@ burn: burn_cfg all $(EE)
 	; X=$$?; rm $$TF; exit $$X
 endif # NO_BURN
 
-all: device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.hex device/${DEV}/image.lss
+all: device/${DEV}/cfg device/${DEV}/image.hex device/${DEV}/eprom.hex device/${DEV}/image.lss ${EE}
 
 device/${DEV}/image.elf: ${OBJS}
-	$(CC) $(CFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
+	$(CC) $(BOOTLDFLAGS) $(CFLAGS) -o $@ -Wl,-Map,device/${DEV}/image.map,--cref $^
 
-else # using $LOADER
+device/${DEV}/boot.elf: device/${DEV}/image.elf device/${DEV}/boot.o module.ld
+	$(LD) $(LDFLAGS) -o $@ -T module.ld \
+		--section-start=.mtext=${BOOTADR} \
+		-Map device/${DEV}/boot.map --cref device/${DEV}/boot.o \
+		-R device/${DEV}/image.elf 
+	test $$(( $$($(RUN_ELF_END) device/${DEV}/boot.elf mtext) )) -lt $$(( $$($(RUN_CFG) ${CFG} devices.${DEV}.flash.size) * 1024 ))
+device/${DEV}/boot.hex: device/${DEV}/boot.elf
+	$(OBJCOPY) -R mtext -O ihex $< $@
+
+else
+# Build dependant code, using $LOADER as the base.
 
 all: device/${DEV}/cfg device/${DEV}/image.bin device/${DEV}/eprom.bin device/${DEV}/image.lss
 
