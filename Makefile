@@ -169,7 +169,7 @@ device/${DEV}/image.hex: device/${DEV}/image.elf
 device/${DEV}/image.lss: device/${DEV}/image.elf
 	$(OBJDUMP) -h -S $< > $@
 device/${DEV}/eprom.hex: device/${DEV}/image.elf
-	$(OBJCOPY) -j .eeprom -O ihex $< $@
+	$(OBJCOPY) -j .eeprom --change-section-address .eeprom=0 -O ihex $< $@
 
 device/${DEV}/dev_config.h: device/${DEV} ${CFG} cfg
 	$(RUN_CFG) ${CFG} .hdr ${DEV}
