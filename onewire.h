@@ -72,14 +72,6 @@ void onewire_init(void);
 /* Poll the bus. Will not return while a transaction is in progress. */
 void onewire_poll(void);
 
-/* Incrementally calculate CRC.
-   Initially, 'crc' is zero.
-   Calculate crc=crc16(crc,byte) for each byte sent/received.
-   After sending the last data byte, send crc^0xFFFF (LSB first).
-   After receiving data+crc, crc should be 0xB001.
- */
-uint16_t crc16(uint16_t crc, uint8_t x);
-
 #else /* !HAVE_ONEWIRE */
 #define onewire_init() do {} while(0)
 #define onewire_poll() do {} while(0)

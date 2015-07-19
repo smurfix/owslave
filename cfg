@@ -373,6 +373,7 @@ def main(cfg_name,*kk):
                     else:
                         files.append(ow+'.c')
                         files.append('onewire.c')
+                        files.append('crc.c')
                     for f in s.subtree('devices',k,'code'):
                         files.append(f+'.c')
 

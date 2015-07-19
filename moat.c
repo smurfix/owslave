@@ -32,6 +32,7 @@
 #include "count.h"
 #include "console.h"
 #include "timer.h"
+#include "crc.h"
 
 #define _1W_READ_GENERIC  0xF2
 #define _1W_WRITE_GENERIC 0xF4

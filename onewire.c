@@ -229,21 +229,6 @@ recv_byte(void)
 	recv_any(8);
 }
 
-// this code is from owfs
-static uint8_t parity_table[16] = { 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0 };
-
-uint16_t
-crc16(uint16_t r, uint8_t x)
-{
-	uint16_t c = (x ^ (r & 0xFF));
-	r >>= 8;
-	if (parity_table[c & 0x0F] ^ parity_table[(c >> 4) & 0x0F])
-		r ^= 0xC001;
-	r ^= (c <<= 6);
-	r ^= (c << 1);
-        return r;
-}
-
 uint16_t recv_bytes_crc(uint16_t crc, uint8_t *buf, uint8_t len)
 {
 	uint8_t val;
