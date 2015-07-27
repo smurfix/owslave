@@ -64,7 +64,7 @@ uint8_t read_alert_len(uint8_t chan)
 {
 	uint8_t len;
 	if(!chan)
-		len = moat_alert_present;
+		len = (moat_alert_present+7)>>3;
 	else if (chan >= TC_MAX)
 		next_idle('x');
 	else
