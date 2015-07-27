@@ -29,20 +29,44 @@
 #include "debug.h"
 #include "moat.h"
 #include "jmp.h"
+#include "status.h"
 
-#ifdef HAVE_WATCHDOG
+uint8_t mcusr __attribute__ ((section (".noinit")));
+#ifdef HAVE_IRQ_CATCHER
+extern uint8_t reboot_irq;
+#endif
 void setup_watchdog(void) __attribute__((naked,section(".init3")));
 void setup_watchdog(void)
 {
-	wdt_reset();
-	wdt_enable(0x09);
-}
+	mcusr = MCUSR;
+#if 0 // def N_STATUS
+	if (reboot_irq) {
+		mcusr = S_boot_irq | reboot_irq;
+		reboot_irq = 0;
+	}
 #endif
+	MCUSR = 0;
+
+#ifdef HAVE_WATCHDOG
+	wdt_reset();
+#ifdef HAVE_IRQ_CATCHER
+	// intense debugging
+	wdt_enable(0x05);
+#else
+	wdt_enable(0x09);
+#endif
+#else
+	wdt_disable();
+#endif
+}
 
 // Initialise the hardware
 static inline void
 init_mcu(void)
 {
+#ifdef ADCSRA
+	ADCSRA = 0;
+#endif
 #ifdef __AVR_ATtiny13__
 	CLKPR = 0x80;    // Prepare to ...
 	CLKPR = 0x00;    // ... set to 9.6 MHz
@@ -68,28 +92,30 @@ init_mcu(void)
 static inline void
 init_all(void)
 {
-    console_init();
-    uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
-    onewire_init();
-    timer_init();
-    init_state();
+	eeprom_init();
+	console_init();
+	onewire_init();
+	timer_init();
+	init_state();
 }
 
 inline void
 poll_all(void)
 {
 #if defined(UART_DEBUG) && defined(N_CONSOLE)
-    uint16_t c;
+	uint16_t c;
 #endif
-    timer_poll();
-    uart_poll();
-    onewire_poll();
+	timer_poll();
+	uart_poll();
+	onewire_poll();
 #if defined(UART_DEBUG) && defined(N_CONSOLE)
-    c = uart_getc();
-    if(c <= 0xFF)
-        console_putc(c);
+	c = uart_getc();
+	if(c <= 0xFF)
+		console_putc(c);
 #endif
 }
+
+static uint16_t bootseq __attribute__((section(".noinit")));
 
 // Main program
 int
@@ -109,8 +135,14 @@ main(void)
 #endif
 
 	init_mcu();
+	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
+	uart_puts_P("\nreboot ");
+	uart_puthex_word(mcusr);
+	uart_putc(' ');
+	uart_puthex_word(++bootseq);
+	uart_putc(' ');
+
 	init_all();
-	uart_puts_P("\nreboot\n");
 
 	// now go
 	DBG(0x33);

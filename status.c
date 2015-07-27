@@ -33,6 +33,7 @@
 #include "moat_internal.h"
 
 t_status_boot status_boot = S_boot_unknown;
+extern uint8_t mcusr;
 
 #ifdef CONDITIONAL_SEARCH
 uint8_t init_msg = 0x01;
@@ -40,15 +41,15 @@ uint8_t init_msg = 0x01;
 
 void init_status(void)
 {
-	uint8_t s = MCUSR;
-	MCUSR = 0;
-	if (s & (1<<WDRF))
+	if (mcusr & S_boot_irq) {
+		status_boot = mcusr;
+	} else if (mcusr & (1<<WDRF))
 		status_boot = S_boot_watchdog;
-	else if (s & (1<<BORF))
+	else if (mcusr & (1<<BORF))
 		status_boot = S_boot_brownout;
-	else if (s & (1<<EXTRF))
+	else if (mcusr & (1<<EXTRF))
 		status_boot = S_boot_external;
-	else if (s & (1<<PORF))
+	else if (mcusr & (1<<PORF))
 		status_boot = S_boot_powerup;
 	else
 		status_boot = S_boot_unknown;

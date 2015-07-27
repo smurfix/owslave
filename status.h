@@ -13,6 +13,7 @@ typedef enum {
 	S_boot_brownout,
 	S_boot_watchdog,
 	S_boot_external,
+	S_boot_irq = 0x80,
 } t_status_boot;
 extern t_status_boot status_boot;
 
