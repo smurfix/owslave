@@ -66,4 +66,9 @@ struct config_loader {
 	uint16_t crc;    // checksum of loadable code
 };
 
+#ifdef USE_EEPROM
+void eeprom_init(void);
+#else
+#define eeprom_init() do {} while(0)
+#endif
 #endif // dev_data_h

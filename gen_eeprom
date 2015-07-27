@@ -431,7 +431,7 @@ class MainBlock(object):
         self.name = name
 
     def pack(self):
-        res = b"DevC"
+        res = b"MoaT"
         for b in self.blocks:
             bp = b.pack()
             assert len(bp),"%s is empty"%b.__class__.__name__
@@ -444,7 +444,9 @@ class MainBlock(object):
     def unpack(self,s):
         assert crc16(s) == 0, "CRC does not match"
         self.blocks = []
-        assert s[0:4] == b"DevC"
+        if s[0:4] == b"DevC":
+            s = b"MoaT"+s[4:]
+        assert s[0:4] == b"MoaT"
         off=4
         while True:
             x = s[off]

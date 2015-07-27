@@ -9,16 +9,26 @@
 #define CRC 0  // needs 300 bytes
 #define DEFAULT 1 // needs 30 bytes, plus _config data (built by gen_eprom)
 
-#ifdef USE_EEPROM
+#ifndef USE_EEPROM
+#define EEPROM_VALID 1
+#else
+static char eep = 0;
+#define EEPROM_VALID eep
+#endif
+
+#if USE_EEPROM == 1
 extern uint8_t _econfig_start;
 #define EEPROM_POS (&_econfig_start)
-#else
-extern uint8_t _config_start;
+#elif USE_EEPROM == 2
+uint8_t _econfig_start[100] __attribute__((section(".eeprom")));
+#define EEPROM_POS (_econfig_start)
 #endif
+extern uint8_t _config_start;
+extern uint8_t _config_end;
 
 /*
  * Layout of configuration blocks:
- *  4 signature 'DevC'
+ *  4 signature 'MoaT'
  *  repeat:
  *    1 length =n >0
  *    1 type
@@ -54,7 +64,7 @@ static inline void write_byte(uint8_t b, uint8_t pos) {
 }
 #endif
 
-#if 0 /* defined(USE_EEPROM) && defined(USE_EEPROM_CRC) */
+#ifdef USE_EEPROM_CRC
 char _do_crc(char update) // from eeprom; True if CRC matches
 {
 	static char crc_checked = 0;
@@ -94,6 +104,32 @@ char _do_crc(char update) // from eeprom; True if CRC matches
 #define _do_crc(x) 1
 #endif
 
+#ifdef USE_EEPROM
+void eeprom_init(void)
+{
+    if (eeprom_read_byte(EEPROM_POS+0) == 'M' &&
+        eeprom_read_byte(EEPROM_POS+1) == 'o' &&
+        eeprom_read_byte(EEPROM_POS+2) == 'a' &&
+        eeprom_read_byte(EEPROM_POS+3) == 'T') {
+		eep = _do_crc(0);
+		if (eep) return;
+	}
+#if USE_EEPROM == 2
+	{
+		uint8_t *cp = &_config_start;
+		uint8_t *ep = EEPROM_POS;
+		while(cp != &_config_end) {
+			eeprom_write_byte(ep, pgm_read_byte(cp));
+			cp++; ep++;
+		}
+		eep = 1;
+		return;
+	}
+#else
+	eep = 0;
+#endif
+}
+#endif
 
 char _cfg_read(void *data, uint8_t size, ConfigID id) {
 	cfg_addr_t off;
@@ -114,6 +150,9 @@ char _cfg_read(void *data, uint8_t size, ConfigID id) {
 inline cfg_addr_t cfg_addr_w(uint8_t size, ConfigID id) {
 	cfg_addr_t off;
 	uint8_t sz;
+
+	if(!EEPROM_VALID)
+		return 0;
 	// Look for the existing block
 	off = cfg_addr (&sz, id);
 	if (off != 0) {
@@ -144,7 +183,7 @@ inline cfg_addr_t cfg_addr_w(uint8_t size, ConfigID id) {
 
 char _cfg_write(void *data, uint8_t size, ConfigID id) {
 	cfg_addr_t off;
-	if (!_do_crc(0))
+	if (!EEPROM_VALID)
 		return 0;
 	off = cfg_addr_w(size,id);
 	if (size) {
@@ -161,7 +200,7 @@ char _cfg_write(void *data, uint8_t size, ConfigID id) {
 cfg_addr_t cfg_addr(uint8_t *size, ConfigID id) {
 	cfg_addr_t off=4;
 	uint8_t len,t;
-	if (!_do_crc(0))
+	if (!EEPROM_VALID)
 		return 0;
 
 	while((len = read_byte(off++)) > 0) {
