@@ -171,7 +171,8 @@ device/${DEV}/image.lss: device/${DEV}/image.elf
 device/${DEV}/eprom.hex: device/${DEV}/image.elf
 	$(OBJCOPY) -j .eeprom --change-section-address .eeprom=0 -O ihex $< $@
 
-device/${DEV}/dev_config.h: device/${DEV} ${CFG} cfg
+device/${DEV}/dev_config.h: ${CFG} cfg
+	mkdir -p device/${DEV}
 	$(RUN_CFG) ${CFG} .hdr ${DEV}
 
 $(DEVNAME).hex : $(DEVNAME).elf
@@ -200,12 +201,12 @@ device/${DEV}/eprom.bin: device/${DEV} ${CFG}
 device/${DEV}/owadr.bin: device/${DEV}/eprom.bin
 	$(RUN_EEPROM) $^ owid binary > $@
 
-device/${DEV}/owadr.o: device/${DEV}/owadr.bin
-	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.eeprom \
-		--redefine-sym "_binary_device_${DEV}_owadr_bin_start=_owadr_start" \
-		--redefine-sym "_binary_device_${DEV}_owadr_bin_size=_owadr_size" \
-		--redefine-sym "_binary_device_${DEV}_owadr_bin_end=_owadr_end" \
-		$^ $@
+#device/${DEV}/owadr.o: device/${DEV}/owadr.bin
+#	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.eeprom \
+#		--redefine-sym "_binary_device_${DEV}_owadr_bin_start=_owadr_start" \
+#		--redefine-sym "_binary_device_${DEV}_owadr_bin_size=_owadr_size" \
+#		--redefine-sym "_binary_device_${DEV}_owadr_bin_end=_owadr_end" \
+#		$^ $@
 
 device/${DEV}/config.o: device/${DEV}/eprom.bin
 	${OBJCOPY} -I binary -O elf32-avr --prefix-sections=.$(PROM) \
