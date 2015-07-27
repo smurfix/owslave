@@ -365,10 +365,11 @@ def main(cfg_name,*kk):
                     files.append('jmp.S')
                     files.append('dev_data.c')
                     files.append('config.o')
-                    if s.subtree('devices',k,'defs','have_uart'):
-                        files.append('uart.c')
-                    if s.subtree('devices',k,'defs','have_timer'):
-                        files.append('timer.c')
+                    for f,v in s.keyval('devices',k,'defs'):
+                        if not v: continue
+                        if not f.startswith('have_'): continue
+                        if os.path.exists(f[5:]+'.c'):
+                            files.append(f[5:]+'.c')
                     if not ow: pass
                     else:
                         files.append(ow+'.c')
