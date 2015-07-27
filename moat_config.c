@@ -85,7 +85,15 @@ void write_config_check(uint8_t chan, uint8_t *buf, uint8_t len)
 
 void write_config(uint8_t chan, uint8_t *buf, uint8_t len)
 {
-	_cfg_write(buf, len, chan);
+	buf[len]=0;
+	DBG_P("W_");
+	DBG_X(chan);
+	DBG_P_(buf);
+	if (_cfg_write(buf, len, chan))
+		DBG_C('+');
+	else
+		DBG_C('-');
+	DBG_C('\n');
 }
 #endif
 
