@@ -67,7 +67,8 @@ Extension: uart_puti, uart_puthex_nibble, uart_puthex_byte
  *  @param  xtalcpu  system clock in Mhz           
  *  @param  baudrate baudrate in bps, e.g. 1200, 2400, 9600     
  */
-#define UART_BAUD_SELECT(baudRate,xtalCpu) ((xtalCpu)/((baudRate)*16l)-1)
+//#define UART_BAUD_SELECT(baudRate,xtalCpu) ((xtalCpu)/((baudRate)*16l)-1)
+#define UART_BAUD_SELECT(baudRate,xtalCpu) ((xtalCpu + baudRate * 8L) / (baudRate * 16L) - 1)
 
 
 #ifndef P
