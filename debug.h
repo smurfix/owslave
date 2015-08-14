@@ -30,6 +30,7 @@
  * sync-safe places, i.e. not in interrupt code or whatever.
  */
 #define DBG_C(x) uart_putc(x)
+#define DBG_S(x) uart_puts(x)
 #define DBG_P(x) uart_puts_P(x)
 #define DBG_P_(x) uart_puts_p(x)
 #define DBG_N(x) uart_puthex_nibble(x)
@@ -48,6 +49,7 @@
 #include "console.h"
 
 #define DBG_C(x) console_putc(x)
+#define DBG_S(x) console_puts(x)
 #define DBG_P(x) console_puts_P(x)
 #define DBG_P_(x) console_puts_p(x)
 #define DBG_N(x) console_puthex_nibble(x)
@@ -60,6 +62,7 @@
 
 #ifndef DBG_C
 #define DBG_C(x) do { } while(0)
+#define DBG_S(x) do { } while(0)
 #define DBG_P(x) do { } while(0)
 #define DBG_P_(x) do { } while(0)
 #define DBG_N(x) do { } while(0)

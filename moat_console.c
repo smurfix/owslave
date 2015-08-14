@@ -87,7 +87,7 @@ void write_console(uint8_t chan, uint8_t *buf, uint8_t len)
 		console_puts_P("Hello.");
 	} else
 #endif
-	console_puts((char *)buf);
+	DBG_S((char *)buf);
 }
 #endif // console_write
 

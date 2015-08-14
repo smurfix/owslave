@@ -4,10 +4,10 @@
 #include <util/crc16.h>
 
 #include "dev_data.h"
+#ifndef DEBUG_EPROM
+#define NO_DEBUG
+#endif
 #include "debug.h"
-
-#define CRC 0  // needs 300 bytes
-#define DEFAULT 1 // needs 30 bytes, plus _config data (built by gen_eprom)
 
 #ifndef USE_EEPROM
 #define EEPROM_VALID 1
@@ -59,8 +59,12 @@ static uint8_t read_crc_byte(uint16_t &crc, uint8_t pos) {
 #endif
 
 #ifdef USE_EEPROM
-static inline void write_byte(uint8_t b, uint8_t pos) {
-	eeprom_write_byte((uint8_t *)EEPROM_POS + pos, b);
+static void write_byte(cfg_addr_t pos, uint8_t b) {
+	DBG_C(' ');
+	DBG_X(pos);
+	DBG_C('=');
+	DBG_X(b);
+	eeprom_update_byte((uint8_t *)EEPROM_POS + pos, b);
 }
 #endif
 
@@ -107,26 +111,55 @@ char _do_crc(char update) // from eeprom; True if CRC matches
 #ifdef USE_EEPROM
 void eeprom_init(void)
 {
+	DBG_P("eprom ");
     if (eeprom_read_byte(EEPROM_POS+0) == 'M' &&
         eeprom_read_byte(EEPROM_POS+1) == 'o' &&
         eeprom_read_byte(EEPROM_POS+2) == 'a' &&
         eeprom_read_byte(EEPROM_POS+3) == 'T') {
 		eep = _do_crc(0);
-		if (eep) return;
-	}
+		if (eep)
+			goto out;
+		DBG_P("!C ");
+	} else
+		DBG_P("!D ");
+
 #if USE_EEPROM == 2
 	{
 		uint8_t *cp = &_config_start;
 		uint8_t *ep = EEPROM_POS;
+		DBG_P("copying ");
 		while(cp != &_config_end) {
-			eeprom_write_byte(ep, pgm_read_byte(cp));
+			eeprom_update_byte(ep, pgm_read_byte(cp));
 			cp++; ep++;
 		}
+		DBG_P("done ");
 		eep = 1;
-		return;
+		goto out;
 	}
 #else
 	eep = 0;
+#endif
+out:
+#ifdef DEBUG_EEPROM
+	if (eep) {
+		cfg_addr_t off = 4;
+		uint8_t len = cfg_byte(off++);
+		uint8_t t;
+		while(len) {
+			t = cfg_byte(off++);
+			DBG_X(len);
+			DBG_C('@');
+			DBG_W(off);
+			DBG_C(':');
+			DBG_X(t);
+			DBG_C(' ');
+			off += len;
+			len = cfg_byte(off++);
+		}
+		DBG_P("OK\n");
+	} else {
+		DBG_P("BAD\n");
+	}
 #endif
 }
 #endif
