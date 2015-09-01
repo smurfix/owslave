@@ -6,6 +6,7 @@ Its job is simply to extract values from a YAML-formatted config file.
 """
 
 import yaml
+import sys
 
 #_depth = -2
 #def arm(p):
@@ -33,23 +34,22 @@ import yaml
 #@arm
 def get1(ak,k):
     try:
-        try:
-            return ak[k]
-        except KeyError:
-            raise KeyError((ak,k))
+        #try:
+        return ak[k]
+        #except KeyError:
+        #    raise KeyError((k,ak))
     except Exception as e:
-        if isinstance(k,str):
-            #if k == "test.1":
-            #    import pdb;pdb.set_trace()
-            try:
-                k = int(k)
-            except ValueError:
-                raise e
-            else:
-                try:
-                    return ak[k]
-                except KeyError:
-                    raise KeyError((ak,k))
+        ee = e
+    if isinstance(k,str):
+        #if k == "test.1":
+        #    import pdb;pdb.set_trace()
+        try:
+            k = int(k)
+        except ValueError:
+            pass
+        else:
+            return ak[k]
+        raise ee
 
 #@arm
 class Cfg(object):
@@ -116,6 +116,7 @@ class Cfg(object):
             if not self.follow: raise
             for v in self.inc(ak):
                 try:
+                    #print ("GP",self.data,"==",v.split('.'),[k1],list(rest), file=sys.stderr)
                     return self.getpath(self.data,*(v.split('.')+[k1]+list(rest)))
                 except KeyError:
                     pass
