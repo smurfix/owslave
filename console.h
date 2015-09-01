@@ -1,7 +1,7 @@
 #ifndef CONSOLE_H
 #define CONSOLE_H
 
-#include <avr/pgmspace.h>
+#include "pgm.h"
 #include "features.h"
 
 #ifndef P

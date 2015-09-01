@@ -16,7 +16,7 @@
 /* This code implements reading alert pins via 1wire.
  */
 
-#include <avr/pgmspace.h>
+#include "pgm.h"
 #include <string.h> // memset
 
 #include "moat_internal.h"

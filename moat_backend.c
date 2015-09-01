@@ -20,7 +20,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/pgmspace.h>
+#include "pgm.h"
 #include <string.h>
 
 #include "onewire.h"

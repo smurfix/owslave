@@ -18,7 +18,7 @@
 #ifdef N_CONSOLE
 
 #include <stdlib.h>
-#include <avr/pgmspace.h>
+#include "pgm.h"
 #include <stdlib.h>
 #include "console.h"
 #include "debug.h"

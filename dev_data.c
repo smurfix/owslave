@@ -1,6 +1,6 @@
 
 #include <avr/eeprom.h>
-#include <avr/pgmspace.h>
+#include "pgm.h"
 #include <util/crc16.h>
 
 #include "dev_data.h"

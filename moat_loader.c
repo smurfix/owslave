@@ -17,7 +17,7 @@
  */
 
 #include <avr/boot.h>
-#include <avr/pgmspace.h>
+#include "pgm.h"
 
 #include "moat_internal.h"
 #include "dev_data.h"

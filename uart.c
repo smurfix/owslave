@@ -60,7 +60,7 @@ LICENSE:
 #include <stdlib.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/pgmspace.h>
+#include "pgm.h"
 #include <stdlib.h>
 #include <stdio.h>
 
