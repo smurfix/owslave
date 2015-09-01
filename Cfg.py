@@ -32,12 +32,12 @@ import sys
 #    return wrap
 
 #@arm
-def get1(ak,k):
+def get1(ak,k,loc):
     try:
-        #try:
-        return ak[k]
-        #except KeyError:
-        #    raise KeyError((k,ak))
+        try:
+            return ak[k]
+        except KeyError:
+            raise KeyError((k,loc))
     except Exception as e:
         ee = e
     if isinstance(k,str):
@@ -98,26 +98,27 @@ class Cfg(object):
             del ak['_ref']
         return iter(r)
 
-    def getpath(self,ak,k1,*rest):
+    def getpath(self,loc,ak,k1,*rest):
         try:
             try:
-                v1 = get1(ak,k1)
+                v1 = get1(ak,k1,loc)
                 if rest:
-                    v1 = self.getpath(v1,*rest)
+                    v1 = self.getpath(loc+(2,k1,),v1,*rest)
                 return v1
             except (KeyError,AttributeError) as e:
                 if not self.follow: raise
-                try: v1 = get1(ak,'_default')
+                try: v1 = get1(ak,'_default',loc+(3,k1,))
                 except KeyError: raise e
                 if rest:
-                    v1 = self.getpath(v1,*rest)
+                    v1 = self.getpath(loc+(4,k1,),v1,*rest)
                 return v1
         except (KeyError,AttributeError) as e:
             if not self.follow: raise
+            if k1 == "_idata_": raise
             for v in self.inc(ak):
                 try:
                     #print ("GP",self.data,"==",v.split('.'),[k1],list(rest), file=sys.stderr)
-                    return self.getpath(self.data,*(v.split('.')+[k1]+list(rest)))
+                    return self.getpath(loc+(1,v,),self.data,*(v.split('.')+[k1]+list(rest)))
                 except KeyError:
                     pass
             raise e
@@ -141,7 +142,7 @@ class Cfg(object):
 
 
     def subtree(self,*key):
-        return self.getpath(self.data, *key)
+        return self.getpath((),self.data, *key)
 
     def keyval(self,*key):
         lk = set()

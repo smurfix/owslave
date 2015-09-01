@@ -98,7 +98,7 @@ def main(cfg_name,*kk):
                         flg=0
                         p=0
                         if isinstance(v,int): v = str(v)
-                        assert len(v)>=2 and len(v) <=6
+                        assert len(v)>=2 and len(v) <=6, v
                         for vv in v:
                             if vv >= 'A' and vv <= 'Z':
                                 assert not p
