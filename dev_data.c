@@ -139,7 +139,7 @@ void eeprom_init(void)
 #else
 	eep = 0;
 #endif
-out:
+out:;
 #ifdef DEBUG_EEPROM
 	if (eep) {
 		cfg_addr_t off = 4;
