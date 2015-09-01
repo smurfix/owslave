@@ -59,6 +59,13 @@ problems; just add a 2-channel oscilloscope.
 The 64-bit ID is optionally read from EEPROM. A tool to generate the
 8-bit CRC is included.
 
+The 1wire bus must be connected to the INT0 pin. See `features.h` or your
+microcontroller's data sheet which hardware pin that is. For example, on an
+ATmega168 it's PD2 (pin 4 if your ATmega lives in a 28-pin PDIP package).
+Add a power supply (leeching parasite power from the bus is not a good
+idea) and a capacitor, and your 1wire slave is ready to go (of course, you
+do need to program it).
+
 ### History
 
 Originally, this project consisted of an effort to convert convoluted code
