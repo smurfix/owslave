@@ -129,10 +129,6 @@ main(void)
 	DBGPORT = 0;
 	DBGDDR |= 0x1F;
 #endif
-#ifdef HAVE_ONEWIRE
-	OWDDR &= ~(1<<ONEWIREPIN);
-	OWPORT &= ~(1<<ONEWIREPIN);
-#endif
 
 	init_mcu();
 	uart_init(UART_BAUD_SELECT(BAUDRATE,F_CPU));
