@@ -144,15 +144,18 @@ out:;
 	if (eep) {
 		cfg_addr_t off = 4;
 		uint8_t len = cfg_byte(off++);
-		uint8_t t;
 		while(len) {
-			t = cfg_byte(off++);
+#ifdef NO_DEBUG
+			off++;
+#else
+			uint8_t t = cfg_byte(off++);
 			DBG_X(len);
 			DBG_C('@');
 			DBG_W(off);
 			DBG_C(':');
 			DBG_X(t);
 			DBG_C(' ');
+#endif
 			off += len;
 			len = cfg_byte(off++);
 		}
