@@ -40,22 +40,12 @@
  */
 #ifdef __AVR_ATtiny13__
 #define F_CPU_                9600000
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 1		 // INT0
-
 #define IMSK GIMSK
 #define IFR GIFR
 #endif
 
 #if defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 #define F_CPU_                8000000
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 1		 // INT0
-
 #define IMSK GIMSK
 #define IFR GIFR
 #define TIMSK0 TIMSK
@@ -70,12 +60,8 @@
 
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
-#define OWPIN PIND
-#define OWPORT PORTD
-#define OWDDR DDRD
 #define DBGPORT PORTB
 #define DBGDDR PINB
-#define ONEWIREPIN 2		// INT0
 
 #define IMSK GIMSK
 #define TIMSK0 TIMSK
@@ -87,10 +73,6 @@
 
 #ifdef __AVR_ATtiny84__
 #define F_CPU_                8000000
-#define OWPIN PINB
-#define OWPORT PORTB
-#define OWDDR DDRB
-#define ONEWIREPIN 2		 // INT0
 
 #define IMSK GIMSK
 #define IFR GIFR
@@ -102,10 +84,6 @@
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
 #define F_CPU_                16000000
 #define ONEWIRE_USE_T2
-#define OWPIN PIND
-#define OWPORT PORTD
-#define OWDDR DDRD
-#define ONEWIREPIN 2		// INT0
 
 #ifdef HAVE_DBG_PORT
 #define DBGPORT PORTC
@@ -114,7 +92,7 @@
 #endif
 #ifdef HAVE_DBG_PIN
 #define DBGPINPORT PORTD
-#define DBGPIN PORTD3
+#define DBGPIN PORTD4
 #define DBGPINDDR DDRD
 #define DBGPININ PIND
 #endif
@@ -137,7 +115,7 @@
 #endif
 
 #ifndef ONEWIRE_USE_T2
-#define ONEWIRE_USE_T0
+# define ONEWIRE_USE_T0
 #endif
 
 #if defined(HAVE_UART_SYNC) && defined(HAVE_UART_IRQ)

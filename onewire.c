@@ -35,24 +35,14 @@ onewire_init(void)
 	TCCR0A = 0;
 	TCCR0B = 0x03;	// Prescaler 1/64
 
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
 #elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
 #elif defined(__AVR_ATtiny84__)
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
 
 #elif defined (__AVR_ATmega8__)
-	// Clock is set via fuse
-	// CKSEL = 0100;   Fuse Low Byte Bits 3:0
-
 	TCCR0 = 0x03;	// Prescaler 1/64
 
-	MCUCR |= (1 << ISC00);		  // Interrupt on both level changes
-
 #elif defined (__AVR_ATmega168__) || defined (__AVR_ATmega88__) || defined(__AVR_ATmega328__)
-	// Clock is set via fuse
 #ifdef ONEWIRE_USE_T2
 	TCCR2A = 0;
 	TCCR2B = 0x03;	// Prescaler 1/32
@@ -61,14 +51,12 @@ onewire_init(void)
 	TCCR0B = 0x03;	// Prescaler 1/64
 #endif
 
-	EICRA = (1<<ISC00); // interrupt of INT0 (pin D2) on both level changes
-
 #else
 #error "Timer/IRQ setup for your CPU undefined"
 #endif
 
-	OWPORT &= ~(1 << ONEWIREPIN);
-	OWDDR &= ~(1 << ONEWIREPIN);
+	ONEWIRE_PORT &= ~ONEWIRE_PBIT;
+	ONEWIRE_DDR &= ~ONEWIRE_PBIT;
 
 	if(!cfg_read(owid, ow_addr.ow_addr))
 	{
@@ -77,8 +65,8 @@ onewire_init(void)
 		ow_addr.ow_addr.crc = 0x44;
 	}
 
-	IFR |= (1 << INTF0);
-	IMSK |= (1 << INT0);
+	ONEWIRE_IFR |= ONEWIRE_IFBIT;
+	ONEWIRE_IER |= ONEWIRE_IFBIT;
 
 	set_idle();
 }
@@ -414,7 +402,7 @@ TIMER_INT
 	//Read input line state first
 	//and copy a few globals to registers
 	DBG_ON();DBG_OFF();DBG_ON();
-	uint8_t p = !!(OWPIN&(1<<ONEWIREPIN));
+	uint8_t p = !!(ONEWIRE_PIN&ONEWIRE_PBIT);
 	mode_t lmode=mode;
 	wmode_t lwmode=wmode;
 	uint8_t lbitp=bitp;
@@ -536,8 +524,8 @@ TIMER_INT
 // 1wire level change.
 // Do this in assembler so that writing a zero is _fast_.
 void real_PIN_INT(void) __attribute__((signal));
-void INT0_vect(void) __attribute__((naked));
-void INT0_vect(void)
+void ONEWIREIRQ(void) __attribute__((naked));
+void PIN_INT(void)
 {
 	// WARNING: No command in here may change the status register!
 	DBG_ON();
@@ -574,7 +562,7 @@ void real_PIN_INT(void) {
 	} else if (wmode != OWW_NO_WRITE) {
 		DBG_C(wmode ? 'P' : 'p');
 	} else {
-		uint8_t p = OWPIN&(1<<ONEWIREPIN);
+		uint8_t p = ONEWIRE_PIN & ONEWIRE_PBIT;
 		DBG_C(p ? 'Q' : 'q');
 	}
 #endif

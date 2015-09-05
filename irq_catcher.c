@@ -90,10 +90,14 @@ void __vector_31(void) __attribute__((naked));
 #else
 #define HAVE_TOV0
 #endif
-#else
+#endif
+
+#if !defined(ONEWIRE_IRQNUM) || ONEWIRE_IRQNUM != -1
 void __vector_1(void) { ping_me(1); } // INT0
 #endif
+#if !defined(ONEWIRE_IRQNUM) || ONEWIRE_IRQNUM != -2
 void __vector_2(void) { ping_me(2); }
+#endif
 void __vector_3(void) { ping_me(3); }
 void __vector_4(void) { ping_me(4); }
 void __vector_5(void) { ping_me(5); }

@@ -335,6 +335,32 @@ def main(cfg_name,*kk):
                         print("#define TC_{} {}".format(a.upper(),typecode[a]), file=f)
                         if v > 0:
                             print("#define N_{} {}".format(a.upper(),v), file=f)
+
+                    owp = s.subtree('devices',k,'defs','onewire_io')
+                    if owp:
+                        assert len(owp) == 2, owp
+                        print("#define ONEWIRE_PORT PORT{}".format(owp[0]), file=f)
+                        print("#define ONEWIRE_PIN PIN{}".format(owp[0]), file=f)
+                        print("#define ONEWIRE_DDR DDR{}".format(owp[0]), file=f)
+                        print("#define ONEWIRE_PBIT {}".format(1<<(int(owp[1]))), file=f)
+
+                        try:
+                            own = s.subtree('devices',k,'pin_irq',owp)
+                        except KeyError:
+                            own = s.subtree('devices',k,'pin_irq',owp[0])
+
+                        print("#define ONEWIRE_IRQNUM ({})".format(own), file=f)
+                        if (own < 0):
+                            print("#define ONEWIRE_IRQ INT{}_vect".format(-own-1), file=f)
+                            print("#define ONEWIRE_IER EIMSK", file=f)
+                            print("#define ONEWIRE_IFR EIFR", file=f)
+                            print("#define ONEWIRE_IFBIT {}".format(1<<(-own-1)), file=f)
+                        else:
+                            print("#define ONEWIRE_IRQ PCINT{}_vect".format(own+int(owp[1])), file=f)
+                            print("#define ONEWIRE_IFR PCICR", file=f)
+                            print("#define ONEWIRE_IFR PCINT{}".format(own>>3), file=f)
+
+
                     print("""\
 #define TC_MAX {}
 

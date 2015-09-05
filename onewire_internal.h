@@ -79,12 +79,24 @@ extern volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 #error Read timing is broken, your clock is too slow
 #endif
 
+#if ONEWIRE_IRQNUM == -1
 #define EN_OWINT() do {IMSK|=(1<<INT0);IFR|=(1<<INTF0);}while(0)  //enable interrupt 
 #define DIS_OWINT() do {IMSK&=~(1<<INT0);} while(0)  //disable interrupt
 #define SET_RISING() do {EICRA|=(1<<ISC01)|(1<<ISC00);}while(0)  //set interrupt at rising edge
 #define SET_FALLING() do {EICRA|=(1<<ISC01);EICRA&=~(1<<ISC00);} while(0) //set interrupt at falling edge
 #define CHK_INT_EN() (IMSK&(1<<INT0)) //test if pin interrupt enabled
 #define PIN_INT INT0_vect  // the interrupt service routine
+#elif ONEWIRE_IRQNUM == -2
+#define EN_OWINT() do {IMSK|=(1<<INT1);IFR|=(1<<INTF1);}while(0)  //enable interrupt 
+#define DIS_OWINT() do {IMSK&=~(1<<INT1);} while(0)  //disable interrupt
+#define SET_RISING() do {EICRA|=(1<<ISC11)|(1<<ISC10);}while(0)  //set interrupt at rising edge
+#define SET_FALLING() do {EICRA|=(1<<ISC11);EICRA&=~(1<<ISC10);} while(0) //set interrupt at falling edge
+#define CHK_INT_EN() (IMSK&(1<<INT1)) //test if pin interrupt enabled
+#define PIN_INT INT1_vect  // the interrupt service routine
+#else
+#error generic pin change interrupts are not yet supported
+#endif
+//Timer Interrupt
 //Timer Interrupt
 
 #ifdef ONEWIRE_USE_T2
@@ -108,8 +120,8 @@ extern volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 #  define TIMER0_OVF_vect TIM0_OVF_vect
 #endif
 
-#define SET_LOW() do { OWDDR|=(1<<ONEWIREPIN);} while(0)  //set 1-Wire line to low
-#define CLEAR_LOW() do {OWDDR&=~(1<<ONEWIREPIN);} while(0) //set 1-Wire pin as input
+#define SET_LOW() do { ONEWIRE_DDR|=ONEWIRE_PBIT;} while(0)  //set 1-Wire line to low
+#define CLEAR_LOW() do {ONEWIRE_DDR&=~ONEWIRE_PBIT;} while(0) //set 1-Wire pin as input
 
 // Initialise the hardware
 void onewire_init(void);
