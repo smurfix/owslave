@@ -8,7 +8,7 @@ reasonably obvious. Hopefully.
 Now copy `sample.cfg`. We'll use `project.cfg` subsequently; you
 should probably use the actual name of your project.
 
-Edit the `env` section and tell it which programmer you use.
+Edit the `env` section to tell it which programmer you use.
 
 Then, add your slaves to the `devices` section.
 
@@ -20,6 +20,8 @@ B0, a counter input on B1, and an alarm input on B2. Let's call your slave
       try1:
         _doc: my first test slave
         _ref: defaults.target.m88
+        defs:
+          is_onewire: moat
         types:
           port: 3
           pwm: 1
@@ -141,6 +143,14 @@ conditions may cause an alarm.
 ### `single_device`
 
 Add 1wire code for `SKIP_ROM` and `READ_ROM`. You probably do not need this.
+
+### `onewire_io`
+
+Choose wich pin to connect your 1wire bus to. For now, only pins with
+dedicated interrupts (INTx) can be used. On an ATmega168, these are pins
+D2 and D3.
+
+The default is INT0.
 
 ## Features
 
