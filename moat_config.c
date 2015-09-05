@@ -88,7 +88,7 @@ void write_config(uint8_t chan, uint8_t *buf, uint8_t len)
 	buf[len]=0;
 	DBG_P("W_");
 	DBG_X(chan);
-	DBG_S(buf);
+	DBG_S((const char *)buf);
 	if (_cfg_write(buf, len, chan))
 		DBG_C('+');
 	else
