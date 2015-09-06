@@ -110,7 +110,26 @@ missing. You can still access it.
 
 ## HOWTO
 
-See HOWTO.md
+For build instructions, see HOWTO.md
+
+### Rationale
+
+This project uses its own build system, based on a configuration file and
+`make`.
+
+The reason is simple enough: suppose you want to prepare or update 100
+devices for installation in a new house.
+
+You do *not* want to click your way through a GUI to do this.
+
+The first time through, you want to issue one command and then plug each
+device into the programmer. Wait, unplug, repeat.
+
+After it's all installed, you want to run "make update-all" and have the
+build system handle everything. Yes, this includes firmware uploads via
+1wire.
+
+MoaT doesn't yet support online firmware updates. But it will.
 
 ## TODO
 
@@ -125,18 +144,17 @@ See HOWTO.md
 
 ### implementations
 
-* secondary 1wire bus
-* store config in EEPROM
-* over-the-wire config changes
+* secondary 1wire bus?
+* I²C bus?
+* RF12/RF69?
+* more over-the-wire config changes
 * over-the-wire firmware update
 * some (esp. 1wire) statistics
-* ... including the fact that the device has been reset, and why
 * PID
 * SMOKE
 * I2C interface
 * THERMO via I2C
 * HYGRO via I2C
-* RF12 instead of 1wire
 * serial bridge
 * named ports
 
