@@ -104,11 +104,13 @@ burn_cfg:
 
 burn: burn_cfg all $(EE)
 	TF=$$(mktemp avrdude-cfg.XXXXX); echo "default_safemode = no;" >$$TF; \
+	EFUSE=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.e); \
+	[ "${EFUSE}" != "" ] && SET_EFUSE="-U efuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.e):m"; \
 	$(AVRDUDE) -c $(PROG) -p $(MCU_PROG) -C +$$TF\
 		-U flash:w:device/${DEV}/image.hex:i ${EEP} \
 		-U lfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.l):m \
 		-U hfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.h):m \
-		-U efuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.e):m \
+		${SET_EFUSE} \
 	; X=$$?; rm $$TF; exit $$X
 endif # NO_BURN
 
