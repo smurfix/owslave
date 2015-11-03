@@ -67,6 +67,14 @@ uint8_t debug_state;
 #define PINCHANGE_vect PCINT1_vect
 #define PCIE PCIE1
 #define PCMSK PCMSK1
+#elif defined (__AVR_ATmega8__)
+#define ADLARMUX (1<<ADLAR)
+#define ADPIN PINC
+// Mega8 does not have pinchange interupts
+// No digital solution impl for now
+//#define PINCHANGE_vect PCINT1_vect
+//#define PCIE PCIE1
+//#define PCMSK PCMSK1
 #else
 #warning Where is the ADLAR bit?
 #define NO_ADLAR
@@ -408,7 +416,9 @@ void init_state(void)
 	}
 
 	ADMUX = 0b1110 | (1<<REFS0) | ADLARMUX; // 5V ref
+#ifdef DIDR0
 	DIDR0 = (1<<NCOUNTERS)-1;
+#endif
 
 #if F_CPU >= 12800000 // prescale AD clock to <= 200 KHz
 #define CLK_A 7
