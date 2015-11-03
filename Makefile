@@ -52,6 +52,7 @@ else # DEV is defined
 MCU:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.mcu)
 MCU_PROG:=$(shell $(RUN_CFG) ${CFG} devices.${DEV}.prog)
 PROG:=$(shell $(RUN_CFG) ${CFG} env.prog)
+AVRDUDE:=$(shell $(RUN_CFG) ${CFG} env.avrdude)
 
 CC=avr-gcc
 OBJCOPY:=avr-objcopy
@@ -102,8 +103,8 @@ burn_cfg:
 	@$(RUN_CFG) ${CFG} devices.${DEV}.defs.use_eeprom
 
 burn: burn_cfg all $(EE)
-	TF=$$(tempfile); echo "default_safemode = no;" >$$TF; \
-	sudo avrdude -c $(PROG) -p $(MCU_PROG) -C +$$TF \
+	TF=$$(mktemp avrdude-cfg.XXXXX); echo "default_safemode = no;" >$$TF; \
+	$(AVRDUDE) -c $(PROG) -p $(MCU_PROG) -C +$$TF\
 		-U flash:w:device/${DEV}/image.hex:i ${EEP} \
 		-U lfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.l):m \
 		-U hfuse:w:0x$(shell $(RUN_CFG) ${CFG} devices.${DEV}.fuse.h):m \
@@ -159,6 +160,8 @@ device/${DEV}/cfg: device/${DEV} ${CFG} cfg
 	@$(RUN_CFG) ${CFG} devices.${DEV}.prog
 	@echo -n PROG:
 	@$(RUN_CFG) ${CFG} env.prog
+	@echo -n AVRDUDE:
+	@$(RUN_CFG) ${CFG} env.avrdude
 	@echo -n CFILES:
 	@$(RUN_CFG) ${CFG} .cfiles ${DEV}
 	@echo -n TYPE:
