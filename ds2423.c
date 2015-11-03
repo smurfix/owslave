@@ -100,7 +100,9 @@ static uint16_t decay[NCOUNTERS];
 #endif
 #endif
 static uint8_t cur_adc,bstate;
+#if 0
 static uint16_t samples;
+#endif
 
 #else // !ANALOG
 volatile static uint8_t obits,cbits;
@@ -298,9 +300,13 @@ static inline void check_adc(void)
 			last[cur] = res;
 		} else if (res > hyst[cur]+last[cur]) {
 			bstate |= (1<<cur);
+#if 0
 			if(samples)
+#endif
+			{
 				counter[cur]++;
 				changed = 1;
+			}
 			last[cur] = res;
 		}
 	} else {
@@ -311,8 +317,10 @@ static inline void check_adc(void)
 			last[cur] = res;
 		}
 	}
+#if 0
 	if(samples < 0xFFFF)
 		samples++;
+#endif
 #else // !analog
 	uint8_t i = 0;
 	uint8_t now_bits,nbits,bits,ocbits;
