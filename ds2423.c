@@ -145,6 +145,9 @@ void do_mem_counter(void)
 	   between the second recv_byte_in() and xmit_byte() is less than a bit
 	   wide. That may not be enough time to update the CRC.
 	 */
+#ifdef CONDITIONAL_SEARCH
+	change_seen = 0;
+#endif
 	
 	recv_byte();
 	crc = crc16(crc,C_READ_MEM_COUNTER);
@@ -450,6 +453,11 @@ void init_state(void)
 	PCICR |= (1<<PCIE);
 #endif
 	PCMSK |= (1<<NCOUNTERS)-1;
+#endif
+
+#ifdef CONDITIONAL_SEARCH
+	// Init in alarm mode
+	change_seen = 1;
 #endif
 }
 
