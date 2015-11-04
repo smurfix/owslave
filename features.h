@@ -68,7 +68,7 @@
 #define TIFR0 TIFR
 #define EEPE EEWE
 #define EEMPE EEMWE
-#define IFR EIFR
+#define IFR GIFR
 #endif
 
 #ifdef __AVR_ATtiny84__

@@ -48,10 +48,10 @@ static inline char adc_check(adc_t *pp)
 	switch(poll_step++) {
 	case 0:
 		if (pp->flags & ADC_REF)
-			x = 0xE0;
+			x = (1<<REFS1) | (1<<REFS0) | (1<<ADLAR);
 		else
-			x = 0x60;
-		x |= (1<<ADLAR);
+			x = (1<<REFS0) |              (1<<ADLAR);
+
 		if (!(pp->flags & ADC_ALT)) 
 			x |= pp->flags&ADC_MASK;
 		else switch(pp->flags & ADC_MASK) {

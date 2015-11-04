@@ -352,8 +352,8 @@ def main(cfg_name,*kk):
                         print("#define ONEWIRE_IRQNUM ({})".format(own), file=f)
                         if (own < 0):
                             print("#define ONEWIRE_IRQ INT{}_vect".format(-own-1), file=f)
-                            print("#define ONEWIRE_IER EIMSK", file=f)
-                            print("#define ONEWIRE_IFR EIFR", file=f)
+                            print("#define ONEWIRE_IER IMSK", file=f)
+                            print("#define ONEWIRE_IFR IFR", file=f)
                             print("#define ONEWIRE_IFBIT {}".format(1<<(-own-1)), file=f)
                         else:
                             print("#define ONEWIRE_IRQ PCINT{}_vect".format(own+int(owp[1])), file=f)

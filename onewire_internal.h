@@ -106,8 +106,14 @@ extern volatile uint8_t cbuf;  // char buffer, current byte to be (dis)assembled
 #define TIMER_INT ISR(TIMER2_OVF_vect) //the timer interrupt service routine
 
 #else
+#ifdef __AVR_ATmega8__
+// Not sure if this is valid for others as well?
+#define GTCCR SFIOR
+#define PSRSYNC PSR10
+#else
 #ifndef PSRSYNC
 #define PSRSYNC PSR0
+#endif
 #endif
 #define EN_TIMER() do {TIMSK0 |= (1<<TOIE0); TIFR0|=(1<<TOV0);}while(0) //enable timer interrupt
 #define DIS_TIMER() do {TIMSK0 &= ~(1<<TOIE0);} while(0) // disable timer interrupt
