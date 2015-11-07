@@ -45,6 +45,7 @@ static uint8_t poll_next = 0;
 void poll_count(void)
 {
 	uint8_t i = poll_next;
+	uint8_t trigged=0;
 	count_t *t;
 	port_t *p;
 
@@ -62,16 +63,23 @@ void poll_count(void)
 
 	p = &ports[t->port-1];
 	if(!(p->flags & PFLG_CURRENT) != !(t->flags & CF_IS_ON)) {
-		if (p->flags & PFLG_CURRENT)
+		if (p->flags & PFLG_CURRENT) {
 			t->flags |= CF_IS_ON;
-		else
+			trigged = !(t->flags & CF_FLANK_MASK) ||
+				!!(t->flags & CF_RISING_ONLY);
+		}else{
 			t->flags &=~CF_IS_ON;
-		t->count++;
-#ifdef CONDITIONAL_SEARCH
-		if(t->flags & CF_ALERTING) {
-			t->flags |= CF_IS_ALERT;
+			trigged = !(t->flags & CF_FLANK_MASK) ||
+				!!(t->flags & CF_FALLING_ONLY);
 		}
+		if(trigged) {
+			t->count++;
+#ifdef CONDITIONAL_SEARCH
+			if(t->flags & CF_ALERTING) {
+				t->flags |= CF_IS_ALERT;
+			}
 #endif
+		}
 	}
 #ifdef CONDITIONAL_SEARCH
 	if(t->flags & CF_IS_ALERT) {
