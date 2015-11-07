@@ -26,21 +26,8 @@ extern adc_t adcs[];
 #define ADC_IS_ALERT_H (1<<7)  // alarm triggered (high)?
 
 #ifdef CONDITIONAL_SEARCH
-
 extern uint8_t adc_changed_cache;
-static inline char adc_alert(void) {
-	if (adc_changed_cache)
-		return 1;
-	return 0;
-}
-
-#else
-#define adc_alert() 0
 #endif
-
-#else // no i/o
-
-#define alert_adc() 0
 
 #endif // any inputs or outputs at all
 #endif // adc_h

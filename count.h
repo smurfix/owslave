@@ -20,14 +20,7 @@ extern count_t counts[];
 
 #ifdef CONDITIONAL_SEARCH
 extern uint8_t count_changed_cache;
-
-#else
-#define count_alert() 0
 #endif
-
-#else // no i/o
-
-#define count_alert() 0
 
 #endif // any inputs or outputs at all
 #endif // count_h

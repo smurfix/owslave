@@ -131,23 +131,7 @@ static inline void port_post_send (port_t *portp) {
 	}
 }
 
-/* Called after reporting changes, clears PFLG_POLL when PFLG_CHANGED is off */
-void poll_clear(void);
-
-#ifdef CONDITIONAL_SEARCH
-static inline char port_alert(void) {
-	if (port_changed_cache)
-		return 1;
-	return 0;
-}
-
-#else
-#define port_alert() 0
-#endif
-
 #else // no i/o
-
-#define port_alert() 0
 
 #endif // any inputs or outputs at all
 #endif // port_h
