@@ -61,20 +61,23 @@ void poll_count(void)
 	poll_next = i;
 
 	p = &ports[t->port-1];
-	if(!(p->flags & PFLG_CURRENT) == !(t->flags & CF_IS_ON))
-		return;
-	if (p->flags & PFLG_CURRENT)
-		t->flags |= CF_IS_ON;
-	else
-		t->flags &=~CF_IS_ON;
-	t->count++;
+	if(!(p->flags & PFLG_CURRENT) != !(t->flags & CF_IS_ON)) {
+		if (p->flags & PFLG_CURRENT)
+			t->flags |= CF_IS_ON;
+		else
+			t->flags &=~CF_IS_ON;
+		t->count++;
 #ifdef CONDITIONAL_SEARCH
-	if(t->flags & CF_ALERTING) {
-		t->flags |= CF_IS_ALERT;
+		if(t->flags & CF_ALERTING) {
+			t->flags |= CF_IS_ALERT;
+		}
+#endif
+	}
+#ifdef CONDITIONAL_SEARCH
+	if(t->flags & CF_IS_ALERT) {
 		max_seen = i;
 	}
 #endif
-	poll_next = i;
 }
 
 void init_count(void)
