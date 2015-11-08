@@ -60,8 +60,11 @@
 
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
+#ifdef HAVE_DBG_PORT
 #define DBGPORT PORTB
-#define DBGDDR PINB
+#define DBGDDR DDRB
+#define DBGIN PINB
+#endif
 
 #define IMSK GIMSK
 #define TIMSK0 TIMSK
