@@ -65,6 +65,12 @@
 #define DBGDDR DDRB
 #define DBGIN PINB
 #endif
+#ifdef HAVE_DBG_PIN
+#define DBGPINPORT PORTD
+#define DBGPIN PORTD4
+#define DBGPINDDR DDRD
+#define DBGPININ PIND
+#endif
 
 #define IMSK GIMSK
 #define TIMSK0 TIMSK
