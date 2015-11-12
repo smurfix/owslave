@@ -113,7 +113,7 @@ void _wait_complete(void)
 			return;
 		}
 		uart_poll();
-		update_idle(1); // actbit
+		update_idle((mode == OWM_IDLE || bitp < 0x80) ? 8 : 1);
 	}
 }
 
@@ -336,15 +336,11 @@ char _onewire_poll(void) {
 	} else if(bitp != 0x80) {
 		DBG(0x1E);
 		sei();
-		update_idle(1);
 		uart_poll();
 	} else {
 		DBG(0x1F);
 		sei();
 	}
-
-	// RESET processing takes longer.
-	// update_idle((mode == OWM_SLEEP) ? 100 : (mode <= OWM_AFTER_RESET) ? 20 : (mode < OWM_IDLE) ? 8 : 1); // TODO
 
 	if (mode == OWM_IDLE) {
 		DBG(0x10);
@@ -354,6 +350,13 @@ char _onewire_poll(void) {
 		DBG(0x2F);
 		return 0;
 	}
+
+	// RESET processing takes longer.
+	update_idle((mode == OWM_SLEEP) ? 100
+			: (mode <= OWM_PRESENCE) ? 20
+			: (mode < OWM_IDLE || bitp < 0x80) ? 8
+			: 1);
+
 	return 1;
 }
 void onewire_poll(void) {
