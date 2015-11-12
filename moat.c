@@ -269,6 +269,9 @@ void do_command(uint8_t cmd)
 
 void update_idle(uint8_t bits)
 {
+	if(bits < 8)
+		return;
+	moat_poll();
 }
 
 #if CONSOLE_PING
