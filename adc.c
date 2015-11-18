@@ -136,6 +136,22 @@ void init_adc(void)
 		pp->flags &=~(ADC_IS_ALERT_L|ADC_IS_ALERT_H);
 		pp->lower = 0xFFFF;
 		pp->upper = 0x0000;
+#ifndef USE_ADC_AS_DIGITAL
+        // If pin is used as ADC, disable the digital logic buffer to save power.
+#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
+        // Only ADC0-5 have logic buffers
+        if(!(pp->flags & ADC_ALT) && (pp->flags & ADC_MASK) < 6) {
+            DIDR0|= (1 << (pp->flags & ADC_MASK));
+        }
+#elif defined (__AVR_ATtiny84__)
+        if(!(pp->flags & ADC_ALT)) {
+            DIDR0|= (1 << (pp->flags & ADC_MASK));
+        }
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+        // TODO: Proper support. ADC should be looked over on these
+        // devices generally, as it supports more complex channel configurations.
+#endif
+#endif
 		pp++;
 	}
 }
