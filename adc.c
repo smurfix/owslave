@@ -51,20 +51,37 @@ static inline char adc_check(adc_t *pp)
 			x = (1<<REFS1) | (1<<REFS0) | (1<<ADLAR);
 		else
 			x = (1<<REFS0) |              (1<<ADLAR);
+#ifdef __AVR_ATtiny84__
+#define _VGND 0x20
+#define _VBG 0x21
+#define _VTEMP 0x22
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+#define _VGND 0x0D
+#define _VBG 0x0C
+#define _VTEMP 0x0F
+#else
+// Valid for Mega88..168..328
+#define _VGND 0x0F
+#define _VBG 0x0E
+#define _VTEMP 0x08
+#endif
 
 		if (!(pp->flags & ADC_ALT)) 
 			x |= pp->flags&ADC_MASK;
 		else switch(pp->flags & ADC_MASK) {
 		case ADC_VBG:
-			x |= 0x0E; break;
+			x |= _VBG; break;
 		case ADC_VGND:
-			x |= 0x0F; break;
+			x |= _VGND; break;
 		case ADC_VTEMP:
-			x |= 0x08; break;
+			x |= _VTEMP; break;
 		default:
 			poll_step = 0;
 			return 1;
 		}
+#undef _VGND
+#undef _VBG
+#undef _VTEMP
 		ADMUX = x;
 		ADCSRA = (1<<ADEN)|(1<<ADIF)|0x07; // slow
 		break;
@@ -119,6 +136,22 @@ void init_adc(void)
 		pp->flags &=~(ADC_IS_ALERT_L|ADC_IS_ALERT_H);
 		pp->lower = 0xFFFF;
 		pp->upper = 0x0000;
+#ifndef USE_ADC_AS_DIGITAL
+        // If pin is used as ADC, disable the digital logic buffer to save power.
+#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
+        // Only ADC0-5 have logic buffers
+        if(!(pp->flags & ADC_ALT) && (pp->flags & ADC_MASK) < 6) {
+            DIDR0|= (1 << (pp->flags & ADC_MASK));
+        }
+#elif defined (__AVR_ATtiny84__)
+        if(!(pp->flags & ADC_ALT)) {
+            DIDR0|= (1 << (pp->flags & ADC_MASK));
+        }
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+        // TODO: Proper support. ADC should be looked over on these
+        // devices generally, as it supports more complex channel configurations.
+#endif
+#endif
 		pp++;
 	}
 }
