@@ -249,6 +249,38 @@ void moat_init(void)
 		pf = pgm_read_ptr(&mc->init);
 		pf();
 	}
+
+	// Power reduction register allows us to turn off the clock to unused peripherals.
+#if defined(__AVR_ATmega168__) || defined(__AVR_ATmega88__) || defined (__AVR_ATmega328__)
+   PRR =
+			(1 << PRTWI) // TWI not used at all
+        |(1 << PRSPI) // SPI not used at all
+        |(1 << PRTIM1) // Timer 1 not used at all
+			// Timer 2 is used for OW on Mega88
+#ifndef HAVE_TIMER
+        |(1 << PRTIM0)
+#endif
+#ifndef HAVE_UART
+        |(1 << PRUSART0)
+#endif
+#if !defined(N_ADC)
+        |(1 << PRADC)
+#endif
+		;
+#elif defined(__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)\
+	|| defined (__AVR_ATtiny84__)
+	PRR =
+			 (1 << PRTIM1) // Timer 1 not used at all
+			 // Timer 2 is used for OW on these devices
+#ifndef HAVE_UART
+			|(1 << PRUSI)
+#endif
+#if !defined(N_ADC)
+			|(1 << PRADC)
+#endif
+		;
+
+#endif
 }
 
 void do_command(uint8_t cmd)
@@ -269,6 +301,9 @@ void do_command(uint8_t cmd)
 
 void update_idle(uint8_t bits)
 {
+	if(bits < 8)
+		return;
+	moat_poll();
 }
 
 #if CONSOLE_PING

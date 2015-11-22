@@ -60,15 +60,24 @@
 
 #ifdef __AVR_ATmega8__
 #define F_CPU_                8000000
+#ifdef HAVE_DBG_PORT
 #define DBGPORT PORTB
-#define DBGDDR PINB
+#define DBGDDR DDRB
+#define DBGIN PINB
+#endif
+#ifdef HAVE_DBG_PIN
+#define DBGPINPORT PORTD
+#define DBGPIN PORTD4
+#define DBGPINDDR DDRD
+#define DBGPININ PIND
+#endif
 
 #define IMSK GIMSK
 #define TIMSK0 TIMSK
 #define TIFR0 TIFR
 #define EEPE EEWE
 #define EEMPE EEMWE
-#define IFR EIFR
+#define IFR GIFR
 #endif
 
 #ifdef __AVR_ATtiny84__

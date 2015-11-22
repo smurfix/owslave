@@ -38,6 +38,7 @@
 #include <string.h>
 #include "onewire.h"
 #include "features.h"
+#include "crc.h"
 #include "debug.h"
 
 #define C_WRITE_SCRATCHPAD 0x0F // TODO
@@ -66,6 +67,14 @@ uint8_t debug_state;
 #define PINCHANGE_vect PCINT1_vect
 #define PCIE PCIE1
 #define PCMSK PCMSK1
+#elif defined (__AVR_ATmega8__)
+#define ADLARMUX (1<<ADLAR)
+#define ADPIN PINC
+// Mega8 does not have pinchange interupts
+// No digital solution impl for now
+//#define PINCHANGE_vect PCINT1_vect
+//#define PCIE PCIE1
+//#define PCMSK PCMSK1
 #else
 #warning Where is the ADLAR bit?
 #define NO_ADLAR
@@ -91,7 +100,9 @@ static uint16_t decay[NCOUNTERS];
 #endif
 #endif
 static uint8_t cur_adc,bstate;
+#if 0
 static uint16_t samples;
+#endif
 
 #else // !ANALOG
 volatile static uint8_t obits,cbits;
@@ -134,6 +145,9 @@ void do_mem_counter(void)
 	   between the second recv_byte_in() and xmit_byte() is less than a bit
 	   wide. That may not be enough time to update the CRC.
 	 */
+#ifdef CONDITIONAL_SEARCH
+	change_seen = 0;
+#endif
 	
 	recv_byte();
 	crc = crc16(crc,C_READ_MEM_COUNTER);
@@ -289,9 +303,13 @@ static inline void check_adc(void)
 			last[cur] = res;
 		} else if (res > hyst[cur]+last[cur]) {
 			bstate |= (1<<cur);
+#if 0
 			if(samples)
+#endif
+			{
 				counter[cur]++;
 				changed = 1;
+			}
 			last[cur] = res;
 		}
 	} else {
@@ -302,8 +320,10 @@ static inline void check_adc(void)
 			last[cur] = res;
 		}
 	}
+#if 0
 	if(samples < 0xFFFF)
 		samples++;
+#endif
 #else // !analog
 	uint8_t i = 0;
 	uint8_t now_bits,nbits,bits,ocbits;
@@ -407,7 +427,9 @@ void init_state(void)
 	}
 
 	ADMUX = 0b1110 | (1<<REFS0) | ADLARMUX; // 5V ref
+#ifdef DIDR0
 	DIDR0 = (1<<NCOUNTERS)-1;
+#endif
 
 #if F_CPU >= 12800000 // prescale AD clock to <= 200 KHz
 #define CLK_A 7
@@ -431,6 +453,11 @@ void init_state(void)
 	PCICR |= (1<<PCIE);
 #endif
 	PCMSK |= (1<<NCOUNTERS)-1;
+#endif
+
+#ifdef CONDITIONAL_SEARCH
+	// Init in alarm mode
+	change_seen = 1;
 #endif
 }
 

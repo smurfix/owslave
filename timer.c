@@ -78,7 +78,11 @@ void timer_reset(timer_t *t)
 
 void timer_init(void)
 {
+#if defined (__AVR_ATmega8__)
+#define TCCR0B TCCR0
+#else
 	TCCR0A=0;
+#endif
 #if PRESCALE==64
 	TCCR0B=0x03;
 #elif PRESCALE==256

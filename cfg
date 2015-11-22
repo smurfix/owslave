@@ -35,6 +35,11 @@ TEMP_ALERT=(1<<5)
 PWM_ALERT=(1<<0)
 PWM_FORCE=(1<<1)
 
+### copied from count.h
+CF_ALERTING=(1<<0)
+CF_FALLING_ONLY=(1<<1)
+CF_RISING_ONLY=(1<<2)
+
 follow=True
 xstr = re.compile("^x([0-9a-fA-F]{2}){1,}$")
 
@@ -254,12 +259,20 @@ def main(cfg_name,*kk):
                         flg=0
                         p=0
                         if isinstance(v,str):
-                            if v.endswith('*'):
-                                flg |= 1
-                                v = v[:-1]
-                            v = int(v)
+                            pin=""
+                            for vv in v:
+                                if vv == '*': flg |= CF_ALERTING
+                                elif vv == '+': flg |= CF_RISING_ONLY
+                                elif vv == '-': flg |= CF_FALLING_ONLY
+                                elif vv >= '0' and vv <= '7':
+                                    pin+=vv
+                                else: assert 0,vv
+
+                            v = int(pin)
+                            if (flg & CF_RISING_ONLY) and (flg & CF_FALLING_ONLY):
+                                raise Exception("Counter %d must choose between falling OR rising edge. Or remove both flags to trigger on each edge."%i)
                         if v in seen:
-                            print("Warning: PWM %d is known"%v,file=sys.stderr)
+                            print("Warning: Count %d is known"%v,file=sys.stderr)
                             continue
                         seen.add(v)
                         print('{'+"{},{}".format(v,flg)+'},',file=f)
@@ -405,8 +418,8 @@ def main(cfg_name,*kk):
                         print("#define ONEWIRE_IRQNUM ({})".format(own), file=f)
                         if (own < 0):
                             print("#define ONEWIRE_IRQ INT{}_vect".format(-own-1), file=f)
-                            print("#define ONEWIRE_IER EIMSK", file=f)
-                            print("#define ONEWIRE_IFR EIFR", file=f)
+                            print("#define ONEWIRE_IER IMSK", file=f)
+                            print("#define ONEWIRE_IFR IFR", file=f)
                             print("#define ONEWIRE_IFBIT {}".format(1<<(-own-1)), file=f)
                         else:
                             print("#define ONEWIRE_IRQ PCINT{}_vect".format(own+int(owp[1])), file=f)
