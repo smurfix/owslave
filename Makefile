@@ -34,7 +34,7 @@ burn_%:
 	@$(MAKE) DEV=$(subst burn_,,$@) burn
 %:
 	@$(MAKE) DEV=$@ all
-	
+
 clean:
 	rm -r device
 
@@ -147,7 +147,7 @@ device/${DEV}/image.bin: device/${DEV}/image.elf
 
 burn: all
 	ow_send $(shell $(RUN_EEPROM) device/${DEV}/eprom.bin owid ascii) device/${DEV}/image.bin device/${DEV}/eprom.bin
-	
+
 endif
 
 device/${DEV}: 
